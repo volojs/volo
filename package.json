@@ -1,0 +1,8 @@
+{
+    "mappings": {
+        "cpm": {
+            "location": "packages/cpm",
+            "archive": "http://github.com/kriszyp/cpm/zipball/master"
+        }
+    }
+}
