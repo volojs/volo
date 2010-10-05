@@ -11,10 +11,8 @@ require({
         }
     ]
 });
-require(['sys', 'args', 'pkg'], function (sys, args, pkg) {
-    
-    sys.puts('First arg is: ' + args[0]);
-    sys.puts('pkg name is: ' + pkg.name);
+require(['sys', 'pkg'], function (sys, pkg) {    
+    sys.puts(pkg);
 });
 
 

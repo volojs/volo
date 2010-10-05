@@ -59,7 +59,10 @@ function main(action, url, location){
 			print("Packages are installed into the current directory package or the PACKAGE_PATH env variable if it exists");
 	}
 }
-function installPackage(url, location){
+function installPackage(url, location, targetPkg){
+	if(targetPkg){
+		targetPackage = targetPkg;
+        }
 	if(!location){
 		relocate = true; 
 		location = url.replace(/[^\w]/g,'_');
@@ -235,6 +238,10 @@ function removePath(path){
 if(typeof process == "undefined"){
 	system.args.unshift(null);
 }
+
+exports.installPackage = installPackage;
+exports.downloadAndUnzipArchive = downloadAndUnzipArchive;
+
 if(require.main == module){
 	main.apply(this, system.args.slice(2));
 }
