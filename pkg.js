@@ -1,3 +1,7 @@
+'use strict';
+/*jslint */
+/*global require */
+
 require({
     packages: [
         {
@@ -11,9 +15,8 @@ require({
         }
     ]
 });
-require(['sys', 'pkg'], function (sys, pkg) {    
-    sys.puts(pkg);
+require(['sys', 'pkg'], function (sys, pkg) {
+    pkg(function (result) {
+        sys.puts(result);
+    });
 });
-
-
-
