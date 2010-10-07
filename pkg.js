@@ -15,8 +15,14 @@ require({
         }
     ]
 });
-require(['sys', 'pkg'], function (sys, pkg) {
-    pkg(function (result) {
-        sys.puts(result);
-    });
+require(['sys', 'pkg', 'cpm/cpm-utils/promise'], function (sys, pkg, promise) {
+    promise.when(
+        pkg(),
+        function (result) {
+            sys.puts(result);
+        },
+        function (err) {
+            sys.puts(err);
+        }
+    );
 });
