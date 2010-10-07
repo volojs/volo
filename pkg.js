@@ -2,6 +2,7 @@
 /*jslint */
 /*global require */
 
+//Config
 require({
     packages: [
         {
@@ -15,14 +16,20 @@ require({
         }
     ]
 });
+
+//Action
 require(['sys', 'pkg', 'cpm/cpm-utils/promise'], function (sys, pkg, promise) {
     promise.when(
         pkg(),
         function (result) {
-            sys.puts(result);
+            if (result) {
+                sys.puts(result);
+            }
         },
         function (err) {
-            sys.puts(err);
+            if (err) {
+                sys.puts(err);
+            }
         }
     );
 });

@@ -1,5 +1,6 @@
 # CPM
 
+http://github.com/kriszyp/cpm
 Fetched: Oct 2, 2010, 10:42AM Pacific
 
 Changes:
@@ -7,3 +8,8 @@ Changes:
 how to support that better?
 * unzip.js too
 * look for require("system") refs and comment out.
+
+# UglifyJS
+
+http://github.com/mishoo/UglifyJS
+
