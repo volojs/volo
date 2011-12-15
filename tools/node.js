@@ -48,17 +48,8 @@
         return ret;
     };
 
-    //Add wrapper around the code so that it gets the requirejs
-    //API instead of the Node API, and it is done lexically so
-    //that it survives later execution.
-    req.makeNodeWrapper = function (contents) {
-        return '(function (require, requirejs, define) { ' +
-                contents +
-                '\n}(requirejsVars.require, requirejsVars.requirejs, requirejsVars.define));';
-    };
-
     req.load = function (context, moduleName, url) {
-        var contents, err;
+        var contents, err, sandbox;
 
         //Indicate a the module is in process of loading.
         context.scriptCount += 1;
@@ -66,9 +57,15 @@
         if (path.existsSync(url)) {
             contents = fs.readFileSync(url, 'utf8');
 
-            contents = req.makeNodeWrapper(contents);
+            sandbox = {
+                require: req,
+                requirejs: req,
+                define: def,
+                process: process
+            };
+
             try {
-                vm.runInThisContext(contents, fs.realpathSync(url));
+                vm.runInNewContext(contents, sandbox, fs.realpathSync(url));
             } catch (e) {
                 err = new Error('Evaluating ' + url + ' as module "' +
                                 moduleName + '" failed with error: ' + e);
@@ -99,8 +96,13 @@
 
     //Override to provide the function wrapper for define/require.
     req.exec = function (text) {
-        /*jslint evil: true */
-        text = req.makeNodeWrapper(text);
-        return eval(text);
+        var sandbox = {
+            require: req,
+            requirejs: req,
+            define: def,
+            process: process
+        };
+
+        return vm.runInNewContext(text, sandbox, 'unknown-req.exec');
     };
 }());

@@ -6,6 +6,7 @@ var requirejsVars = {
     define: define
 };
 requirejs.nodeRequire = require;
+this.requirejsVars = requirejsVars;
 
 //Set up the dynamic load config to use a directory that is the same name
 //as the script that is running.

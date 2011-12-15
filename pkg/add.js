@@ -2,10 +2,8 @@
 /*jslint regexp: false */
 /*global require */
 
-require.def(['sys', './hostenv/fs', './hostenv/path', 'cpm', './fileUtil',
-             'cpm/cpm-utils/promise'],
-    function (sys,   fs,             path,             cpm,   fileUtil,
-              promise) {
+define(['fs', 'path'],
+function (fs, path) {
 
     var add = {
         savePackage: function (url, packageName) {
@@ -79,7 +77,7 @@ require.def(['sys', './hostenv/fs', './hostenv/path', 'cpm', './fileUtil',
                 //If an existing mapping with a different url, warn.
                 existingMapping = json.mappings[packageName];
                 if (existingMapping && existingMapping !== url) {
-                    sys.puts('WARNING: package.json already contains a mapping ' +
+                    console.log('WARNING: package.json already contains a mapping ' +
                              'for ' + packageName + ' to url: ' + existingMapping + ' but ' +
                              'overriding it to now point to ' + url);
                 }
@@ -168,7 +166,7 @@ require.def(['sys', './hostenv/fs', './hostenv/path', 'cpm', './fileUtil',
 
             if (!url) {
                 //Look up package in registry
-                
+
             } else {
                 add.savePackage(url, packageName);
             }

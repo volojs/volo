@@ -2,8 +2,8 @@
 /*jslint */
 /*global require */
 
-require.def([
-    './hostenv/fs',
+define([
+    'fs',
     './create',
     'text!./create/templates/index.html'
 ],

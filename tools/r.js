@@ -1,5 +1,5 @@
 /**
- * @license r.js 1.0.2 Copyright (c) 2010-2011, The Dojo Foundation All Rights Reserved.
+ * @license r.js 1.0.2+ Copyright (c) 2010-2011, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
  * see: http://github.com/jrburke/requirejs for details
  */
@@ -20,7 +20,7 @@ var requirejs, require, define;
 
     var fileName, env, fs, vm, path, exec, rhinoContext, dir, nodeRequire,
         nodeDefine, exists, reqMain, loadedOptimizedLib,
-        version = '1.0.2',
+        version = '1.0.2+',
         jsSuffixRegExp = /\.js$/,
         commandOption = '',
         //Used by jslib/rhino/args.js
@@ -3006,7 +3006,6 @@ define('logger', ['env!env/print'], function (print) {
 //like Node's fs and path.
 
 define('uglifyjs/parse-js', ["require", "exports", "module"], function(require, exports, module) {
-
 /***********************************************************************
 
   A JavaScript tokenizer / parser / beautifier / compressor.
@@ -3300,12 +3299,12 @@ function tokenizer($TEXT) {
 
         function peek() { return S.text.charAt(S.pos); };
 
-        function next(signal_eof) {
+        function next(signal_eof, in_string) {
                 var ch = S.text.charAt(S.pos++);
                 if (signal_eof && !ch)
                         throw EX_EOF;
                 if (ch == "\n") {
-                        S.newline_before = true;
+                        S.newline_before = S.newline_before || !in_string;
                         ++S.line;
                         S.col = 0;
                 } else {
@@ -3402,8 +3401,8 @@ function tokenizer($TEXT) {
                 }
         };
 
-        function read_escaped_char() {
-                var ch = next(true);
+        function read_escaped_char(in_string) {
+                var ch = next(true, in_string);
                 switch (ch) {
                     case "n" : return "\n";
                     case "r" : return "\r";
@@ -3451,7 +3450,7 @@ function tokenizer($TEXT) {
                                                 return false;
                                         });
                                         if (octal_len > 0) ch = String.fromCharCode(parseInt(ch, 8));
-                                        else ch = read_escaped_char();
+                                        else ch = read_escaped_char(true);
                                 }
                                 else if (ch == quote) break;
                                 ret += ch;
@@ -4347,7 +4346,8 @@ exports.set_logger = function(logger) {
         warn = logger;
 };
 
-});define('uglifyjs/squeeze-more', ["require", "exports", "module", "./parse-js", "./process"], function(require, exports, module) {
+});
+define('uglifyjs/squeeze-more', ["require", "exports", "module", "./parse-js", "./process"], function(require, exports, module) {
 
 var jsp = require("./parse-js"),
     pro = require("./process"),
@@ -5378,7 +5378,8 @@ function ast_squeeze(ast, options) {
         options = defaults(options, {
                 make_seqs   : true,
                 dead_code   : true,
-                no_warnings : false
+                no_warnings : false,
+                keep_comps  : true
         });
 
         var w = ast_walker(), walk = w.walk, scope;
@@ -5396,11 +5397,13 @@ function ast_squeeze(ast, options) {
                         return best_of(not_c, [ "conditional", c[1], negate(c[2]), negate(c[3]) ]);
                     case "binary":
                         var op = c[1], left = c[2], right = c[3];
-                        switch (op) {
+                        if (!options.keep_comps) switch (op) {
                             case "<="  : return [ "binary", ">", left, right ];
                             case "<"   : return [ "binary", ">=", left, right ];
                             case ">="  : return [ "binary", "<", left, right ];
                             case ">"   : return [ "binary", "<=", left, right ];
+                        }
+                        switch (op) {
                             case "=="  : return [ "binary", "!=", left, right ];
                             case "!="  : return [ "binary", "==", left, right ];
                             case "===" : return [ "binary", "!==", left, right ];
@@ -5766,7 +5769,8 @@ var DOT_CALL_NO_PARENS = jsp.array_to_hash([
         "dot",
         "sub",
         "call",
-        "regexp"
+        "regexp",
+        "defun"
 ]);
 
 function make_string(str, ascii_only) {
@@ -6030,7 +6034,7 @@ function gen_code(ast, options) {
                 },
                 "call": function(func, args) {
                         var f = make(func);
-                        if (needs_parens(func))
+                        if (f.charAt(0) != "(" && needs_parens(func))
                                 f = "(" + f + ")";
                         return f + "(" + add_commas(MAP(args, function(expr){
                                 return parenthesize(expr, "seq");
@@ -6203,7 +6207,8 @@ function gen_code(ast, options) {
                         out += " " + make_name(name);
                 }
                 out += "(" + add_commas(MAP(args, make_name)) + ")";
-                return add_spaces([ out, make_block(body) ]);
+                out = add_spaces([ out, make_block(body) ]);
+                return needs_parens(this) ? "(" + out + ")" : out;
         };
 
         function must_has_semicolon(node) {
@@ -6400,7 +6405,8 @@ exports.MAP = MAP;
 // keep this last!
 exports.ast_squeeze_more = require("./squeeze-more").ast_squeeze_more;
 
-});define('uglifyjs/index', ["require", "exports", "module", "./parse-js", "./process"], function(require, exports, module) {
+});
+define('uglifyjs/index', ["require", "exports", "module", "./parse-js", "./process"], function(require, exports, module) {
 
 //convienence function(src, [options]);
 function uglify(orig_code, options){
@@ -6627,7 +6633,11 @@ define('parse', ['uglifyjs/index'], function (uglify) {
                     deps: deps
                 });
             }
-        });
+
+            //If define was found, no need to dive deeper, unless
+            //the config explicitly wants to dig deeper.
+            return !options.findNestedDependencies;
+        }, options);
 
         if (options.insertNeedsDefine && needsDefine) {
             result += 'require.needsDefine("' + moduleName + '");';
@@ -6662,15 +6672,44 @@ define('parse', ['uglifyjs/index'], function (uglify) {
      * Handles parsing a file recursively for require calls.
      * @param {Array} parentNode the AST node to start with.
      * @param {Function} onMatch function to call on a parse match.
+     * @param {Object} [options] This is normally the build config options if
+     * it is passed.
      */
-    parse.recurse = function (parentNode, onMatch) {
-        var i, node;
+    parse.recurse = function (parentNode, onMatch, options) {
+        var hasHas = options && options.has,
+            i, node;
+
         if (isArray(parentNode)) {
             for (i = 0; i < parentNode.length; i++) {
                 node = parentNode[i];
                 if (isArray(node)) {
-                    this.parseNode(node, onMatch);
-                    this.recurse(node, onMatch);
+                    //If has config is in play, if calls have been converted
+                    //by this point to be true/false values. So, if
+                    //options has a 'has' value, skip if branches that have
+                    //literal false values.
+
+                    //uglify returns if constructs in an array:
+                    //[0]: 'if'
+                    //[1]: the condition, ['name', true | false] for the has replaced case.
+                    //[2]: the block to process if true
+                    //[3]: the block to process if false
+                    //For if/else if/else, the else if is in the [3],
+                    //so only ever have to deal with this structure.
+                    if (hasHas && node[0] === 'if' && node[1] && node[1][0] === 'name' &&
+                        (node[1][1] === 'true' || node[1][1] === 'false')) {
+                        if (node[1][1] === 'true') {
+                            this.recurse([node[2]], onMatch, options);
+                        } else {
+                            this.recurse([node[3]], onMatch, options);
+                        }
+                    } else {
+                        if (this.parseNode(node, onMatch)) {
+                            //The onMatch indicated parsing should
+                            //stop for children of this node.
+                            continue;
+                        }
+                        this.recurse(node, onMatch, options);
+                    }
                 }
             }
         }
@@ -6885,7 +6924,7 @@ define('parse', ['uglifyjs/index'], function (uglify) {
         var call, name, config, deps, args, cjsDeps;
 
         if (!isArray(node)) {
-            return null;
+            return false;
         }
 
         if (node[0] === 'call') {
@@ -6893,7 +6932,8 @@ define('parse', ['uglifyjs/index'], function (uglify) {
             args = node[2];
 
             if (call) {
-                if (call[0] === 'name' && call[1] === 'require') {
+                if (call[0] === 'name' &&
+                   (call[1] === 'require' || call[1] === 'requirejs')) {
 
                     //It is a plain require() call.
                     config = args[0];
@@ -6952,7 +6992,7 @@ define('parse', ['uglifyjs/index'], function (uglify) {
             }
         }
 
-        return null;
+        return false;
     };
 
     /**
@@ -7008,6 +7048,7 @@ define('pragma', ['parse', 'logger'], function (parse, logger) {
         defineCheckRegExp: /typeof\s+define\s*===\s*["']function["']\s*&&\s*define\s*\.\s*amd/g,
         defineJQueryRegExp: /typeof\s+define\s*===\s*["']function["']\s*&&\s*define\s*\.\s*amd\s*&&\s*define\s*\.\s*amd\s*\.\s*jQuery/g,
         defineTernaryRegExp: /typeof\s+define\s*===\s*['"]function["']\s*&&\s*define\s*\.\s*amd\s*\?\s*define/,
+        amdefineRegExp: /if\s*\(\s*typeof define\s*\!==\s*'function'\s*\)\s*\{\s*[^\{\}]+amdefine[^\{\}]+\}/g,
 
         removeStrict: function (contents, config) {
             return config.useStrict ? contents : contents.replace(pragma.useStrictRegExp, '');
@@ -7197,6 +7238,9 @@ define('pragma', ['parse', 'logger'], function (parse, logger) {
                                  fileName + ', skipping.');
                 }
             }
+
+            //Strip amdefine use for node-shared modules.
+            fileContents = fileContents.replace(pragma.amdefineRegExp, '');
 
             //Do namespacing
             if (onLifecycleName === 'OnSave' && config.namespace) {
@@ -7630,8 +7674,7 @@ function (file,           pragma,   parse) {
 
         var layer,
             pluginBuilderRegExp = /(["']?)pluginBuilder(["']?)\s*[=\:]\s*["']([^'"\s]+)["']/,
-            oldDef,
-            cachedFileContents = {};
+            oldDef;
 
 
         /** Print out some extrs info about the module tree that caused the error. **/
@@ -7656,6 +7699,8 @@ function (file,           pragma,   parse) {
             throw err;
         };
 
+        //Stored cached file contents for reuse in other layers.
+        require._cachedFileContents = {};
 
         /** Reset state for each build layer pass. */
         require._buildReset = function () {
@@ -7756,9 +7801,9 @@ function (file,           pragma,   parse) {
                 }
 
                 try {
-                    if (url in cachedFileContents &&
+                    if (url in require._cachedFileContents &&
                         (!context.needFullExec[moduleName] || context.fullExec[moduleName])) {
-                        contents = cachedFileContents[url];
+                        contents = require._cachedFileContents[url];
                     } else {
                         //Load the file contents, process for conditionals, then
                         //evaluate it.
@@ -7790,11 +7835,13 @@ function (file,           pragma,   parse) {
                         //dependencies that may be separate to how the pluginBuilder works.
                         if (!context.needFullExec[moduleName]) {
                             contents = parse(moduleName, url, contents, {
-                                insertNeedsDefine: true
+                                insertNeedsDefine: true,
+                                has: context.config.has,
+                                findNestedDependencies: context.config.findNestedDependencies
                             });
                         }
 
-                        cachedFileContents[url] = contents;
+                        require._cachedFileContents[url] = contents;
                     }
 
                     if (contents) {
@@ -8063,6 +8110,7 @@ function (lang,   logger,   file,          parse,    optimize,   pragma,
             inlineText: true,
             isBuild: true,
             optimizeAllPluginResources: false,
+            findNestedDependencies: false,
             //By default, all files/directories are copied, unless
             //they match this regexp, by default just excludes .folders
             dirExclusionRegExp: file.dirExclusionRegExp
@@ -8691,7 +8739,11 @@ function (lang,   logger,   file,          parse,    optimize,   pragma,
 
         //Set file.fileExclusionRegExp if desired
         if ('fileExclusionRegExp' in config) {
-            file.exclusionRegExp = config.fileExclusionRegExp;
+            if (typeof config.fileExclusionRegExp === "string") {
+              file.exclusionRegExp = new RegExp(config.fileExclusionRegExp);
+            } else {
+              file.exclusionRegExp = config.fileExclusionRegExp;
+            }
         } else if ('dirExclusionRegExp' in config) {
             //Set file.dirExclusionRegExp if desired, this is the old
             //name for fileExclusionRegExp before 1.0.2. Support for backwards
@@ -9006,7 +9058,9 @@ function (lang,   logger,   file,          parse,    optimize,   pragma,
                 //Reset build internals on each run.
                 requirejs._buildReset();
 
-                callback(result);
+                if (callback) {
+                    callback(result);
+                }
             };
 
             //Enable execution of this callback in a build setting.

@@ -2,7 +2,7 @@
 /*jslint */
 /*global require */
 
-require.def(['./hostenv/fs', './hostenv/path'], function (fs, path) {
+define(['fs', 'path'], function (fs, path) {
 
     function findMatches(matches, dir, regExpInclude, regExpExclude, dirRegExpExclude) {
         if (path.existsSync(dir) && fs.statSync(dir).isDirectory()) {
@@ -42,7 +42,7 @@ require.def(['./hostenv/fs', './hostenv/path'], function (fs, path) {
          * @param {RegExp} [regExpExclude] regexp to exclude files.
          * @param {RegExp} [dirRegExpExclude] regexp to exclude directories. By default
          * ignores .git, .hg, .svn and CVS directories.
-         * 
+         *
          * @returns {Array} List of file paths. Could be zero length if no matches.
          */
         getFilteredFileList: function (startDir, regExpInclude, regExpExclude, dirRegExpExclude) {
@@ -54,7 +54,7 @@ require.def(['./hostenv/fs', './hostenv/path'], function (fs, path) {
             }
 
             findMatches(files, startDir, regExpInclude, regExpExclude, dirRegExpExclude);
-            
+
             return files;
         },
 
@@ -79,11 +79,11 @@ require.def(['./hostenv/fs', './hostenv/path'], function (fs, path) {
             dir.forEach(function (segment) {
                 dirPath = dirPath ? path.join(dirPath, segment) : segment;
                 if (!path.existsSync(dirPath)) {
-                    fs.mkdirSync(dirPath, 0777);
+                    fs.mkdirSync(dirPath, 511);
                 }
             });
         }
     };
 
-    return fileUtil;  
+    return fileUtil;
 });
