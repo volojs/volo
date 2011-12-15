@@ -2,8 +2,8 @@
 /*jslint plusplus: false */
 /*global require */
 
-require(['require', 'sys', './hostenv/args', 'cpm/cpm-utils/promise'],
-    function (require,   sys,   args,             promise) {
+require(['require', 'q'],
+    function (require, q) {
     var allowedActions = {
             'createApp': true,
             'createWeb': true,
@@ -11,7 +11,7 @@ require(['require', 'sys', './hostenv/args', 'cpm/cpm-utils/promise'],
         };
 
     return function (argArray) {
-        var defer = promise.defer,
+        var deferred = q.defer(),
             namedArgs = {}, aryArgs = [], empty = {},
             action, result, combinedArgs,
             deferred = defer();
