@@ -2,7 +2,7 @@
 /*jslint plusplus: false */
 /*global require */
 
-define(['require', 'sys', './hostenv/args', 'cpm/cpm-utils/promise'],
+require(['require', 'sys', './hostenv/args', 'cpm/cpm-utils/promise'],
     function (require,   sys,   args,             promise) {
     var allowedActions = {
             'createApp': true,

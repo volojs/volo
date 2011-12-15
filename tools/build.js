@@ -1,8 +1,9 @@
 ({
     baseUrl: '../pkg',
-    main: '../pkg/almond',
+    name: '../tools/require',
     optimize: 'none',
-    include: ['../tools/almond', 'nativeAdapter', 'main'],
+    //tools/node.js comes from r.js/build/jslib/node.js
+    include: ['../tools/requirejsVars', '../tools/node', 'main'],
     wrap: {
         startFile: "wrap.start",
         endFile: "wrap.end"
