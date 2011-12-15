@@ -2,7 +2,7 @@
 /*jslint plusplus: false */
 /*global require */
 
-require.def(['require', 'sys', './hostenv/args', 'cpm/cpm-utils/promise'],
+define(['require', 'sys', './hostenv/args', 'cpm/cpm-utils/promise'],
     function (require,   sys,   args,             promise) {
     var allowedActions = {
             'createApp': true,
@@ -40,7 +40,7 @@ require.def(['require', 'sys', './hostenv/args', 'cpm/cpm-utils/promise'],
             });
         }
 
-        //Cycle through args, pulling off name=value pairs into an object.    
+        //Cycle through args, pulling off name=value pairs into an object.
         args.forEach(function (arg) {
             if (arg.indexOf('=') === -1) {
                 aryArgs.push(arg);
