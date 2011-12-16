@@ -5,8 +5,9 @@ var requirejsVars = {
     require: requirejs,
     define: define
 };
+
+//Used by some loader plugins that want to interact with built in node modules.
 requirejs.nodeRequire = require;
-this.requirejsVars = requirejsVars;
 
 //Set up the dynamic load config to use a directory that is the same name
 //as the script that is running.
@@ -18,4 +19,17 @@ this.requirejsVars = requirejsVars;
     requirejs.config({
         baseUrl: baseUrl
     });
+
+
+    //Reflect the baseUrl as a module
+    define('pkg/baseUrl', [], function () {
+        return baseUrl;
+    });
+
 }());
+
+//Dummy module for q, just to prevent IO work. Will still throw an error,
+//but it is caught inside q and handled in a good way.
+define('event-queue', [], function () {
+    return null;
+});

@@ -59,11 +59,11 @@ define(['fs', 'path'], function (fs, path) {
         },
 
         /**
-         * Reads a file, synchronously. Makes sure it is a JS string.
+         * Reads a file, synchronously.
          * @param {String} path the path to the file.
          */
         readFile: function (path) {
-            return fs.readFileSync(path) + '';
+            return fs.readFileSync(path, 'utf8');
         },
 
         /**

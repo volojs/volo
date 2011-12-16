@@ -1,35 +1,21 @@
 'use strict';
 /*jslint */
-/*global require */
+/*global define */
 
-define([
-    'fs',
-    'path',
-    'sys',
-    './fileUtil',
-    'text!./create/templates/index.html',
-    'text!./create/templates/package.json',
-    'text!./create/templates/lib/mainApp.js',
-    'text!./create/templates/lib/mainWeb.js',
-    'text!./create/templates/lib/require.js',
-    'text!./create/templates/lib/require/i18n.js',
-    'text!./create/templates/lib/require/jsonp.js',
-    'text!./create/templates/lib/require/text.js'
-],
-function (fs,
-          path,
-          sys,
-          fileUtil,
-          indexHtml,
-          packageJson,
-          mainAppJs,
-          mainWebJs,
-          requireJs,
-          i18nJs,
-          jsonpJs,
-          textJs) {
+define(function (require) {
+    var fs = require('fs'),
+        path = require('path'),
+        fileUtil = require('pkg/fileUtil'),
+        indexHtml = require('text!./create/templates/index.html'),
+        packageJson = require('text!./create/templates/package.json'),
+        mainAppJs = require('text!./create/templates/lib/mainApp.js'),
+        mainWebJs = require('text!./create/templates/lib/mainWeb.js'),
+        requireJs = require('text!./create/templates/lib/require.js'),
+        create;
 
-    var create = {
+
+
+    create = {
         /**
          * Validates the input args to one of the create commands.
          * @param {Object} namedArgs args that were specified on command line
@@ -63,9 +49,6 @@ function (fs,
             fs.writeFile(targetDir + '/package.json', packageJson);
             fs.writeFile(targetDir + '/lib/main.js', mainContents);
             fs.writeFile(targetDir + '/lib/require.js', requireJs);
-            fs.writeFile(targetDir + '/lib/require/i18n.js', i18nJs);
-            fs.writeFile(targetDir + '/lib/require/jsonp.js', jsonpJs);
-            fs.writeFile(targetDir + '/lib/require/text.js', textJs);
         }
     };
 
