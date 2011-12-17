@@ -1,10 +1,12 @@
 'use strict';
 /*jslint */
-/*global define */
+/*global define, console */
 
 define(function (require) {
     var fs = require('fs'),
         path = require('path'),
+        github = require('pkg/github'),
+        download = require('pkg/download'),
         add;
 
     add = {
@@ -25,8 +27,23 @@ define(function (require) {
             return undefined;
         },
         run: function (deferred, namedArgs, packageName, version) {
-            var url;
 
+
+            download('https://github.com/jrburke/requirejs/tarball/1.0.2', '1.0.2.tar.gz', function (path) {
+                console.log(path + ' is done downloading');
+            });
+/*
+            github('/repos/jrburke/requirejs/tags', function (tags) {
+                console.log('TAGS:\n:' + JSON.stringify(tags, null, '  '));
+            });
+*/
+
+
+//https:///repos/jrburke/requirejs/tags
+
+
+
+/*
             //Package may just be an URL or absolute path ref
             if (packageName.indexOf(':') !== -1 || packageName.charAt(0) === '/') {
                 url = packageName;
@@ -39,6 +56,8 @@ define(function (require) {
             } else {
                 add.savePackage(url, packageName);
             }
+
+*/
 
             deferred.resolve();
         }

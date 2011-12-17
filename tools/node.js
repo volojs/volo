@@ -61,7 +61,8 @@
                 require: req,
                 requirejs: req,
                 define: def,
-                process: process
+                process: process,
+                console: console
             };
 
             try {
@@ -100,7 +101,8 @@
             require: req,
             requirejs: req,
             define: def,
-            process: process
+            process: process,
+            console: console
         };
 
         return vm.runInNewContext(text, sandbox, 'unknown-req.exec');
