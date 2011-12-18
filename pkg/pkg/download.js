@@ -21,14 +21,27 @@ define(function (require) {
 
         protocol.get(parts, function (response) {
 
-            response.on('data', function (data) {
-                writeStream.write(data);
-            });
+            console.log("statusCode: ", response.statusCode);
+            console.log("headers: ", response.headers);
 
-            response.on('end', function () {
-                writeStream.end();
-                callback(path);
-            });
+            if (response.statusCode === 200) {
+                //Bingo, do the download.
+                response.on('data', function (data) {
+                    writeStream.write(data);
+                });
+
+                response.on('end', function () {
+                    writeStream.end();
+                    callback(path);
+                });
+            } else if (response.statusCode === 302) {
+                //Redirect, try the new location
+                download(response.headers.location, path, callback, errback);
+            } else {
+                if (errback) {
+                    errback(response);
+                }
+            }
         }).on('error', function (e) {
             if (errback) {
                 errback(e);

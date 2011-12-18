@@ -28,7 +28,6 @@ define(function (require) {
         },
         run: function (deferred, namedArgs, packageName, version) {
 
-
             download('https://github.com/jrburke/requirejs/tarball/1.0.2', '1.0.2.tar.gz', function (path) {
                 console.log(path + ' is done downloading');
             });

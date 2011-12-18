@@ -38,7 +38,6 @@ define(function (require) {
                 console.error(e);
             }
         });
-
     }
 
     return github;
