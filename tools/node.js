@@ -5,7 +5,7 @@
  */
 
 /*jslint regexp: false, strict: false */
-/*global require: false, define: false, requirejsVars: false, process: false */
+/*global require, define, requirejsVars, process, console */
 
 /**
  * This adapter assumes that x.js has loaded it and set up
@@ -96,14 +96,21 @@
     };
 
     //Override to provide the function wrapper for define/require.
-    req.exec = function (text) {
+    req.exec = function (text, globals) {
         var sandbox = {
             require: req,
             requirejs: req,
             define: def,
             process: process,
             console: console
-        };
+        },
+        prop;
+
+        for (prop in globals) {
+            if (globals.hasOwnProperty(prop)) {
+                sandbox[prop] = globals[prop];
+            }
+        }
 
         return vm.runInNewContext(text, sandbox, 'unknown-req.exec');
     };

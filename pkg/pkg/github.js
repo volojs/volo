@@ -10,12 +10,13 @@
 
 define(function (require) {
     var https = require('https'),
-        host = 'api.github.com';
+        host = 'api.github.com',
+        versionRegExp = /^(v)?(\d+\..+)/;
 
     function github(path, callback, errback) {
         var args = {
             host: host,
-            path: '/repos/jrburke/requirejs/tags'
+            path: '/' + path
         };
 
         https.get(args, function (response) {
@@ -39,6 +40,48 @@ define(function (require) {
             }
         });
     }
+
+    github.tags = function (ownerPlusRepo, callback, errback) {
+        github('repos/' + ownerPlusRepo + '/tags', function (data) {
+            data = data.map(function (data) {
+                return data.name;
+            });
+
+            callback(data);
+        }, errback);
+    };
+
+
+    github.versionTags = function (ownerPlusRepo, callback, errback) {
+        github('repos/' + ownerPlusRepo + '/tags', function (data) {
+
+            var list = [];
+
+            data.forEach(function (data) {
+                var name = data.name;
+                if ((match = versionRegExp(name))) {
+                    version = match[2];
+                    if (!latest) {
+                        latest = version;
+                    } else {
+                        versionParts = version.split('.');
+                        if
+                    }
+                }
+            });
+
+            if (latest) {
+                callback(latest);
+            }
+
+        }, errback);
+    };
+
+    github.latestTag = function (ownerPlusRepo, callback, errback) {
+        github.tags(ownerPlusRepo, function (tags) {
+            callback(tags[0]);
+        }, errback);
+    };
 
     return github;
 });
