@@ -29,7 +29,7 @@ define(function (require) {
             data: null
         },
         packagePath = path.join(fileOrDir, 'package.json'),
-        jsFiles;
+        jsFiles, filePath;
 
         if (fs.statSync(fileOrDir).isFile()) {
             result.file = fileOrDir;
@@ -46,9 +46,10 @@ define(function (require) {
             });
 
             if (jsFiles.length === 1) {
-                result.data = extractCommentData(jsFiles[0]);
+                filePath = path.join(fileOrDir, jsFiles[0]);
+                result.data = extractCommentData(filePath);
                 if (result.data) {
-                    result.file = jsFiles[0];
+                    result.file = filePath;
                 }
             }
         }

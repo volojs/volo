@@ -747,7 +747,7 @@ doh._objPropEq = function(expected, actual){
 }
 
 doh._isArray = function(it){
-	return (it && it instanceof Array || typeof it == "array" ||
+	return (it && (Object.prototype.toString.call(it) === '[object Array]') ||
 		(
 			!!doh.global["dojo"] &&
 			doh.global["dojo"]["NodeList"] !== undefined &&
