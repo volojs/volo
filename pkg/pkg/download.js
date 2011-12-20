@@ -5,19 +5,22 @@
  */
 
 'use strict';
-/*jslint */
+/*jslint plusplus: false */
 /*global define, console */
 
 define(function (require) {
     var https = require('https'),
         http = require('http'),
         fs = require('fs'),
-        urlLib = require('url');
+        urlLib = require('url'),
+        counter = 0;
 
     function download(url, path, callback, errback) {
         var parts = urlLib.parse(url),
             protocol = parts.protocol === 'https:' ? https : http,
             writeStream = fs.createWriteStream(path);
+
+console.log('download url: ' + url);
 
         protocol.get(parts, function (response) {
 
@@ -51,6 +54,10 @@ define(function (require) {
         });
 
     }
+
+    download.createTempName = function (seed) {
+        return seed.replace(/\//g, '-') + '-' + (counter++);
+    };
 
     return download;
 });

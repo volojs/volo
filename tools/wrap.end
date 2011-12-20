@@ -2,7 +2,9 @@
 //Light it up!
 requirejs(['pkg/main'], function (main) {
     main(function (message) {
-        console.log(message);
+        if (message) {
+            console.log(message);
+        }
     }, function (err) {
         console.log('ERROR: ' + err);
     });

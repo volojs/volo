@@ -40,6 +40,12 @@ define(function (require) {
         //Cycle through args, pulling off name=value pairs into an object.
         args.forEach(function (arg) {
             if (arg.indexOf('=') === -1) {
+                //If passed a flag like -f, convert to named
+                //arg .f = true
+                if (arg.indexOf('-') === 0) {
+                    namedArgs[arg.substring(1)] = true;
+                }
+                //Regular array arg.
                 aryArgs.push(arg);
             } else {
                 var pair = arg.split('=');

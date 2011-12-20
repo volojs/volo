@@ -31,11 +31,22 @@ define(function (require) {
         packagePath = path.join(fileOrDir, 'package.json'),
         jsFiles, filePath;
 
+        //See if the fileOrDir exists, and if not, and looks like
+        //a directory, try the .js file variant too.
+        if (!path.existsSync(fileOrDir) && !endsInJsRegExp.test(fileOrDir)) {
+            fileOrDir += '.js';
+            if (!path.existsSync(fileOrDir)) {
+                //Not a real thing, just return null values.
+                return result;
+            }
+        }
+
         if (fs.statSync(fileOrDir).isFile()) {
             result.file = fileOrDir;
             result.data = extractCommentData(fileOrDir);
         } else if (path.existsSync(packagePath)) {
             //Plain package.json case
+            packagePath = path.join(fileOrDir, 'package.json');
             result.file = packagePath;
             result.data = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
         } else {

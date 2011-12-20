@@ -1,6 +1,6 @@
 'use strict';
 /*jslint */
-/*global require */
+/*global define */
 
 define(['fs', 'path'], function (fs, path) {
 
@@ -71,15 +71,19 @@ define(['fs', 'path'], function (fs, path) {
          * @param {String} dir the directory to create.
          */
         mkdirs: function (dir) {
-            //Normalize on front slashes.
-            //TODO: fails for windows drive letters?
-            dir = dir.replace(/\\/g, '/').split('/');
-            var dirPath = '';
+            var parts = dir.split('/'),
+                currDir = '',
+                first = true;
 
-            dir.forEach(function (segment) {
-                dirPath = dirPath ? path.join(dirPath, segment) : segment;
-                if (!path.existsSync(dirPath)) {
-                    fs.mkdirSync(dirPath, 511);
+            parts.forEach(function (part) {
+                //First part may be empty string if path starts with a slash.
+                currDir += part + '/';
+                first = false;
+
+                if (part) {
+                    if (!path.existsSync(currDir)) {
+                        fs.mkdirSync(currDir, 511);
+                    }
                 }
             });
         }
