@@ -9,17 +9,19 @@
 /*global define, console */
 
 define(function (require) {
-    var https = require('https'),
+    var q = require('q'),
+        https = require('https'),
         scheme = 'https',
         host = 'github.com',
         apiHost = 'api.github.com',
         versionRegExp = /^(v)?(\d+\..+)/;
 
-    function github(path, callback, errback) {
+    function github(path) {
         var args = {
             host: apiHost,
             path: '/' + path
-        };
+        },
+        d = q.defer();
 
         https.get(args, function (response) {
             //console.log("statusCode: ", response.statusCode);
@@ -32,15 +34,13 @@ define(function (require) {
 
             response.on('end', function () {
                 //Convert the response into an object
-                callback(JSON.parse(body));
+                d.resolve(JSON.parse(body));
             });
         }).on('error', function (e) {
-            if (errback) {
-                errback(e);
-            } else {
-                console.error(e);
-            }
+            d.reject(e);
         });
+
+        return d.promise;
     }
 
     github.url = function (path) {
@@ -55,19 +55,19 @@ define(function (require) {
         return github.url(ownerPlusRepo) + '/tarball/' + version;
     };
 
-    github.tags = function (ownerPlusRepo, callback, errback) {
-        github('repos/' + ownerPlusRepo + '/tags', function (data) {
+    github.tags = function (ownerPlusRepo) {
+        return github('repos/' + ownerPlusRepo + '/tags').then(function (data) {
             data = data.map(function (data) {
                 return data.name;
             });
 
-            callback(data);
-        }, errback);
+            return data;
+        });
     };
 
 
-    github.versionTags = function (ownerPlusRepo, callback, errback) {
-        github.tags(ownerPlusRepo, function (tagNames) {
+    github.versionTags = function (ownerPlusRepo) {
+        return github.tags(ownerPlusRepo).then(function (tagNames) {
             //Only collect tags that are version tags.
             tagNames = tagNames.filter(function (tag) {
                 return versionRegExp.test(tag);
@@ -77,14 +77,14 @@ define(function (require) {
             //TODO: Need to do this: compare the
             //semver values and order accordingly.
 
-            callback(tagNames);
-        }, errback);
+            return tagNames;
+        });
     };
 
-    github.latestTag = function (ownerPlusRepo, callback, errback) {
-        github.versionTags(ownerPlusRepo, function (tagNames) {
-            callback(tagNames[0]);
-        }, errback);
+    github.latestTag = function (ownerPlusRepo) {
+        return github.versionTags(ownerPlusRepo).then(function (tagNames) {
+            return tagNames[0];
+        });
     };
 
     return github;

@@ -5,6 +5,7 @@
 define(function (require) {
     var fs = require('fs'),
         path = require('path'),
+        q = require('q'),
         github = require('pkg/github'),
         download = require('pkg/download'),
         packageJson = require('pkg/packageJson'),
@@ -12,89 +13,143 @@ define(function (require) {
         fileUtil = require('pkg/fileUtil'),
         add;
 
-    function remove(dirName) {
-        fs.unlink(dirName);
+    function remove(dirName, callback, errback) {
+        if (dirName && path.existsSync(dirName)) {
+            fileUtil.rmdir(dirName, callback, errback);
+        }
     }
 
-    function fetchGitHub(namedArgs, ownerPlusRepo, version, localName, deferred) {
+    function createTempDir(ownerPlusRepo, version, callback, errback) {
+        var tempDir = download.createTempName(ownerPlusRepo + '/' + version);
+        if (path.existsSync(tempDir)) {
+            remove(tempDir, function () {
+                fs.mkdirSync(tempDir);
+                callback(tempDir);
+            }, errback);
+        } else {
+            fs.mkdirSync(tempDir);
+            callback(tempDir);
+        }
+    }
+
+    function fetchGitHub(namedArgs, ownerPlusRepo, version, localName, isExplicitLocalName) {
         //First check if localName exists and its version.
         var pkg = packageJson('.'),
             baseUrl = pkg.data && pkg.data.amdBaseUrl || 'js',
+            inTempDir = false,
+            d = q.defer(),
             existingPath, tempDir;
 
-        //If the baseUrl does not exist, create it.
-        fileUtil.mkdirs(baseUrl);
-
-        //Get the package JSON data for dependency, if it is already on disk.
-        existingPath = path.join(baseUrl, localName);
-        if (!path.existsSync(existingPath)) {
-            existingPath += '.js';
-            if (!path.existsSync(existingPath)) {
-                existingPath = null;
+        //Function used to clean up in case of errors.
+        function cleanUp(err) {
+            if (inTempDir) {
+                process.chdir('..');
             }
+            remove(tempDir);
+            d.reject(err);
         }
 
-        pkg = (existingPath && packageJson(existingPath)) || {};
+        try {
+            //If the baseUrl does not exist, create it.
+            fileUtil.mkdirs(baseUrl);
 
-        if (existingPath && !namedArgs.force) {
-            deferred.resolve(new Error(existingPath + ' already exists. To ' +
-                             'install anyway, pass -f'));
-            return;
+            //Get the package JSON data for dependency, if it is already on disk.
+            existingPath = path.join(baseUrl, localName);
+            if (!path.existsSync(existingPath)) {
+                existingPath += '.js';
+                if (!path.existsSync(existingPath)) {
+                    existingPath = null;
+                }
+            }
+
+            pkg = (existingPath && packageJson(existingPath)) || {};
+
+            if (existingPath && !namedArgs.force) {
+                d.reject(existingPath + ' already exists. To ' +
+                                 'install anyway, pass -f to the command');
+                return d.promise;
+            }
+
+        } catch (e) {
+            cleanUp(e);
         }
 
         //Create a temporary directory to download the code.
-        tempDir = download.createTempName(ownerPlusRepo + '/' + version);
-        fs.mkdirSync(tempDir);
+        createTempDir(ownerPlusRepo, version, function (newTempDir) {
+            tempDir = newTempDir;
 
-        download(github.tarballUrl(ownerPlusRepo, version), path.join(tempDir,
-                 localName + '.tar.gz'), function (filePath) {
+            download(github.tarballUrl(ownerPlusRepo, version), path.join(tempDir,
+                     localName + '.tar.gz'), function (filePath) {
 
-            //Unpack the zip file.
-            process.chdir(tempDir);
-            tar.untar(localName + '.tar.gz', function () {
-                //Find the directory that was unpacked in tempDir
-                var dirName;
+                process.chdir(tempDir);
+                inTempDir = true;
 
-                process.chdir('..');
+                //Unpack the zip file.
+                tar.untar(localName + '.tar.gz', function () {
+                    //Find the directory that was unpacked in tempDir
+                    var dirName, info, targetName;
 
-                fs.readdirSync(tempDir).some(function (file) {
-                    dirName = path.join(tempDir, file);
-                    if (fs.statSync(dirName).isDirectory()) {
-                        return true;
+                    process.chdir('..');
+                    inTempDir = false;
+
+                    fs.readdirSync(tempDir).some(function (file) {
+                        dirName = path.join(tempDir, file);
+                        if (fs.statSync(dirName).isDirectory()) {
+                            return true;
+                        } else {
+                            dirName = null;
+                            return false;
+                        }
+                    });
+
+                    if (dirName) {
+                        //Figure out if this is a one file install.
+                        info = packageJson(dirName);
+                        if (info.singleFile) {
+                            //Just move the single file into position.
+                            if (isExplicitLocalName) {
+                                targetName = path.join(baseUrl, localName + '.js');
+                            } else {
+                                targetName = path.join(baseUrl, path.basename(info.file));
+                            }
+
+                            //Check for the existence of the singleFileName, and if it
+                            //already exists, bail out.
+                            if (path.existsSync(targetName) && !namedArgs.force) {
+                                cleanUp(targetName + ' already exists. To ' +
+                                    'install anyway, pass -f to the command');
+                                return;
+                            }
+                            fs.renameSync(info.file, targetName);
+                        } else {
+                            //A complete directory install.
+                            targetName = path.join(baseUrl, localName);
+
+                            //If directory, remove common directories not needed
+                            //for install.
+
+                            //Found the unpacked directory, move it.
+                            fs.renameSync(dirName, targetName);
+
+                            //Add in adapter module for AMD code??
+                        }
+
+                        //Stamp the app's package.json with the dependency??
+
+                        //Trace nested dependencies in the package.json
+                        //TODO
+
+                        //All done.
+                        remove(tempDir);
+                        d.resolve('Installed ' + ownerPlusRepo + '/' + version + ' at ' + targetName);
                     } else {
-                        dirName = null;
-                        return false;
+                        cleanUp('Unexpected tarball configuration');
                     }
-                });
+                }, cleanUp);
+            }, cleanUp);
+        }, cleanUp);
 
-                if (dirName) {
-                    //Found the unpacked directory, move it.
-                    fs.renameSync(dirName, path.join(baseUrl, localName));
-
-                    //Stamp the app's package.json with the dependency??
-
-                    //Add in adapter module for AMD code??
-
-                    //All done.
-                    remove(tempDir);
-                    deferred.resolve();
-                } else {
-                    //Clean up mess
-                    remove(tempDir);
-                    deferred.resolve(new Error('Unexpected tarball configuration'));
-                }
-            }, function (err) {
-                process.chdir('..');
-                remove(tempDir);
-                deferred.resolve(err);
-            });
-        }, function (err) {
-            //Clean up the tempdir area.
-            remove(tempDir);
-
-            //Signal the end of the action.
-            deferred.resolve(err);
-        });
+        return d.promise;
     }
 
     add = {
@@ -133,6 +188,7 @@ define(function (require) {
             //* scheme:something (github:, npm: http: etc)
 
             var index = packageName.indexOf(':'),
+                isExplicitLocalName = !!localName,
                 scheme, parts, ownerPlusRepo, version;
 
             if (index === -1) {
@@ -147,12 +203,7 @@ define(function (require) {
                 parts = packageName.split('/');
 
                 if (!localName) {
-                    if (parts.length === 2) {
-                        localName = parts[1];
-                    }
-                    if (parts.length === 3) {
-                        localName = parts[2];
-                    }
+                    localName = parts[1];
                 }
 
                 ownerPlusRepo = parts[0] + '/'  + parts[1];
@@ -160,14 +211,15 @@ define(function (require) {
 
                 if (!version) {
                     //Fetch the latest version
-                    github.latestTag(ownerPlusRepo, function (tag) {
-                        fetchGitHub(namedArgs, ownerPlusRepo, tag, localName, deferred);
-                    });
+                    github.latestTag(ownerPlusRepo).then(function (tag) {
+                        return fetchGitHub(namedArgs, ownerPlusRepo, tag, localName, isExplicitLocalName);
+                    }).then(deferred.resolve, deferred.reject);
                 } else {
-                    fetchGitHub(namedArgs, ownerPlusRepo, version, localName, deferred);
+                    fetchGitHub(namedArgs, ownerPlusRepo, version, localName, isExplicitLocalName)
+                        .then(deferred.resolve, deferred.reject);
                 }
             } else {
-                throw new Error(packageName + ' format is not supported yet.');
+                deferred.reject(packageName + ' format is not supported yet.');
             }
 
 

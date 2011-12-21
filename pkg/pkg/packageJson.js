@@ -26,29 +26,19 @@ define(function (require) {
     function packageJson(fileOrDir) {
         var result = {
             file: null,
-            data: null
+            data: null,
+            singleFile: false
         },
         packagePath = path.join(fileOrDir, 'package.json'),
-        jsFiles, filePath;
-
-        //See if the fileOrDir exists, and if not, and looks like
-        //a directory, try the .js file variant too.
-        if (!path.existsSync(fileOrDir) && !endsInJsRegExp.test(fileOrDir)) {
-            fileOrDir += '.js';
-            if (!path.existsSync(fileOrDir)) {
-                //Not a real thing, just return null values.
-                return result;
-            }
-        }
+        jsFiles, filePath, packageData;
 
         if (fs.statSync(fileOrDir).isFile()) {
-            result.file = fileOrDir;
+            //A .js file that may have a package.json content
             result.data = extractCommentData(fileOrDir);
-        } else if (path.existsSync(packagePath)) {
-            //Plain package.json case
-            packagePath = path.join(fileOrDir, 'package.json');
-            result.file = packagePath;
-            result.data = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+            if (result.data) {
+                result.file = fileOrDir;
+                result.singleFile = true;
+            }
         } else {
             //Check for /*package.json */ in a .js file if it is the
             //only .js file in the dir.
@@ -58,10 +48,18 @@ define(function (require) {
 
             if (jsFiles.length === 1) {
                 filePath = path.join(fileOrDir, jsFiles[0]);
-                result.data = extractCommentData(filePath);
-                if (result.data) {
-                    result.file = filePath;
-                }
+                packageData = extractCommentData(filePath);
+            }
+
+            if (packageData || !path.existsSync(packagePath)) {
+                result.data = packageData;
+                result.file = filePath;
+                result.singleFile = true;
+            } else if (path.existsSync(packagePath)) {
+                //Plain package.json case
+                packagePath = path.join(fileOrDir, 'package.json');
+                result.file = packagePath;
+                result.data = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
             }
         }
 

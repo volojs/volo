@@ -16,42 +16,53 @@ define(function (require) {
         counter = 0;
 
     function download(url, path, callback, errback) {
-        var parts = urlLib.parse(url),
-            protocol = parts.protocol === 'https:' ? https : http,
-            writeStream = fs.createWriteStream(path);
+        try {
+            var parts = urlLib.parse(url),
+                protocol = parts.protocol === 'https:' ? https : http,
+                writeStream = fs.createWriteStream(path);
 
-console.log('download url: ' + url);
+            console.log('Downloading: ' + url);
 
-        protocol.get(parts, function (response) {
+            protocol.get(parts, function (response) {
 
-            console.log("statusCode: ", response.statusCode);
-            console.log("headers: ", response.headers);
+                //console.log("statusCode: ", response.statusCode);
+                //console.log("headers: ", response.headers);
+                try {
+                    if (response.statusCode === 200) {
+                        //Bingo, do the download.
+                        response.on('data', function (data) {
+                            writeStream.write(data);
+                        });
 
-            if (response.statusCode === 200) {
-                //Bingo, do the download.
-                response.on('data', function (data) {
-                    writeStream.write(data);
-                });
-
-                response.on('end', function () {
-                    writeStream.end();
-                    callback(path);
-                });
-            } else if (response.statusCode === 302) {
-                //Redirect, try the new location
-                download(response.headers.location, path, callback, errback);
-            } else {
-                if (errback) {
-                    errback(response);
+                        response.on('end', function () {
+                            writeStream.end();
+                            callback(path);
+                        });
+                    } else if (response.statusCode === 302) {
+                        //Redirect, try the new location
+                        download(response.headers.location, path, callback, errback);
+                    } else {
+                        if (errback) {
+                            errback(response);
+                        }
+                    }
+                } catch (e) {
+                    if (errback) {
+                        errback(e);
+                    }
                 }
-            }
-        }).on('error', function (e) {
+            }).on('error', function (e) {
+                if (errback) {
+                    errback(e);
+                } else {
+                    console.error(e);
+                }
+            });
+        } catch (e) {
             if (errback) {
                 errback(e);
-            } else {
-                console.error(e);
             }
-        });
+        }
 
     }
 

@@ -44,9 +44,10 @@ define(function (require) {
                 //arg .f = true
                 if (arg.indexOf('-') === 0) {
                     namedArgs[arg.substring(1)] = true;
+                } else {
+                    //Regular array arg.
+                    aryArgs.push(arg);
                 }
-                //Regular array arg.
-                aryArgs.push(arg);
             } else {
                 var pair = arg.split('=');
                 namedArgs[pair[0]] = pair[1];

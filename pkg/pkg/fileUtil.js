@@ -2,7 +2,11 @@
 /*jslint */
 /*global define */
 
-define(['fs', 'path'], function (fs, path) {
+define(function (require) {
+    var fs = require('fs'),
+        path = require('path'),
+        exec = require('child_process').exec,
+        fileUtil;
 
     function findMatches(matches, dir, regExpInclude, regExpExclude, dirRegExpExclude) {
         if (path.existsSync(dir) && fs.statSync(dir).isDirectory()) {
@@ -30,7 +34,7 @@ define(['fs', 'path'], function (fs, path) {
         }
     }
 
-    var fileUtil = {
+    fileUtil = {
         /**
          * Recurses startDir and finds matches to the files that match
          * regExpFilters.include and do not match regExpFilters.exclude.
@@ -86,6 +90,29 @@ define(['fs', 'path'], function (fs, path) {
                     }
                 }
             });
+        },
+
+        /**
+         * Does an rm -rf on a directory. Like a boss.
+         */
+        rmdir: function (dir, callback, errback) {
+            dir = path.resolve(dir);
+
+            if (dir === '/') {
+                if (errback) {
+                    errback(new Error('fileUtil.rmdir cannot handle /'));
+                }
+            }
+
+            exec('rm -rf ' + dir,
+                function (error, stdout, stderr) {
+                    if (error && errback) {
+                        errback(error);
+                    } else if (callback) {
+                        callback();
+                    }
+                }
+            );
         }
     };
 
