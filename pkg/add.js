@@ -87,7 +87,7 @@ define(function (require) {
                 //Unpack the zip file.
                 tar.untar(localName + '.tar.gz', function () {
                     //Find the directory that was unpacked in tempDir
-                    var dirName, info, targetName;
+                    var dirName, info, targetName, contents, mainName;
 
                     process.chdir('..');
                     inTempDir = false;
@@ -131,7 +131,17 @@ define(function (require) {
                             //Found the unpacked directory, move it.
                             fs.renameSync(dirName, targetName);
 
-                            //Add in adapter module for AMD code??
+                            //Add in adapter module for AMD code
+                            if (info.data.main) {
+                                //Trim off any leading dot and file extension, if they exist.
+                                mainName = info.data.main.replace(/^\.\//, '').replace(/\.js$/, '');
+                                contents = "define(['" + localName + "/" +
+                                    mainName + "'], function (main) {\n" +
+                                    "    return main;\n" +
+                                    "});";
+
+                                fs.writeFileSync(targetName + '.js', contents, 'utf8');
+                            }
                         }
 
                         //Stamp the app's package.json with the dependency??
