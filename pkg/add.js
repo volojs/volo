@@ -6,6 +6,7 @@ define(function (require) {
     var fs = require('fs'),
         path = require('path'),
         q = require('q'),
+        config = require('pkg/config'),
         github = require('pkg/github'),
         download = require('pkg/download'),
         packageJson = require('pkg/packageJson'),
@@ -32,7 +33,8 @@ define(function (require) {
         }
     }
 
-    function fetchGitHub(namedArgs, ownerPlusRepo, version, localName, isExplicitLocalName) {
+    function fetchGitHub(namedArgs, ownerPlusRepo, version, specificFile,
+                         localName, isExplicitLocalName) {
         //First check if localName exists and its version.
         var pkg = packageJson('.'),
             baseUrl = pkg.data && pkg.data.amdBaseUrl || 'js',
@@ -47,6 +49,88 @@ define(function (require) {
             }
             remove(tempDir);
             d.reject(err);
+        }
+
+        //Function to handle moving the file(s) from temp dir to final location.
+        function moveFromTemp() {
+            try {
+                //Find the directory that was unpacked in tempDir
+                var dirName, info, targetName, contents, mainName;
+
+                if (inTempDir) {
+                    process.chdir('..');
+                    inTempDir = false;
+                }
+
+                fs.readdirSync(tempDir).some(function (file) {
+                    dirName = path.join(tempDir, file);
+                    if (fs.statSync(dirName).isDirectory()) {
+                        return true;
+                    } else {
+                        dirName = null;
+                        return false;
+                    }
+                });
+
+                if (dirName) {
+                    //Figure out if this is a one file install.
+                    info = packageJson(specificFile ?
+                                       path.join(dirName, specificFile) :
+                                       dirName);
+
+                    if (info.singleFile) {
+                        //Just move the single file into position.
+                        if (isExplicitLocalName) {
+                            targetName = path.join(baseUrl, localName + '.js');
+                        } else {
+                            targetName = path.join(baseUrl, path.basename(info.file));
+                        }
+
+                        //Check for the existence of the singleFileName, and if it
+                        //already exists, bail out.
+                        if (path.existsSync(targetName) && !namedArgs.force) {
+                            cleanUp(targetName + ' already exists. To ' +
+                                'install anyway, pass -f to the command');
+                            return;
+                        }
+                        fs.renameSync(info.file, targetName);
+                    } else {
+                        //A complete directory install.
+                        targetName = path.join(baseUrl, localName);
+
+                        //If directory, remove common directories not needed
+                        //for install.
+
+                        //Found the unpacked directory, move it.
+                        fs.renameSync(dirName, targetName);
+
+                        //Add in adapter module for AMD code
+                        if (info.data.main) {
+                            //Trim off any leading dot and file extension, if they exist.
+                            mainName = info.data.main.replace(/^\.\//, '').replace(/\.js$/, '');
+                            contents = "define(['" + localName + "/" +
+                                mainName + "'], function (main) {\n" +
+                                "    return main;\n" +
+                                "});";
+
+                            fs.writeFileSync(targetName + '.js', contents, 'utf8');
+                        }
+                    }
+
+                    //Stamp the app's package.json with the dependency??
+
+                    //Trace nested dependencies in the package.json
+                    //TODO
+
+                    //All done.
+                    remove(tempDir);
+                    d.resolve('Installed ' + ownerPlusRepo + '/' + version + ' at ' + targetName);
+                } else {
+                    cleanUp('Unexpected tarball configuration');
+                }
+            } catch (e) {
+                cleanUp(e);
+            }
         }
 
         try {
@@ -78,85 +162,39 @@ define(function (require) {
         createTempDir(ownerPlusRepo, version, function (newTempDir) {
             tempDir = newTempDir;
 
-            download(github.tarballUrl(ownerPlusRepo, version), path.join(tempDir,
-                     localName + '.tar.gz'), function (filePath) {
+            var override = config.github.overrides[ownerPlusRepo],
+                url, urlDir, ext;
 
-                process.chdir(tempDir);
-                inTempDir = true;
+            //If there is a specific override to finding the file,
+            //for instance jQuery releases are put on a CDN and are not
+            //committed to github, use the override.
+            if (override && override.pattern) {
+                url = override.pattern.replace(/\{version\}/, version);
+                ext = url.substring(url.lastIndexOf('.') + 1, url.length);
 
-                //Unpack the zip file.
-                tar.untar(localName + '.tar.gz', function () {
-                    //Find the directory that was unpacked in tempDir
-                    var dirName, info, targetName, contents, mainName;
+                //Create a directory inside tempdir to receive the file,
+                //since the tarball path has a similar setup.
+                urlDir = path.join(tempDir, 'download');
+                fs.mkdirSync(urlDir);
 
-                    process.chdir('..');
-                    inTempDir = false;
+                download(url, path.join(urlDir, localName + '.' + ext),
+                         function (filePath) {
 
-                    fs.readdirSync(tempDir).some(function (file) {
-                        dirName = path.join(tempDir, file);
-                        if (fs.statSync(dirName).isDirectory()) {
-                            return true;
-                        } else {
-                            dirName = null;
-                            return false;
-                        }
-                    });
-
-                    if (dirName) {
-                        //Figure out if this is a one file install.
-                        info = packageJson(dirName);
-                        if (info.singleFile) {
-                            //Just move the single file into position.
-                            if (isExplicitLocalName) {
-                                targetName = path.join(baseUrl, localName + '.js');
-                            } else {
-                                targetName = path.join(baseUrl, path.basename(info.file));
-                            }
-
-                            //Check for the existence of the singleFileName, and if it
-                            //already exists, bail out.
-                            if (path.existsSync(targetName) && !namedArgs.force) {
-                                cleanUp(targetName + ' already exists. To ' +
-                                    'install anyway, pass -f to the command');
-                                return;
-                            }
-                            fs.renameSync(info.file, targetName);
-                        } else {
-                            //A complete directory install.
-                            targetName = path.join(baseUrl, localName);
-
-                            //If directory, remove common directories not needed
-                            //for install.
-
-                            //Found the unpacked directory, move it.
-                            fs.renameSync(dirName, targetName);
-
-                            //Add in adapter module for AMD code
-                            if (info.data.main) {
-                                //Trim off any leading dot and file extension, if they exist.
-                                mainName = info.data.main.replace(/^\.\//, '').replace(/\.js$/, '');
-                                contents = "define(['" + localName + "/" +
-                                    mainName + "'], function (main) {\n" +
-                                    "    return main;\n" +
-                                    "});";
-
-                                fs.writeFileSync(targetName + '.js', contents, 'utf8');
-                            }
-                        }
-
-                        //Stamp the app's package.json with the dependency??
-
-                        //Trace nested dependencies in the package.json
-                        //TODO
-
-                        //All done.
-                        remove(tempDir);
-                        d.resolve('Installed ' + ownerPlusRepo + '/' + version + ' at ' + targetName);
-                    } else {
-                        cleanUp('Unexpected tarball configuration');
-                    }
+                    moveFromTemp();
                 }, cleanUp);
-            }, cleanUp);
+            } else {
+                download(github.tarballUrl(ownerPlusRepo, version), path.join(tempDir,
+                         localName + '.tar.gz'), function (filePath) {
+
+                    process.chdir(tempDir);
+                    inTempDir = true;
+
+                    //Unpack the zip file.
+                    tar.untar(localName + '.tar.gz', function () {
+                        moveFromTemp();
+                    }, cleanUp);
+                }, cleanUp);
+            }
         }, cleanUp);
 
         return d.promise;
@@ -199,7 +237,7 @@ define(function (require) {
 
             var index = packageName.indexOf(':'),
                 isExplicitLocalName = !!localName,
-                scheme, parts, ownerPlusRepo, version;
+                scheme, parts, ownerPlusRepo, version, lastPart, specificFile;
 
             if (index === -1) {
                 scheme = 'github';
@@ -212,6 +250,14 @@ define(function (require) {
                 //A github location.
                 parts = packageName.split('/');
 
+                //Last part can be a #file to be found in the location.
+                lastPart = parts[parts.length - 1];
+                if (lastPart.indexOf('#') !== -1) {
+                    lastPart = lastPart.split('#');
+                    parts[parts.length - 1] = lastPart[0];
+                    specificFile = lastPart[1];
+                }
+
                 if (!localName) {
                     localName = parts[1];
                 }
@@ -222,10 +268,10 @@ define(function (require) {
                 if (!version) {
                     //Fetch the latest version
                     github.latestTag(ownerPlusRepo).then(function (tag) {
-                        return fetchGitHub(namedArgs, ownerPlusRepo, tag, localName, isExplicitLocalName);
+                        return fetchGitHub(namedArgs, ownerPlusRepo, tag, specificFile, localName, isExplicitLocalName);
                     }).then(deferred.resolve, deferred.reject);
                 } else {
-                    fetchGitHub(namedArgs, ownerPlusRepo, version, localName, isExplicitLocalName)
+                    fetchGitHub(namedArgs, ownerPlusRepo, version, specificFile, localName, isExplicitLocalName)
                         .then(deferred.resolve, deferred.reject);
                 }
             } else {

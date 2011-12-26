@@ -35,10 +35,8 @@ define(function (require) {
         if (fs.statSync(fileOrDir).isFile()) {
             //A .js file that may have a package.json content
             result.data = extractCommentData(fileOrDir);
-            if (result.data) {
-                result.file = fileOrDir;
-                result.singleFile = true;
-            }
+            result.file = fileOrDir;
+            result.singleFile = true;
         } else {
             //Check for /*package.json */ in a .js file if it is the
             //only .js file in the dir.

@@ -11,9 +11,10 @@
 define(function (require) {
     var q = require('q'),
         https = require('https'),
-        scheme = 'https',
-        host = 'github.com',
-        apiHost = 'api.github.com',
+        config = require('pkg/config').github,
+        scheme = config.scheme,
+        host = config.host,
+        apiHost = config.apiHost,
         versionRegExp = /^(v)?(\d+\..+)/;
 
     function github(path) {

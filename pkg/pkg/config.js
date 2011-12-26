@@ -19,7 +19,19 @@ define(function (require) {
 
     // The defaults to use.
     config = {
-        "registry": "https://registry.npmjs.org/"
+        "registry": "https://registry.npmjs.org/",
+
+        "github": {
+            "scheme": "https",
+            "host": "github.com",
+            "apiHost": "api.github.com",
+            "overrides": {
+                "jquery/jquery": {
+                    "pattern": "http://code.jquery.com/jquery-{version}.min.js"
+                }
+            }
+
+        }
     };
 
     //Allow a local config at baseUrl + '.config.js'
