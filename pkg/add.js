@@ -1,3 +1,9 @@
+/**
+ * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
+ * Available via the MIT or new BSD license.
+ * see: http://github.com/jrburke/pkg for details
+ */
+
 'use strict';
 /*jslint */
 /*global define, console, process */
@@ -219,9 +225,6 @@ define(function (require) {
     }
 
     add = {
-        savePackage: function (url, packageName) {
-        },
-
         doc: 'Add a third party package to your project.',
         validate: function (namedArgs, packageName, version) {
             if (!packageName) {
@@ -295,75 +298,6 @@ define(function (require) {
             } else {
                 deferred.reject(packageName + ' format is not supported yet.');
             }
-
-
-            //If no localName, find an appropriate value.
-
-/*
-
-pkg.js add jrburke/requirejs
-pkg.js add jrburke/requirejs/1.0.2
-pkg.js add some/local/path
-pkg.js add http://www.some/package.tar.gz
-
-
-
-Check for existing install.
-
-check for local path, then assume a github:url
-
-
-
-
-
-pkg.js add jrburke/requirejs
-pkg.js add jrburke/requirejs/1.0.2
-
-in package.json
-
-dependencies: {
-    requirejs: '1.0.2'
-}
-
-have a way to do format conversion?
-
-pkg.js add requirejs: need directory listing? something in github? use github oauth stuff?
-figure out a way to find the "master" fork. Bigger problem is no search API for github.
-
-
-
-
-*/
-/*
-            download('https://github.com/jrburke/requirejs/tarball/1.0.2', '1.0.2.tar.gz', function (path) {
-                console.log(path + ' is done downloading');
-            });
-
-            github.latestTag('jrburke/requirejs', function (tags) {
-                console.log('requirejs: ' + JSON.stringify(tags, null, '  '));
-            });
-*/
-
-//https:///repos/jrburke/requirejs/tags
-
-
-
-/*
-            //Package may just be an URL or absolute path ref
-            if (packageName.indexOf(':') !== -1 || packageName.charAt(0) === '/') {
-                url = packageName;
-                packageName = version;
-            }
-
-            if (!url) {
-                //Look up package in registry
-
-            } else {
-                add.savePackage(url, packageName);
-            }
-
-*/
-
         }
     };
 
