@@ -11,9 +11,10 @@ require(['pkg/packageJson', 'path'], function (packageJson, path) {
                 var result,
                     basePath = 'lib/pkg/packageJson';
 
-                //Test package.json
+                //Test favoring a single js file package.json comment
+                //over a package.json file.
                 result = packageJson(path.join(basePath, 'hasFile'));
-                t.is('hasFile', result.data.name);
+                t.is('empty', result.data.name);
                 t.is('1.0', result.data.version);
 
                 //Test file comment
@@ -24,7 +25,7 @@ require(['pkg/packageJson', 'path'], function (packageJson, path) {
                 //Test file, but no comment or package.json
                 result = packageJson(path.join(basePath, 'hasJsNoComment'));
                 t.is(null, result.data);
-                t.is(null, result.file);
+                t.is('lib/pkg/packageJson/hasJsNoComment/lib.js', result.file);
 
                 //Test no package.json and too many .js files
                 result = packageJson(path.join(basePath, 'tooManyJs'));

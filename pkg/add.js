@@ -124,7 +124,10 @@ define(function (require) {
 
                     //All done.
                     remove(tempDir);
-                    d.resolve('Installed ' + ownerPlusRepo + '/' + version + ' at ' + targetName);
+                    d.resolve('Installed ' + ownerPlusRepo + '/' +
+                              version +
+                              (specificFile ? '#' + specificFile : '') +
+                              ' at ' + targetName);
                 } else {
                     cleanUp('Unexpected tarball configuration');
                 }

@@ -13,6 +13,7 @@ define(function (require) {
         https = require('https'),
         config = require('pkg/config').github,
         scheme = config.scheme,
+        version = require('pkg/version'),
         host = config.host,
         apiHost = config.apiHost,
         versionRegExp = /^(v)?(\d+\..+)/;
@@ -75,8 +76,7 @@ define(function (require) {
             });
 
             //Now order the tags in tag order.
-            //TODO: Need to do this: compare the
-            //semver values and order accordingly.
+            tagNames.sort(version.compare);
 
             return tagNames;
         });

@@ -21,14 +21,15 @@ define(function (require) {
                 protocol = parts.protocol === 'https:' ? https : http,
                 writeStream = fs.createWriteStream(path);
 
-            console.log('Downloading: ' + url);
-
             protocol.get(parts, function (response) {
 
                 //console.log("statusCode: ", response.statusCode);
                 //console.log("headers: ", response.headers);
                 try {
                     if (response.statusCode === 200) {
+
+                        console.log('Downloading: ' + url);
+
                         //Bingo, do the download.
                         response.on('data', function (data) {
                             writeStream.write(data);
