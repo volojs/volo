@@ -53,6 +53,18 @@ define(function (require) {
         return scheme + '://' + apiHost + '/' + path;
     };
 
+    github.rawUrl = function (ownerPlusRepo, version, specificFile) {
+        var parts = ownerPlusRepo.split('/'),
+            owner = parts[0],
+            repo = parts[1];
+
+        return config.rawUrlPattern
+                     .replace(/\{owner\}/g, owner)
+                     .replace(/\{repo\}/g, repo)
+                     .replace(/\{version\}/g, version)
+                     .replace(/\{file\}/g, specificFile);
+    };
+
     github.tarballUrl = function (ownerPlusRepo, version) {
         return github.url(ownerPlusRepo) + '/tarball/' + version;
     };

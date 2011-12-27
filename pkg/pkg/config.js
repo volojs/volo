@@ -25,12 +25,12 @@ define(function (require) {
             "scheme": "https",
             "host": "github.com",
             "apiHost": "api.github.com",
+            "rawUrlPattern": "https://raw.github.com/{owner}/{repo}/{version}/{file}",
             "overrides": {
                 "jquery/jquery": {
                     "pattern": "http://code.jquery.com/jquery-{version}.min.js"
                 }
             }
-
         }
     };
 

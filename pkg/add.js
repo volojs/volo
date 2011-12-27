@@ -74,9 +74,7 @@ define(function (require) {
 
                 if (dirName) {
                     //Figure out if this is a one file install.
-                    info = packageJson(specificFile ?
-                                       path.join(dirName, specificFile) :
-                                       dirName);
+                    info = packageJson(dirName);
 
                     if (info.singleFile) {
                         //Just move the single file into position.
@@ -171,8 +169,25 @@ define(function (require) {
             //If there is a specific override to finding the file,
             //for instance jQuery releases are put on a CDN and are not
             //committed to github, use the override.
-            if (override && override.pattern) {
-                url = override.pattern.replace(/\{version\}/, version);
+            if (specificFile || (override && override.pattern)) {
+
+                //If a specific file in the repo. Do not need the full tarball,
+                //just use a raw github url to get it.
+                if (specificFile) {
+                    url = github.rawUrl(ownerPlusRepo, version, specificFile);
+                    //Adjust local name to be the specificFile name, unless
+                    //there was a specific localName specified.
+                    if (!isExplicitLocalName) {
+                        localName = path.basename(specificFile);
+                        //Strip off extension name.
+                        localName = localName.substring(0, localName.lastIndexOf('.'));
+                        isExplicitLocalName = true;
+                    }
+                } else {
+                    //An override situation.
+                    url = override.pattern.replace(/\{version\}/, version);
+                }
+
                 ext = url.substring(url.lastIndexOf('.') + 1, url.length);
 
                 //Create a directory inside tempdir to receive the file,
