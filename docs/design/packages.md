@@ -47,23 +47,23 @@ Something to call out in this approach: RequireJS will not try to parse package.
 
 # User experience
 
-* Download the package manager. For illustration purposes (not the final name), call it pkg.js. Only one file is downloaded. It is a JS file that can be executed in a JS environment that works from the command line, mostly likely Node and/or Rhino. Sample commands:
+* Download the package manager. For illustration purposes (not the final name), call it volo.js. Only one file is downloaded. It is a JS file that can be executed in a JS environment that works from the command line, mostly likely Node and/or Rhino. Sample commands:
 
-* pkg.js createApp appName
+* volo.js createApp appName
     * Generates dir structure, stub an application-level package.json file.
     * puts in require.js and r.js (the RequireJS/Node adapter) too.
-* pkg.js add packageName version (or an URL)
-    * pkg.js adds the package dependency info to app's package.json
+* volo.js add packageName version (or an URL)
+    * volo.js adds the package dependency info to app's package.json
     * fetches the dependency and any of its dependencies.
-* pkg.js create packageName : creates a new package that is subject to version control.
+* volo.js create packageName : creates a new package that is subject to version control.
     * Different from createApp in that it is assumed not to have require.js included, and it will not need to update config objects in the top-level app modules.
-* pkg.js update : updates the app config to be the latest based on sub packages.
-* pkg.js addApp name: adds a new entry to package.json's app property, updates
+* volo.js update : updates the app config to be the latest based on sub packages.
+* volo.js addApp name: adds a new entry to package.json's app property, updates
   that named module to have the automated require() config injection. Used to specify
   what top-level app modules are used in the webapp. App modules are the top level
   module that is loaded by a particular web page.
 
-I am hoping the pkg.js can be limited to just one JS file to download, but minification tools may mean downloading a couple files. But really try for just one file (for distribution -- in the package manager source it can be many files that are built into one).
+I am hoping the volo.js can be limited to just one JS file to download, but minification tools may mean downloading a couple files. But really try for just one file (for distribution -- in the package manager source it can be many files that are built into one).
 
 # Implementation
 
@@ -71,7 +71,7 @@ I am hoping the pkg.js can be limited to just one JS file to download, but minif
 
 To create a web app called foo, run
 
-    pkg.js createApp foo
+    volo.js createApp foo
 
 A directory structure is created that looks like this:
 
@@ -123,14 +123,14 @@ The **requirejs** property is used to store info specific to RequireJS implement
 
 To add the "bar" package, run either
 
-    pkg.js add bar 0.4 
+    volo.js add bar 0.4
 
 or
-    pkg.js add bar http://some.domain.com/packages/bar/0.4.zip
+    volo.js add bar http://some.domain.com/packages/bar/0.4.zip
 
 In the first example, a package repository or index would be consulted to find the URL to the 0.4 bar package, and basically convert the call to something like the second one, where an URL would be used to fetch the module. The module could be in source form (like a Git repository URL) or in zip form (details still to be worked out).
 
-bar would be downloaded to foo/.packages/bar, and the following files would be changed by pkg.js to the following:
+bar would be downloaded to foo/.packages/bar, and the following files would be changed by volo.js to the following:
 
 **package.json**:
 
@@ -246,4 +246,4 @@ of scripts. Hmm, could affect order! plugins, but that is just used in browser
 anyway. But still confusing vs something that defines require = {} before
 the script. Maybe just needs docs, and go with setTimeout if it is available.
 
-Consider using/reusing/adapting Kris Zyp's [Nodules](http://github.com/kriszyp/nodules) as a basis for implementation for pkg.js. It is Dojo Foundation CLA-approved code.
+Consider using/reusing/adapting Kris Zyp's [Nodules](http://github.com/kriszyp/nodules) as a basis for implementation for volo.js. It is Dojo Foundation CLA-approved code.

@@ -1,7 +1,7 @@
 /**
  * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
- * see: http://github.com/jrburke/pkg for details
+ * see: http://github.com/jrburke/volo for details
  */
 
 'use strict';
@@ -12,12 +12,12 @@ define(function (require) {
     var fs = require('fs'),
         path = require('path'),
         q = require('q'),
-        config = require('pkg/config'),
-        github = require('pkg/github'),
-        download = require('pkg/download'),
-        packageJson = require('pkg/packageJson'),
-        tar = require('pkg/tar'),
-        fileUtil = require('pkg/fileUtil'),
+        config = require('volo/config'),
+        github = require('volo/github'),
+        download = require('volo/download'),
+        packageJson = require('volo/packageJson'),
+        tar = require('volo/tar'),
+        fileUtil = require('volo/fileUtil'),
         add;
 
     function remove(dirName, callback, errback) {
