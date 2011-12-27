@@ -49,6 +49,7 @@ requirejs.config({
 
 //Tests
 load('lib/pkg/packageJson/tests.js');
+load('lib/pkg/version.js');
 
 //Print out test results
 doh.run();
