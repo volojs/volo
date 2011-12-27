@@ -3,7 +3,7 @@
 /*global require, doh */
 'use strict';
 
-require(['pkg/version'], function (version) {
+require(['volo/version'], function (version) {
 
     function validate(t, expected, actual) {
         var i;

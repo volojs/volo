@@ -3,13 +3,13 @@
 /*global require, doh */
 'use strict';
 
-require(['pkg/packageJson', 'path'], function (packageJson, path) {
+require(['volo/packageJson', 'path'], function (packageJson, path) {
 
     doh.register("packageJsonTests",
         [
             function packageJsonTests(t) {
                 var result,
-                    basePath = 'lib/pkg/packageJson';
+                    basePath = 'lib/volo/packageJson';
 
                 //Test favoring a single js file package.json comment
                 //over a package.json file.
@@ -25,7 +25,7 @@ require(['pkg/packageJson', 'path'], function (packageJson, path) {
                 //Test file, but no comment or package.json
                 result = packageJson(path.join(basePath, 'hasJsNoComment'));
                 t.is(null, result.data);
-                t.is('lib/pkg/packageJson/hasJsNoComment/lib.js', result.file);
+                t.is('lib/volo/packageJson/hasJsNoComment/lib.js', result.file);
 
                 //Test no package.json and too many .js files
                 result = packageJson(path.join(basePath, 'tooManyJs'));

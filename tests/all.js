@@ -1,7 +1,7 @@
 /**
  * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
- * see: http://github.com/jrburke/pkg for details
+ * see: http://github.com/jrburke/volo for details
  */
 
 /*jslint nomen: false, evil: true */
@@ -44,12 +44,12 @@ requirejs._reset = function () {
 };
 
 requirejs.config({
-    baseUrl: path.join(__dirname, '..', 'pkg')
+    baseUrl: path.join(__dirname, '..', 'volo')
 });
 
 //Tests
-load('lib/pkg/packageJson/tests.js');
-load('lib/pkg/version.js');
+load('lib/volo/packageJson/tests.js');
+load('lib/volo/version.js');
 
 //Print out test results
 doh.run();

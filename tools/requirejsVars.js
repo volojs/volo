@@ -22,7 +22,7 @@ requirejs.nodeRequire = require;
 
 
     //Reflect the baseUrl as a module
-    define('pkg/baseUrl', [], function () {
+    define('volo/baseUrl', [], function () {
         return baseUrl;
     });
 

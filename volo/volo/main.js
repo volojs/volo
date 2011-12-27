@@ -1,7 +1,7 @@
 /**
  * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
- * see: http://github.com/jrburke/pkg for details
+ * see: http://github.com/jrburke/volo for details
  */
 
 'use strict';
@@ -15,14 +15,14 @@ define(function (require) {
 
     function main(callback, errback) {
         var deferred = q.defer(),
-            //First two args are 'node' and 'pkg.js'
+            //First two args are 'node' and 'volo.js'
             args = process.argv.slice(2),
             actions = commands.list(),
             namedArgs = {}, aryArgs = [],
             action, combinedArgs;
 
         function usageError(callback) {
-            var message = '\npkg.js, a package tool for RequireJS. Allowed commands:\n\n';
+            var message = '\nvolo.js, a package tool for RequireJS. Allowed commands:\n\n';
 
             require(actions, function () {
                 var mod, i;

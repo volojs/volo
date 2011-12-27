@@ -1,7 +1,7 @@
 /**
  * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
- * see: http://github.com/jrburke/pkg for details
+ * see: http://github.com/jrburke/volo for details
  */
 
 'use strict';
@@ -12,7 +12,7 @@ define(function (require) {
     var fs = require('fs'),
         path = require('path'),
         lang = require('./lang'),
-        //pkg/baseUrl is set up in tools/requirejsVars.js
+        //volo/baseUrl is set up in tools/requirejsVars.js
         baseUrl = require('./baseUrl'),
         localConfigUrl = path.join(baseUrl, '.config.js'),
         localConfig, config, contents;

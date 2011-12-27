@@ -1,7 +1,7 @@
 /**
  * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
- * see: http://github.com/jrburke/pkg for details
+ * see: http://github.com/jrburke/volo for details
  */
 
 'use strict';
@@ -11,9 +11,9 @@
 define(function (require) {
     var q = require('q'),
         https = require('https'),
-        config = require('pkg/config').github,
+        config = require('volo/config').github,
         scheme = config.scheme,
-        version = require('pkg/version'),
+        version = require('volo/version'),
         host = config.host,
         apiHost = config.apiHost,
         versionRegExp = /^(v)?(\d+\..+)/;

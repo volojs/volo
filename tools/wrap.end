@@ -1,6 +1,6 @@
 
 //Light it up!
-requirejs(['pkg/main'], function (main) {
+requirejs(['volo/main'], function (main) {
     main(function (message) {
         if (message) {
             console.log(message);
