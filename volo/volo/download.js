@@ -12,8 +12,7 @@ define(function (require) {
     var https = require('https'),
         http = require('http'),
         fs = require('fs'),
-        urlLib = require('url'),
-        counter = 0;
+        urlLib = require('url');
 
     function download(url, path, callback, errback) {
         try {
@@ -66,10 +65,6 @@ define(function (require) {
         }
 
     }
-
-    download.createTempName = function (seed) {
-        return seed.replace(/\//g, '-') + '-' + (counter++);
-    };
 
     return download;
 });

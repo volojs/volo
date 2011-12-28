@@ -12,6 +12,8 @@ define(function (require) {
     var fs = require('fs'),
         q = require('q'),
         path = require('path'),
+        tempDir = require('volo/tempDir'),
+        github = require('volo/github'),
         create;
 
     create = {
@@ -25,11 +27,30 @@ define(function (require) {
             return undefined;
         },
         run: function (deferred, namedArgs, appName) {
+
+            var template = namedArgs.template || 'jrburke/volo-create-template',
+                parts = template.split('/'),
+                ownerPlusRepo = parts[0] + '/' + parts[1];
+
+            github.latestTag(template).then(function (version) {
+                var tempDirName;
+
+                function cleanUp() {
+
+                }
+            }, function (err) {
+               deferred.reject(err);
+            });
+
+            tempDir.create(seed, callback, errback)
+
+
             fs.mkdirSync(appName);
 
             process.chdir(appName);
 
             //Download the sample project and use it in here.
+            
 
         }
     };

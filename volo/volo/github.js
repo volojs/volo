@@ -95,9 +95,18 @@ define(function (require) {
     };
 
     github.latestTag = function (ownerPlusRepo) {
-        return github.versionTags(ownerPlusRepo).then(function (tagNames) {
-            return tagNames[0];
-        });
+        //If ownerPlusRepo includes the version, just use that.
+        var parts = ownerPlusRepo.split('/'),
+            d;
+        if (parts.length === 3) {
+            d = q.defer();
+            d.resolve(parts[2]);
+            return d.promise;
+        } else {
+            return github.versionTags(ownerPlusRepo).then(function (tagNames) {
+                return tagNames[0];
+            });
+        }
     };
 
     return github;

@@ -28,7 +28,7 @@ define(function (require) {
             "rawUrlPattern": "https://raw.github.com/{owner}/{repo}/{version}/{file}",
             "overrides": {
                 "jquery/jquery": {
-                    "pattern": "http://code.jquery.com/jquery-{version}.min.js"
+                    "pattern": "http://code.jquery.com/jquery-{version}.js"
                 }
             }
         }

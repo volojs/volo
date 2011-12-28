@@ -18,26 +18,8 @@ define(function (require) {
         packageJson = require('volo/packageJson'),
         tar = require('volo/tar'),
         fileUtil = require('volo/fileUtil'),
+        tempDir = require('volo/tempDir'),
         add;
-
-    function remove(dirName, callback, errback) {
-        if (dirName && path.existsSync(dirName)) {
-            fileUtil.rmdir(dirName, callback, errback);
-        }
-    }
-
-    function createTempDir(ownerPlusRepo, version, callback, errback) {
-        var tempDir = download.createTempName(ownerPlusRepo + '/' + version);
-        if (path.existsSync(tempDir)) {
-            remove(tempDir, function () {
-                fs.mkdirSync(tempDir);
-                callback(tempDir);
-            }, errback);
-        } else {
-            fs.mkdirSync(tempDir);
-            callback(tempDir);
-        }
-    }
 
     function fetchGitHub(namedArgs, ownerPlusRepo, version, specificFile,
                          localName, isExplicitLocalName) {
@@ -53,7 +35,7 @@ define(function (require) {
             if (inTempDir) {
                 process.chdir('..');
             }
-            remove(tempDir);
+            fileUtil.rmdir(tempDir);
             d.reject(err);
         }
 
@@ -127,7 +109,7 @@ define(function (require) {
                     //TODO
 
                     //All done.
-                    remove(tempDir);
+                    fileUtil.rmdir(tempDir);
                     d.resolve('Installed ' + ownerPlusRepo + '/' +
                               version +
                               (specificFile ? '#' + specificFile : '') +
@@ -166,7 +148,7 @@ define(function (require) {
         }
 
         //Create a temporary directory to download the code.
-        createTempDir(ownerPlusRepo, version, function (newTempDir) {
+        tempDir.create(ownerPlusRepo + '/' + version, function (newTempDir) {
             tempDir = newTempDir;
 
             var override = config.github.overrides[ownerPlusRepo],
@@ -286,15 +268,10 @@ define(function (require) {
                 ownerPlusRepo = parts[0] + '/'  + parts[1];
                 version = parts[2];
 
-                if (!version) {
-                    //Fetch the latest version
-                    github.latestTag(ownerPlusRepo).then(function (tag) {
-                        return fetchGitHub(namedArgs, ownerPlusRepo, tag, specificFile, localName, isExplicitLocalName);
-                    }).then(deferred.resolve, deferred.reject);
-                } else {
-                    fetchGitHub(namedArgs, ownerPlusRepo, version, specificFile, localName, isExplicitLocalName)
-                        .then(deferred.resolve, deferred.reject);
-                }
+                //Fetch the latest version
+                github.latestTag(ownerPlusRepo + (version ? '/' + version : '')).then(function (tag) {
+                    return fetchGitHub(namedArgs, ownerPlusRepo, tag, specificFile, localName, isExplicitLocalName);
+                }).then(deferred.resolve, deferred.reject);
             } else {
                 deferred.reject(packageName + ' format is not supported yet.');
             }

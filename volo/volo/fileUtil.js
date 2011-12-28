@@ -96,7 +96,15 @@ define(function (require) {
          * Does an rm -rf on a directory. Like a boss.
          */
         rmdir: function (dir, callback, errback) {
+            if (!dir) {
+                callback();
+            }
+
             dir = path.resolve(dir);
+
+            if (!path.existsSync(dir)) {
+                callback();
+            }
 
             if (dir === '/') {
                 if (errback) {
