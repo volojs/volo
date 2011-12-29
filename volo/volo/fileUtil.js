@@ -121,6 +121,26 @@ define(function (require) {
                     }
                 }
             );
+        },
+
+        /**
+         * Returns the first directory found inside a directory.
+         * The return results is dir + firstDir name.
+         */
+        firstDir: function (dir) {
+            var firstDir = null;
+
+            fs.readdirSync(dir).some(function (file) {
+                firstDir = path.join(dir, file);
+                if (fs.statSync(firstDir).isDirectory()) {
+                    return true;
+                } else {
+                    firstDir = null;
+                    return false;
+                }
+            });
+
+            return firstDir;
         }
     };
 

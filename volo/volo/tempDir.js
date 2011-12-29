@@ -18,15 +18,15 @@ define(function (require) {
     tempDir = {
 
         create: function (seed, callback, errback) {
-            var tempDir = tempDir.createTempName(seed);
-            if (path.existsSync(tempDir)) {
-                fileUtil.rmdir(tempDir, function () {
-                    fs.mkdirSync(tempDir);
-                    callback(tempDir);
+            var temp = tempDir.createTempName(seed);
+            if (path.existsSync(temp)) {
+                fileUtil.rmdir(temp, function () {
+                    fs.mkdirSync(temp);
+                    callback(temp);
                 }, errback);
             } else {
-                fs.mkdirSync(tempDir);
-                callback(tempDir);
+                fs.mkdirSync(temp);
+                callback(temp);
             }
         },
 

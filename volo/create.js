@@ -10,10 +10,12 @@
 
 define(function (require) {
     var fs = require('fs'),
-        q = require('q'),
         path = require('path'),
         tempDir = require('volo/tempDir'),
         github = require('volo/github'),
+        fileUtil = require('volo/fileUtil'),
+        download = require('volo/download'),
+        tar = require('volo/tar'),
         create;
 
     create = {
@@ -33,25 +35,37 @@ define(function (require) {
                 ownerPlusRepo = parts[0] + '/' + parts[1];
 
             github.latestTag(template).then(function (version) {
-                var tempDirName;
 
-                function cleanUp() {
+                tempDir.create(template, function (tempDirName) {
+                    var tarFileName = path.join(tempDirName, 'template.tar.gz');
 
-                }
+                    //Function used to clean up in case of errors.
+                    function errCleanUp(err) {
+                        fileUtil.rmdir(tempDirName);
+                        deferred.reject(err);
+                    }
+
+                    //Download the tarball.
+                    download(github.tarballUrl(ownerPlusRepo, version), tarFileName, function (filePath) {
+                        //Unpack the zip file.
+                        tar.untar(tarFileName, function () {
+                            //Move the untarred directory to the final location.
+                            var dirName = fileUtil.firstDir(tempDirName);
+                            if (dirName) {
+                                fs.renameSync(dirName, appName);
+                                fileUtil.rmdir(tempDirName);
+                                console.log(ownerPlusRepo + '/' + version +
+                                            ' used to create ' + appName);
+                                deferred.resolve();
+                            } else {
+                                errCleanUp('Unexpected tarball configuration');
+                            }
+                        }, errCleanUp);
+                    }, errCleanUp);
+                }, deferred.reject);
             }, function (err) {
-               deferred.reject(err);
+                deferred.reject(err);
             });
-
-            tempDir.create(seed, callback, errback)
-
-
-            fs.mkdirSync(appName);
-
-            process.chdir(appName);
-
-            //Download the sample project and use it in here.
-            
-
         }
     };
 

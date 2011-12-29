@@ -9,20 +9,30 @@
 /*global define, console */
 
 define(function (require) {
-    var hasSuffixRegExp = /\d+([\w]+)(\d+)?$/;
+    var hasSuffixRegExp = /\d+([\w]+)(\d+)?$/,
+        vPrefixRegExp = /^v/;
 
     return {
-        //A Compare function that can be used in an array sort call.
-        //a and b should be N.N.N version strings. If a is a greater
-        //version number than b, then the function returns -1 to indicate
-        //it should be sorted before b. In other words, the sorted
-        //values will be from highest version to lowest version when
-        //using this function for sorting.
+        /**
+         * A Compare function that can be used in an array sort call.
+         * a and b should be N.N.N or vN.N.N version strings. If a is a greater
+         * version number than b, then the function returns -1 to indicate
+         * it should be sorted before b. In other words, the sorted
+         * values will be from highest version to lowest version when
+         * using this function for sorting.
+         *
+         * If the string starts with a "v" it will be stripped before the
+         * comparison.
+         */
         compare: function (a, b) {
             var aParts = a.split('.'),
                 bParts = b.split('.'),
                 length = Math.max(aParts.length, bParts.length),
                 i, aPart, bPart, aHasSuffix, bHasSuffix;
+
+            //Remove any "v" prefixes
+            aParts[0] = aParts[0].replace(vPrefixRegExp, '');
+            bParts[0] = bParts[0].replace(vPrefixRegExp, '');
 
             for (i = 0; i < length; i++) {
                 aPart = parseInt(aParts[i] || '0', 10);

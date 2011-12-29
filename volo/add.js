@@ -26,39 +26,21 @@ define(function (require) {
         //First check if localName exists and its version.
         var pkg = packageJson('.'),
             baseUrl = pkg.data && pkg.data.amdBaseUrl || 'js',
-            inTempDir = false,
             d = q.defer(),
-            existingPath, tempDir;
+            existingPath, tempDirName;
 
         //Function used to clean up in case of errors.
-        function cleanUp(err) {
-            if (inTempDir) {
-                process.chdir('..');
-            }
-            fileUtil.rmdir(tempDir);
+        function errCleanUp(err) {
+            fileUtil.rmdir(tempDirName);
             d.reject(err);
         }
 
         //Function to handle moving the file(s) from temp dir to final location.
         function moveFromTemp() {
             try {
-                //Find the directory that was unpacked in tempDir
-                var dirName, info, targetName, contents, mainName;
-
-                if (inTempDir) {
-                    process.chdir('..');
-                    inTempDir = false;
-                }
-
-                fs.readdirSync(tempDir).some(function (file) {
-                    dirName = path.join(tempDir, file);
-                    if (fs.statSync(dirName).isDirectory()) {
-                        return true;
-                    } else {
-                        dirName = null;
-                        return false;
-                    }
-                });
+                //Find the directory that was unpacked in tempDirName
+                var dirName = fileUtil.firstDir(tempDirName),
+                    info, targetName, contents, mainName;
 
                 if (dirName) {
                     //Figure out if this is a one file install.
@@ -75,7 +57,7 @@ define(function (require) {
                         //Check for the existence of the singleFileName, and if it
                         //already exists, bail out.
                         if (path.existsSync(targetName) && !namedArgs.force) {
-                            cleanUp(targetName + ' already exists. To ' +
+                            errCleanUp(targetName + ' already exists. To ' +
                                 'install anyway, pass -f to the command');
                             return;
                         }
@@ -109,16 +91,16 @@ define(function (require) {
                     //TODO
 
                     //All done.
-                    fileUtil.rmdir(tempDir);
+                    fileUtil.rmdir(tempDirName);
                     d.resolve('Installed ' + ownerPlusRepo + '/' +
                               version +
                               (specificFile ? '#' + specificFile : '') +
                               ' at ' + targetName);
                 } else {
-                    cleanUp('Unexpected tarball configuration');
+                    errCleanUp('Unexpected tarball configuration');
                 }
             } catch (e) {
-                cleanUp(e);
+                errCleanUp(e);
             }
         }
 
@@ -144,12 +126,12 @@ define(function (require) {
             }
 
         } catch (e) {
-            cleanUp(e);
+            errCleanUp(e);
         }
 
         //Create a temporary directory to download the code.
         tempDir.create(ownerPlusRepo + '/' + version, function (newTempDir) {
-            tempDir = newTempDir;
+            tempDirName = newTempDir;
 
             var override = config.github.overrides[ownerPlusRepo],
                 url, urlDir, ext;
@@ -178,36 +160,33 @@ define(function (require) {
 
                 ext = url.substring(url.lastIndexOf('.') + 1, url.length);
 
-                //Create a directory inside tempdir to receive the file,
+                //Create a directory inside tempDirName to receive the file,
                 //since the tarball path has a similar setup.
-                urlDir = path.join(tempDir, 'download');
+                urlDir = path.join(tempDirName, 'download');
                 fs.mkdirSync(urlDir);
 
                 download(url, path.join(urlDir, localName + '.' + ext),
                          function (filePath) {
 
                     moveFromTemp();
-                }, cleanUp);
+                }, errCleanUp);
             } else {
-                download(github.tarballUrl(ownerPlusRepo, version), path.join(tempDir,
+                download(github.tarballUrl(ownerPlusRepo, version), path.join(tempDirName,
                          localName + '.tar.gz'), function (filePath) {
 
-                    process.chdir(tempDir);
-                    inTempDir = true;
-
                     //Unpack the zip file.
-                    tar.untar(localName + '.tar.gz', function () {
+                    tar.untar(path.join(tempDirName, localName + '.tar.gz'), function () {
                         moveFromTemp();
-                    }, cleanUp);
-                }, cleanUp);
+                    }, errCleanUp);
+                }, errCleanUp);
             }
-        }, cleanUp);
+        }, errCleanUp);
 
         return d.promise;
     }
 
     add = {
-        doc: 'Add a third party package to your project.',
+        doc: 'Add code to your project.',
         validate: function (namedArgs, packageName, version) {
             if (!packageName) {
                 return new Error('Please specify a package name or an URL.');

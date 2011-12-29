@@ -22,7 +22,7 @@ define(function (require) {
             action, combinedArgs;
 
         function usageError(callback) {
-            var message = '\nvolo.js, a package tool for RequireJS. Allowed commands:\n\n';
+            var message = '\nvolo.js, a JavaScript tool to make JavaScript projects. Allowed commands:\n\n';
 
             require(actions, function () {
                 var mod, i;

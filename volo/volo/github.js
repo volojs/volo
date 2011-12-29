@@ -90,6 +90,11 @@ define(function (require) {
             //Now order the tags in tag order.
             tagNames.sort(version.compare);
 
+            //Default to master if no version tags available.
+            if (!tagNames.length) {
+                tagNames = ['master'];
+            }
+
             return tagNames;
         });
     };
