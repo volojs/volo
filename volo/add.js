@@ -13,6 +13,7 @@ define(function (require) {
         path = require('path'),
         q = require('q'),
         config = require('volo/config'),
+        myConfig = config['volo/add'],
         github = require('volo/github'),
         download = require('volo/download'),
         packageJson = require('volo/packageJson'),
@@ -81,22 +82,33 @@ define(function (require) {
                         //A complete directory install.
                         targetName = path.join(baseUrl, localName);
 
-                        //If directory, remove common directories not needed
-                        //for install.
-
                         //Found the unpacked directory, move it.
                         fs.renameSync(dirName, targetName);
 
-                        //Add in adapter module for AMD code
+                        //If directory, remove common directories not needed
+                        //for install. This is a bit goofy, fileUtil.rmdir
+                        //is actually callback based, but cheating here a bit
+                        //TODO: make this Q-based at some point.
+                        if (myConfig.discard) {
+                            fs.readdirSync(targetName).forEach(function (name) {
+                                if (myConfig.discard[name]) {
+                                    fileUtil.rmdir(path.join(targetName, name));
+                                }
+                            });
+                        }
+
                         if (info.data.main) {
                             //Trim off any leading dot and file extension, if they exist.
                             mainName = info.data.main.replace(/^\.\//, '').replace(/\.js$/, '');
+
+                            //Add in adapter module for AMD code
                             contents = "define(['" + localName + "/" +
                                 mainName + "'], function (main) {\n" +
                                 "    return main;\n" +
                                 "});";
-
                             fs.writeFileSync(targetName + '.js', contents, 'utf8');
+
+
                         }
                     }
 

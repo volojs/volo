@@ -31,6 +31,19 @@ define(function (require) {
                     "pattern": "http://code.jquery.com/jquery-{version}.js"
                 }
             }
+        },
+
+        "volo/add": {
+            "discard": {
+                "test": true,
+                "tests": true,
+                "doc": true,
+                "docs": true,
+                "example": true,
+                "examples": true,
+                "demo": true,
+                "demos": true
+            }
         }
     };
 
