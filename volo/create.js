@@ -52,8 +52,12 @@ define(function (require) {
                             //Move the untarred directory to the final location.
                             var dirName = fileUtil.firstDir(tempDirName);
                             if (dirName) {
+                                //Move the unpacked template to appName
                                 fs.renameSync(dirName, appName);
+
+                                //Clean up temp area.
                                 fileUtil.rmdir(tempDirName);
+
                                 console.log(ownerPlusRepo + '/' + version +
                                             ' used to create ' + appName);
                                 deferred.resolve();

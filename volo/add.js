@@ -25,9 +25,24 @@ define(function (require) {
                          localName, isExplicitLocalName) {
         //First check if localName exists and its version.
         var pkg = packageJson('.'),
-            baseUrl = pkg.data && pkg.data.amdBaseUrl || 'js',
+            baseUrl = pkg.data && pkg.data.amd && pkg.data.amd.baseUrl,
             d = q.defer(),
             existingPath, tempDirName;
+
+        //If no baseUrl, then look for an existing js directory
+        if (!baseUrl) {
+            baseUrl = path.join('.', 'js');
+            if (!path.existsSync(baseUrl)) {
+                //Allow for a 'scripts' option instead of js/, in case
+                //it is something uses transpiled scripts so 'js/' would
+                //not be accurate.
+                baseUrl = path.join('.', 'scripts');
+                if (!path.existsSync(baseUrl)) {
+                    //No js or scripts subdir, so just use current directory.
+                    baseUrl = '.';
+                }
+            }
+        }
 
         //Function used to clean up in case of errors.
         function errCleanUp(err) {
@@ -95,7 +110,9 @@ define(function (require) {
                     d.resolve('Installed ' + ownerPlusRepo + '/' +
                               version +
                               (specificFile ? '#' + specificFile : '') +
-                              ' at ' + targetName);
+                              ' at ' + targetName + '\nFor AMD-based ' +
+                              'projects use \'' + localName + '\' as the ' +
+                              'dependency name.');
                 } else {
                     errCleanUp('Unexpected tarball configuration');
                 }
