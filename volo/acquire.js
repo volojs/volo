@@ -24,7 +24,7 @@ define(function (require, exports, module) {
             //Create a 'volo' directory as a sibling to the volo.js file
             var execName = process.argv[1],
                 dirName = path.dirname(execName),
-                baseName = path.basename(execName),
+                baseName = path.basename(execName, '.js'),
                 targetDir = path.join(dirName, baseName),
                 cwd = process.cwd(),
                 d = q.defer(),
@@ -49,7 +49,7 @@ define(function (require, exports, module) {
 
             q.when(d.promise, function (result) {
                 finish();
-                deferred.resolve(result);
+                deferred.resolve(result + '\nNew volo command aquired!');
             }, function (err) {
                 finish();
                 deferred.reject(err);

@@ -15,9 +15,10 @@ define(function (require) {
         endsInJsRegExp = /\.js$/;
 
     function extractCommentData(file) {
-        var match = commentRegExp.exec(fs.readFileSync(file, 'utf8'));
-        if (match) {
-            return JSON.parse(match[1]);
+        var match = commentRegExp.exec(fs.readFileSync(file, 'utf8')),
+            json = match && match[1] && match[1].trim();
+        if (json) {
+            return JSON.parse(json);
         } else {
             return null;
         }

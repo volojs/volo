@@ -56,7 +56,7 @@ define(function (require, exports, module) {
             try {
                 //Find the directory that was unpacked in tempDirName
                 var dirName = fileUtil.firstDir(tempDirName),
-                    info, targetName, contents, mainName;
+                    info, targetName, contents, mainName, completeMessage;
 
                 if (dirName) {
                     //Figure out if this is a one file install.
@@ -119,12 +119,14 @@ define(function (require, exports, module) {
 
                     //All done.
                     fileUtil.rmdir(tempDirName);
-                    d.resolve('Installed ' + ownerPlusRepo + '/' +
-                              version +
-                              (specificFile ? '#' + specificFile : '') +
-                              ' at ' + targetName + '\nFor AMD-based ' +
-                              'projects use \'' + localName + '\' as the ' +
-                              'dependency name.');
+                    completeMessage = namedArgs.silent ? '' : 'Installed ' +
+                            ownerPlusRepo + '/' +
+                            version +
+                            (specificFile ? '#' + specificFile : '') +
+                            ' at ' + targetName + '\nFor AMD-based ' +
+                            'projects use \'' + localName + '\' as the ' +
+                            'dependency name.';
+                    d.resolve(completeMessage);
                 } else {
                     errCleanUp('Unexpected tarball configuration');
                 }
@@ -233,7 +235,9 @@ define(function (require, exports, module) {
             if (namedArgs.f) {
                 namedArgs.force = true;
             }
-
+            if (namedArgs.s) {
+                namedArgs.silent = true;
+            }
             return undefined;
         },
         run: function (deferred, namedArgs, packageName, localName) {

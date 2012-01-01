@@ -1,5 +1,11 @@
 
-//Light it up!
+//Trigger processing of all defined modules.
+requirejs(['volo/main']);
+
+//Light it up! This call is separate because if main
+//is called as part of first requirejs() call, all of
+//the commands that are built into volo.js may not have
+//been registered yet.
 requirejs(['volo/main'], function (main) {
     main(function (message) {
         if (message) {

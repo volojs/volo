@@ -16,17 +16,8 @@ define(function (require) {
         var deferred = q.defer(),
             //First two args are 'node' and 'volo.js'
             args = process.argv.slice(2),
-            actions = commands.list(),
             namedArgs = {}, aryArgs = [],
             action, combinedArgs;
-
-        function usageError(callback) {
-            var startMessage = '\nvolo.js, a JavaScript tool to make JavaScript projects. Allowed commands:\n\n';
-
-            commands.list(function (message) {
-                deferred.resolve(startMessage + message);
-            });
-        }
 
         //Cycle through args, pulling off name=value pairs into an object.
         args.forEach(function (arg) {
@@ -50,11 +41,7 @@ define(function (require) {
             action = aryArgs.shift();
         }
 
-        if (!action || !actions.some(function (item) {
-            return item === action;
-        })) {
-            usageError();
-        } else {
+        if (action && require.defined(action)) {
             combinedArgs = [namedArgs].concat(aryArgs);
 
             require([action], function (action) {
@@ -66,17 +53,16 @@ define(function (require) {
                     action.run.apply(action, [deferred].concat(combinedArgs));
                 }
             });
+        } else {
+            //Show usage info.
+            commands.list(function (message) {
+                deferred.resolve('\nvolo.js, a JavaScript tool to make ' +
+                                'JavaScript projects. Allowed commands:\n\n' +
+                                message);
+            });
         }
 
-        q.when(deferred.promise, function (message) {
-            if (callback) {
-                callback(message);
-            }
-        }, function (err) {
-            if (errback) {
-                errback(err);
-            }
-        });
+        q.when(deferred.promise, callback, errback);
     }
 
     return main;
