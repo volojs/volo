@@ -17,7 +17,7 @@ define(function (require) {
             //First two args are 'node' and 'volo.js'
             args = process.argv.slice(2),
             namedArgs = {}, aryArgs = [],
-            action, combinedArgs;
+            commandName, combinedArgs;
 
         //Cycle through args, pulling off name=value pairs into an object.
         args.forEach(function (arg) {
@@ -36,21 +36,21 @@ define(function (require) {
             }
         });
 
-        //The action will be the first arg.
+        //The commandName will be the first arg.
         if (aryArgs.length) {
-            action = aryArgs.shift();
+            commandName = aryArgs.shift();
         }
 
-        if (action && require.defined(action)) {
+        if (commands.have(commandName)) {
             combinedArgs = [namedArgs].concat(aryArgs);
 
-            require([action], function (action) {
-                var result = action.validate.apply(action, combinedArgs);
+            require([commandName], function (command) {
+                var result = command.validate.apply(command, combinedArgs);
                 if (result) {
                     //Any result from a validate is considered an error result.
                     deferred.reject(result);
                 } else {
-                    action.run.apply(action, [deferred].concat(combinedArgs));
+                    command.run.apply(command, [deferred].concat(combinedArgs));
                 }
             });
         } else {

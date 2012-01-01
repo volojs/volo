@@ -22,6 +22,16 @@ define(function (require) {
             return value;
         },
 
+        have: function (name) {
+            var hasCommand = name && registry.hasOwnProperty(name);
+            if (!hasCommand) {
+                //See if it is available on disk
+                hasCommand = path.existsSync(path.join(baseUrl, name + '.js'));
+            }
+
+            return hasCommand;
+        },
+
         list: function (callback) {
             var ids = [];
 

@@ -242,23 +242,25 @@ define(function (require, exports, module) {
         },
         run: function (deferred, namedArgs, packageName, localName) {
 
-            //Figure out what packageName is. Options are:
-            //* file:local/file/path
-            //* file:local/file/path/package.tar.gz
-            //* file:local/file/path/lib.js
-            //* owner/project/version (github)
-            //* owner/project (github)
-            //* scheme:something (github:, npm: http: etc)
-
+            //Parse the packageName
             var index = packageName.indexOf(':'),
+                fragIndex = packageName.indexOf('#'),
                 isExplicitLocalName = !!localName,
                 scheme, parts, ownerPlusRepo, version, lastPart, specificFile;
 
+            //Figure out the scheme. Default is github.
             if (index === -1) {
                 scheme = 'github';
             } else {
                 scheme = packageName.substring(0, index);
                 packageName = packageName.substring(index + 1);
+            }
+
+            //If there is a specific file desired inside the archive, peel
+            //that off.
+            if (fragIndex !== -1) {
+                specificFile = packageName.substring(fragIndex + 1);
+                packageName = packageName.substring(0, fragIndex);
             }
 
             if (scheme === 'github') {
@@ -267,11 +269,6 @@ define(function (require, exports, module) {
 
                 //Last part can be a #file to be found in the location.
                 lastPart = parts[parts.length - 1];
-                if (lastPart.indexOf('#') !== -1) {
-                    lastPart = lastPart.split('#');
-                    parts[parts.length - 1] = lastPart[0];
-                    specificFile = lastPart[1];
-                }
 
                 if (!localName) {
                     localName = parts[1];
