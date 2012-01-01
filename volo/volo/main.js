@@ -9,8 +9,7 @@
 /*global define, process, console */
 
 define(function (require) {
-    var config = require('./config'),
-        commands = require('./commands'),
+    var commands = require('./commands'),
         q = require('q');
 
     function main(callback, errback) {
@@ -22,18 +21,10 @@ define(function (require) {
             action, combinedArgs;
 
         function usageError(callback) {
-            var message = '\nvolo.js, a JavaScript tool to make JavaScript projects. Allowed commands:\n\n';
+            var startMessage = '\nvolo.js, a JavaScript tool to make JavaScript projects. Allowed commands:\n\n';
 
-            require(actions, function () {
-                var mod, i;
-
-                for (i = 0; i < actions.length; i++) {
-                    mod = arguments[i];
-                    if (mod.run) {
-                        message += actions[i] + ': ' + mod.doc + '\n\n';
-                    }
-                }
-                deferred.resolve(message);
+            commands.list(function (message) {
+                deferred.resolve(startMessage + message);
             });
         }
 

@@ -8,7 +8,7 @@
 /*jslint */
 /*global define, console, process */
 
-define(function (require) {
+define(function (require, exports, module) {
     var fs = require('fs'),
         path = require('path'),
         tempDir = require('volo/tempDir'),
@@ -74,5 +74,5 @@ define(function (require) {
     };
 
 
-    return create;
+    return require('volo/commands').register(module.id, create);
 });

@@ -8,7 +8,7 @@
 /*jslint */
 /*global define, console, process */
 
-define(function (require) {
+define(function (require, exports, module) {
     var fs = require('fs'),
         path = require('path'),
         q = require('q'),
@@ -286,5 +286,5 @@ define(function (require) {
         }
     };
 
-    return add;
+    return require('volo/commands').register(module.id, add);
 });
