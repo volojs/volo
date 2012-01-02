@@ -1,7 +1,7 @@
 /**
  * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
- * see: http://github.com/jrburke/volo for details
+ * see: http://github.com/volojs/volo for details
  */
 
 'use strict';
@@ -31,7 +31,7 @@ define(function (require, exports, module) {
                 cwd = process.cwd(),
                 d = q.defer();
 
-            from = from || 'jrburke/volo#dist/volo.js';
+            from = from || 'volojs/volo#dist/volo.js';
 
             //Change directory to the one holding volo.js
             process.chdir(dirName);

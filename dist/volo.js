@@ -3,7 +3,7 @@
 /**
  * @license volo Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
- * see: http://github.com/jrburke/volo for details
+ * see: http://github.com/volojs/volo for details
  */
 
 /** vim: et:ts=4:sw=4:sts=4
@@ -2121,7 +2121,7 @@ define("../tools/node", function(){});
 /**
  * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
- * see: http://github.com/jrburke/volo for details
+ * see: http://github.com/volojs/volo for details
  */
 
 
@@ -2173,7 +2173,7 @@ define('volo/commands',['require','./baseUrl','fs','path'],function (require) {
                 ids.sort();
 
                 for (i = 0; i < ids.length; i++) {
-                    message += ids[i] + ': ' + require(ids[i]).doc + '\n\n';
+                    message += ids[i] + ': ' + require(ids[i]).summary + '\n\n';
                 }
 
                 callback(message);
@@ -2999,7 +2999,7 @@ return ref;
 /**
  * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
- * see: http://github.com/jrburke/volo for details
+ * see: http://github.com/volojs/volo for details
  */
 
 
@@ -3014,16 +3014,18 @@ define('volo/main',['require','./commands','q'],function (require) {
         var deferred = q.defer(),
             //First two args are 'node' and 'volo.js'
             args = process.argv.slice(2),
-            namedArgs = {}, aryArgs = [],
+            namedArgs = {},
+            aryArgs = [],
+            flags = [],
             commandName, combinedArgs;
 
         //Cycle through args, pulling off name=value pairs into an object.
         args.forEach(function (arg) {
             if (arg.indexOf('=') === -1) {
                 //If passed a flag like -f, convert to named
-                //arg .f = true
+                //argument based on the command's configuration.
                 if (arg.indexOf('-') === 0) {
-                    namedArgs[arg.substring(1)] = true;
+                    flags.push(arg.substring(1));
                 } else {
                     //Regular array arg.
                     aryArgs.push(arg);
@@ -3043,12 +3045,33 @@ define('volo/main',['require','./commands','q'],function (require) {
             combinedArgs = [namedArgs].concat(aryArgs);
 
             require([commandName], function (command) {
-                var result = command.validate.apply(command, combinedArgs);
-                if (result) {
-                    //Any result from a validate is considered an error result.
-                    deferred.reject(result);
-                } else {
-                    command.run.apply(command, [deferred].concat(combinedArgs));
+
+                //Really have the command. Now convert the flags into
+                //named arguments.
+                var hasFlagError = false,
+                    validationError;
+
+                flags.some(function (flag) {
+                    if (command.flags && command.flags[flag]) {
+                        namedArgs[command.flags[flag]] = true;
+                    } else {
+                        hasFlagError = true;
+                        deferred.reject('Invalid flag for ' + commandName + ': -' + flag);
+                    }
+
+                    return hasFlagError;
+                });
+
+                if (!hasFlagError) {
+                    if (command.validate) {
+                        validationError = command.validate.apply(command, combinedArgs);
+                    }
+                    if (validationError) {
+                        //Any result from a validate is considered an error result.
+                        deferred.reject(validationError);
+                    } else {
+                        command.run.apply(command, [deferred].concat(combinedArgs));
+                    }
                 }
             });
         } else {
@@ -3064,6 +3087,920 @@ define('volo/main',['require','./commands','q'],function (require) {
     }
 
     return main;
+});
+
+/**
+ * @license Copyright (c) 2010-2011, The Dojo Foundation All Rights Reserved.
+ * Available via the MIT or new BSD license.
+ * see: http://github.com/jrburke/requirejs for details
+ */
+
+/*jslint plusplus: false, strict: false */
+/*global define: false */
+
+define('volo/lang',[],function () {
+    var lang = {
+        backSlashRegExp: /\\/g,
+        ostring: Object.prototype.toString,
+
+        isArray: Array.isArray ? Array.isArray : function (it) {
+            return lang.ostring.call(it) === "[object Array]";
+        },
+
+        /**
+         * Simple function to mix in properties from source into target,
+         * but only if target does not already have a property of the same name.
+         */
+        mixin: function (target, source, override) {
+            //Use an empty object to avoid other bad JS code that modifies
+            //Object.prototype.
+            var empty = {}, prop;
+            for (prop in source) {
+                if (override || !(prop in target)) {
+                    target[prop] = source[prop];
+                }
+            }
+        },
+
+        delegate: (function () {
+            // boodman/crockford delegation w/ cornford optimization
+            function TMP() {}
+            return function (obj, props) {
+                TMP.prototype = obj;
+                var tmp = new TMP();
+                TMP.prototype = null;
+                if (props) {
+                    lang.mixin(tmp, props);
+                }
+                return tmp; // Object
+            };
+        }())
+    };
+    return lang;
+});
+
+/**
+ * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
+ * Available via the MIT or new BSD license.
+ * see: http://github.com/volojs/volo for details
+ */
+
+
+/*jslint */
+/*global define */
+
+define('volo/config',['require','fs','path','./lang','./baseUrl'],function (require) {
+    var fs = require('fs'),
+        path = require('path'),
+        lang = require('./lang'),
+        //volo/baseUrl is set up in tools/requirejsVars.js
+        baseUrl = require('./baseUrl'),
+        localConfigUrl = path.join(baseUrl, '.config.js'),
+        localConfig, config, contents;
+
+    // The defaults to use.
+    config = {
+        "registry": "https://registry.npmjs.org/",
+
+        "github": {
+            "scheme": "https",
+            "host": "github.com",
+            "apiHost": "api.github.com",
+            "rawUrlPattern": "https://raw.github.com/{owner}/{repo}/{version}/{file}",
+            "overrides": {
+                "jquery/jquery": {
+                    "pattern": "http://code.jquery.com/jquery-{version}.js"
+                }
+            }
+        },
+
+        "volo/add": {
+            "discard": {
+                "test": true,
+                "tests": true,
+                "doc": true,
+                "docs": true,
+                "example": true,
+                "examples": true,
+                "demo": true,
+                "demos": true
+            }
+        }
+    };
+
+    //Allow a local config at baseUrl + '.config.js'
+    if (path.existsSync(localConfigUrl)) {
+        contents = (fs.readFileSync(localConfigUrl, 'utf8') || '').trim();
+
+        if (contents) {
+            localConfig = JSON.parse(contents);
+            lang.mixin(config, localConfig, true);
+        }
+    }
+
+    return config;
+});
+
+/**
+ * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
+ * Available via the MIT or new BSD license.
+ * see: http://github.com/volojs/volo for details
+ */
+
+
+/*jslint plusplus: false */
+/*global define, console */
+
+define('volo/version',['require'],function (require) {
+    var hasSuffixRegExp = /\d+([\w]+)(\d+)?$/,
+        vPrefixRegExp = /^v/;
+
+    return {
+        /**
+         * A Compare function that can be used in an array sort call.
+         * a and b should be N.N.N or vN.N.N version strings. If a is a greater
+         * version number than b, then the function returns -1 to indicate
+         * it should be sorted before b. In other words, the sorted
+         * values will be from highest version to lowest version when
+         * using this function for sorting.
+         *
+         * If the string starts with a "v" it will be stripped before the
+         * comparison.
+         */
+        compare: function (a, b) {
+            var aParts = a.split('.'),
+                bParts = b.split('.'),
+                length = Math.max(aParts.length, bParts.length),
+                i, aPart, bPart, aHasSuffix, bHasSuffix;
+
+            //Remove any "v" prefixes
+            aParts[0] = aParts[0].replace(vPrefixRegExp, '');
+            bParts[0] = bParts[0].replace(vPrefixRegExp, '');
+
+            for (i = 0; i < length; i++) {
+                aPart = parseInt(aParts[i] || '0', 10);
+                bPart = parseInt(bParts[i] || '0', 10);
+
+                if (aPart > bPart) {
+                    return -1;
+                } else if (aPart < bPart) {
+                    return 1;
+                } else {
+                    //parseInt values are equal. Favor string
+                    //values that do not have character suffixes.
+                    //So, 1.0.0 should be sorted higher than 1.0.0.pre
+                    aHasSuffix = hasSuffixRegExp.exec(aParts[i]);
+                    bHasSuffix = hasSuffixRegExp.exec(bParts[i]);
+                    if (!aHasSuffix && !bHasSuffix) {
+                        continue;
+                    } else if (!aHasSuffix && bHasSuffix) {
+                        return -1;
+                    } else if (aHasSuffix && !bHasSuffix) {
+                        return 1;
+                    } else {
+                        //If the character parts of the suffix differ,
+                        //do a lexigraphic compare.
+                        if (aHasSuffix[1] > bHasSuffix[1]) {
+                            return -1;
+                        } else if (aHasSuffix[1] < bHasSuffix[1]) {
+                            return 1;
+                        } else {
+                            //character parts match, so compare the trailing
+                            //digits.
+                            aPart = parseInt(aHasSuffix[2] || '0', 10);
+                            bPart = parseInt(bHasSuffix[2] || '0', 10);
+                            if (aPart > bPart) {
+                                return -1;
+                            } else {
+                                return 1;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return 0;
+        }
+    };
+});
+
+/**
+ * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
+ * Available via the MIT or new BSD license.
+ * see: http://github.com/volojs/volo for details
+ */
+
+
+/*jslint regexp: false */
+/*global define, console */
+
+define('volo/github',['require','q','https','volo/config','volo/version'],function (require) {
+    var q = require('q'),
+        https = require('https'),
+        config = require('volo/config').github,
+        scheme = config.scheme,
+        version = require('volo/version'),
+        host = config.host,
+        apiHost = config.apiHost,
+        versionRegExp = /^(v)?(\d+\..+)/;
+
+    function github(path) {
+        var args = {
+            host: apiHost,
+            path: '/' + path
+        },
+        d = q.defer();
+
+        https.get(args, function (response) {
+            //console.log("statusCode: ", response.statusCode);
+            //console.log("headers: ", response.headers);
+            var body = '';
+
+            response.on('data', function (data) {
+                body += data;
+            });
+
+            response.on('end', function () {
+                if (response.statusCode === 404) {
+                    d.reject(args.host + args.path + ' does not exist');
+                } else if (response.statusCode === 200) {
+                    //Convert the response into an object
+                    d.resolve(JSON.parse(body));
+                } else {
+                    d.reject(args.host + args.path + ' returned status: ' +
+                             response.statusCode + '. ' + body);
+                }
+            });
+        }).on('error', function (e) {
+            d.reject(e);
+        });
+
+        return d.promise;
+    }
+
+    github.url = function (path) {
+        return scheme + '://' + host + '/' + path;
+    };
+
+    github.apiUrl = function (path) {
+        return scheme + '://' + apiHost + '/' + path;
+    };
+
+    github.rawUrl = function (ownerPlusRepo, version, specificFile) {
+        var parts = ownerPlusRepo.split('/'),
+            owner = parts[0],
+            repo = parts[1];
+
+        return config.rawUrlPattern
+                     .replace(/\{owner\}/g, owner)
+                     .replace(/\{repo\}/g, repo)
+                     .replace(/\{version\}/g, version)
+                     .replace(/\{file\}/g, specificFile);
+    };
+
+    github.tarballUrl = function (ownerPlusRepo, version) {
+        return github.url(ownerPlusRepo) + '/tarball/' + version;
+    };
+
+    github.tags = function (ownerPlusRepo) {
+        return github('repos/' + ownerPlusRepo + '/tags').then(function (data) {
+            data = data.map(function (data) {
+                return data.name;
+            });
+
+            return data;
+        });
+    };
+
+
+    github.versionTags = function (ownerPlusRepo) {
+        return github.tags(ownerPlusRepo).then(function (tagNames) {
+            //Only collect tags that are version tags.
+            tagNames = tagNames.filter(function (tag) {
+                return versionRegExp.test(tag);
+            });
+
+            //Now order the tags in tag order.
+            tagNames.sort(version.compare);
+
+            //Default to master if no version tags available.
+            if (!tagNames.length) {
+                tagNames = ['master'];
+            }
+
+            return tagNames;
+        });
+    };
+
+    github.latestTag = function (ownerPlusRepo) {
+        //If ownerPlusRepo includes the version, just use that.
+        var parts = ownerPlusRepo.split('/'),
+            d;
+        if (parts.length === 3) {
+            d = q.defer();
+            d.resolve(parts[2]);
+            return d.promise;
+        } else {
+            return github.versionTags(ownerPlusRepo).then(function (tagNames) {
+                return tagNames[0];
+            });
+        }
+    };
+
+    return github;
+});
+
+/**
+ * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
+ * Available via the MIT or new BSD license.
+ * see: http://github.com/volojs/volo for details
+ */
+
+
+/*jslint */
+/*global define, console */
+
+define('volo/archive',['require','q','path'],function (require) {
+    var q = require('q'),
+        path = require('path'),
+        tarGzRegExp = /\.tar\.gz$/,
+        //Regexp used to strip off file extension
+        fileExtRegExp = /\.tar\.gz$|\.\w+$/;
+
+    return {
+        /**
+         * Resolves an archive value to a .tar.gz http/https URL.
+         * Depends on specific resolver modules to do the work.
+         * If no scheme is on the value, the default is assumed
+         * to be a github resource.
+         * @param {String} archive a string that can somehow resolved to
+         * an http/https URL to a .tar.gz or individual file.
+         *
+         * Returns a promise with the properly resolved value being an
+         * object with the following properties:
+         *
+         * * url: the http/https URL to fetch the archive or single file
+         * * isArchive: true if the URL points to a .tar.gz file.
+         * * fragment: if a fragment ID (# part) was specified on the original
+         *             archive value, normally meaning a file withint an archive
+         * * localName: a possible local name to use for the extracted archive
+         *              value. Useful to use when an explicit one is not
+         *              specified by the user.
+         */
+        resolve: function (archive) {
+
+            var d = q.defer(),
+                index = archive.indexOf(':'),
+                fragIndex = archive.indexOf('#'),
+                fragment = null,
+                scheme,  resolverId, localName;
+
+            //Figure out the scheme. Default is github.
+            if (index === -1) {
+                scheme = 'github';
+            } else {
+                scheme = archive.substring(0, index);
+                archive = archive.substring(index + 1);
+            }
+
+            //If there is a specific file desired inside the archive, peel
+            //that off.
+            if (fragIndex !== -1) {
+                fragment = archive.substring(fragIndex + 1);
+                archive = archive.substring(0, fragIndex);
+            }
+
+            if (scheme === 'http' || scheme === 'https') {
+                //localName is the file name without extension. If a .tar.gz
+                //file, then a does not include .tar.gz
+                localName = archive.substring(archive.lastIndexOf('/') + 1);
+                localName = localName.replace(fileExtRegExp, '');
+
+                d.resolve({
+                    url: archive,
+                    isArchive: tarGzRegExp.test(archive),
+                    fragment: fragment,
+                    localName: localName
+                });
+            } else {
+                //Figure out if there is a resolver for the given scheme.
+                resolverId = 'volo/resolve/' + scheme;
+
+                if (require.defined(resolverId) ||
+                    path.existsSync(require.toUrl(resolverId + '.js'))) {
+                    require([resolverId], function (resolve) {
+                        resolve(archive, fragment, d.resolve, d.reject);
+                    });
+                } else {
+                    d.reject('Do not have a volo resolver for scheme: ' + scheme);
+                }
+            }
+
+            return d.promise;
+        },
+
+        /**
+         * Just tests if the given URL ends in .tar.gz
+         */
+        isArchive: function (url) {
+            return tarGzRegExp.test(url);
+        }
+    };
+});
+
+/**
+ * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
+ * Available via the MIT or new BSD license.
+ * see: http://github.com/volojs/volo for details
+ */
+
+
+/*jslint */
+/*global define, console */
+
+define('volo/resolve/github',['require','path','../config','../archive','../github'],function (require) {
+    var path = require('path'),
+        config = require('../config'),
+        archive = require('../archive'),
+        github = require('../github');
+
+    function resolveGithub(archiveName, fragment, callback, errback) {
+
+        var parts = archiveName.split('/'),
+            ownerPlusRepo, version, localName, override;
+
+        localName = parts[1];
+
+        ownerPlusRepo = parts[0] + '/'  + parts[1];
+        version = parts[2];
+
+        override = config.github.overrides[ownerPlusRepo];
+
+        //Fetch the latest version
+        github.latestTag(ownerPlusRepo + (version ? '/' + version : ''))
+            .then(function (tag) {
+                var isArchive = true,
+                    url;
+
+                //If there is a specific override to finding the file,
+                //for instance jQuery releases are put on a CDN and are not
+                //committed to github, use the override.
+                if (fragment || (override && override.pattern)) {
+                    //If a specific file in the repo. Do not need the full
+                    //tarball, just use a raw github url to get it.
+                    if (fragment) {
+                        url = github.rawUrl(ownerPlusRepo, tag, fragment);
+                        //Adjust local name to be the fragment name.
+                        localName = path.basename(fragment);
+                        //Strip off extension name.
+                        localName = localName.substring(0, localName.lastIndexOf('.'));
+                    } else {
+                        //An override situation.
+                        url = override.pattern.replace(/\{version\}/, tag);
+                    }
+
+                    //Set fragment to null since it has already been processed.
+                    fragment = null;
+
+                    isArchive = archive.isArchive(url);
+                } else {
+                    url = github.tarballUrl(ownerPlusRepo, tag);
+                }
+
+                return {
+                    url: url,
+                    isArchive: isArchive,
+                    fragment: fragment,
+                    localName: localName
+                };
+            })
+            .then(callback, errback);
+    }
+
+    return resolveGithub;
+});
+
+/**
+ * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
+ * Available via the MIT or new BSD license.
+ * see: http://github.com/volojs/volo for details
+ */
+
+
+/*jslint */
+/*global define, console, process */
+
+define('help',['require','exports','module','volo/commands','volo/commands'],function (require, exports, module) {
+    var commands = require('volo/commands'),
+        help;
+
+    help = {
+        summary: 'Gives more detailed help on a volo command.',
+
+        doc: '##Usage\n\n    volo.js help commandName',
+
+        validate: function (namedArgs, commandName) {
+            if (!commandName) {
+                return new Error('Please specify a command name to use help.');
+            }
+
+            if (!commands.have(commandName)) {
+                return new Error(commandName + ' command does not exist. Do ' +
+                                 'you need to *acquire* it?');
+            }
+            return undefined;
+        },
+
+        run: function (deferred, namedArgs, commandName) {
+
+            require([commandName], function (command) {
+                var doc = command.doc || command.summary ||
+                          commandName + ' does not have any documentation.';
+
+                deferred.resolve(doc);
+            });
+        }
+    };
+
+    return require('volo/commands').register(module.id, help);
+});
+
+
+/*jslint */
+/*global define */
+
+define('volo/fileUtil',['require','fs','path','child_process'],function (require) {
+    var fs = require('fs'),
+        path = require('path'),
+        exec = require('child_process').exec,
+        fileUtil;
+
+    function findMatches(matches, dir, regExpInclude, regExpExclude, dirRegExpExclude) {
+        if (path.existsSync(dir) && fs.statSync(dir).isDirectory()) {
+            var files = fs.readdirSync(dir);
+            files.forEach(function (filePath) {
+                filePath = path.join(dir, filePath);
+                var stat = fs.statSync(filePath),
+                    ok = false;
+                if (stat.isFile()) {
+                    ok = true;
+                    if (regExpInclude) {
+                        ok = filePath.match(regExpInclude);
+                    }
+                    if (ok && regExpExclude) {
+                        ok = !filePath.match(regExpExclude);
+                    }
+
+                    if (ok) {
+                        matches.push(filePath);
+                    }
+                } else if (stat.isDirectory() && !dirRegExpExclude.test(filePath)) {
+                    findMatches(matches, filePath, regExpInclude, regExpExclude, dirRegExpExclude);
+                }
+            });
+        }
+    }
+
+    fileUtil = {
+        /**
+         * Recurses startDir and finds matches to the files that match
+         * regExpFilters.include and do not match regExpFilters.exclude.
+         * Or just one regexp can be passed in for regExpFilters,
+         * and it will be treated as the "include" case.
+         *
+         * @param {String} startDir the directory to start the search
+         * @param {RegExp} regExpInclude regexp to match files to include
+         * @param {RegExp} [regExpExclude] regexp to exclude files.
+         * @param {RegExp} [dirRegExpExclude] regexp to exclude directories. By default
+         * ignores .git, .hg, .svn and CVS directories.
+         *
+         * @returns {Array} List of file paths. Could be zero length if no matches.
+         */
+        getFilteredFileList: function (startDir, regExpInclude, regExpExclude, dirRegExpExclude) {
+            var files = [];
+
+            //By default avoid source control directories
+            if (!dirRegExpExclude) {
+                dirRegExpExclude = /\.git|\.hg|\.svn|CVS/;
+            }
+
+            findMatches(files, startDir, regExpInclude, regExpExclude, dirRegExpExclude);
+
+            return files;
+        },
+
+        /**
+         * Reads a file, synchronously.
+         * @param {String} path the path to the file.
+         */
+        readFile: function (path) {
+            return fs.readFileSync(path, 'utf8');
+        },
+
+        /**
+         * Recursively creates directories in dir string.
+         * @param {String} dir the directory to create.
+         */
+        mkdirs: function (dir) {
+            var parts = dir.split('/'),
+                currDir = '',
+                first = true;
+
+            parts.forEach(function (part) {
+                //First part may be empty string if path starts with a slash.
+                currDir += part + '/';
+                first = false;
+
+                if (part) {
+                    if (!path.existsSync(currDir)) {
+                        fs.mkdirSync(currDir, 511);
+                    }
+                }
+            });
+        },
+
+        /**
+         * Does an rm -rf on a directory. Like a boss.
+         */
+        rmdir: function (dir, callback, errback) {
+            if (!dir) {
+                callback();
+            }
+
+            dir = path.resolve(dir);
+
+            if (!path.existsSync(dir)) {
+                callback();
+            }
+
+            if (dir === '/') {
+                if (errback) {
+                    errback(new Error('fileUtil.rmdir cannot handle /'));
+                }
+            }
+
+            exec('rm -rf ' + dir,
+                function (error, stdout, stderr) {
+                    if (error && errback) {
+                        errback(error);
+                    } else if (callback) {
+                        callback();
+                    }
+                }
+            );
+        },
+
+        /**
+         * Returns the first directory found inside a directory.
+         * The return results is dir + firstDir name.
+         */
+        firstDir: function (dir) {
+            var firstDir = null;
+
+            fs.readdirSync(dir).some(function (file) {
+                firstDir = path.join(dir, file);
+                if (fs.statSync(firstDir).isDirectory()) {
+                    return true;
+                } else {
+                    firstDir = null;
+                    return false;
+                }
+            });
+
+            return firstDir;
+        }
+    };
+
+    return fileUtil;
+});
+
+/**
+ * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
+ * Available via the MIT or new BSD license.
+ * see: http://github.com/volojs/volo for details
+ */
+
+
+/*jslint */
+/*global define, console, process */
+
+define('volo/tempDir',['require','path','fs','volo/fileUtil'],function (require) {
+    var path = require('path'),
+        fs = require('fs'),
+        fileUtil = require('volo/fileUtil'),
+        counter = 0,
+        tempDir;
+
+    tempDir = {
+
+        create: function (seed, callback, errback) {
+            var temp = tempDir.createTempName(seed);
+            if (path.existsSync(temp)) {
+                fileUtil.rmdir(temp, function () {
+                    fs.mkdirSync(temp);
+                    callback(temp);
+                }, errback);
+            } else {
+                fs.mkdirSync(temp);
+                callback(temp);
+            }
+        },
+
+        createTempName: function (seed) {
+            counter += 1;
+            return seed.replace(/[\/\:]/g, '-') + '-temp-' + counter;
+        }
+    };
+
+    return tempDir;
+});
+
+/**
+ * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
+ * Available via the MIT or new BSD license.
+ * see: http://github.com/volojs/volo for details
+ */
+
+
+/*jslint plusplus: false */
+/*global define, console */
+
+define('volo/download',['require','https','http','fs','url'],function (require) {
+    var https = require('https'),
+        http = require('http'),
+        fs = require('fs'),
+        urlLib = require('url');
+
+    function download(url, path, callback, errback) {
+        try {
+            var parts = urlLib.parse(url),
+                protocol = parts.protocol === 'https:' ? https : http,
+                writeStream = fs.createWriteStream(path);
+
+            protocol.get(parts, function (response) {
+
+                //console.log("statusCode: ", response.statusCode);
+                //console.log("headers: ", response.headers);
+                try {
+                    if (response.statusCode === 200) {
+
+                        console.log('Downloading: ' + url);
+
+                        //Bingo, do the download.
+                        response.on('data', function (data) {
+                            writeStream.write(data);
+                        });
+
+                        response.on('end', function () {
+                            writeStream.end();
+                            callback(path);
+                        });
+                    } else if (response.statusCode === 302) {
+                        //Redirect, try the new location
+                        download(response.headers.location, path, callback, errback);
+                    } else {
+                        if (errback) {
+                            errback(response);
+                        }
+                    }
+                } catch (e) {
+                    if (errback) {
+                        errback(e);
+                    }
+                }
+            }).on('error', function (e) {
+                if (errback) {
+                    errback(e);
+                } else {
+                    console.error(e);
+                }
+            });
+        } catch (e) {
+            if (errback) {
+                errback(e);
+            }
+        }
+
+    }
+
+    return download;
+});
+/**
+ * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
+ * Available via the MIT or new BSD license.
+ * see: http://github.com/volojs/volo for details
+ */
+
+
+/*jslint */
+/*global define, console */
+
+define('volo/tar',['require','child_process','path'],function (require) {
+    var exec = require('child_process').exec,
+        path = require('path'),
+        gzRegExp = /\.gz$/,
+        tar;
+
+    tar = {
+        untar: function (fileName, callback, errback) {
+
+            var flags = 'xf',
+                dirName = path.dirname(fileName),
+                command;
+
+            //If a .gz file add z to the flags.
+            if (gzRegExp.test(fileName)) {
+                flags = 'z' + flags;
+            }
+
+            command = 'tar -' + flags + ' ' + fileName;
+            if (dirName) {
+                command += ' -C ' + dirName;
+            }
+
+            exec(command,
+                function (error, stdout, stderr) {
+                    if (error && errback) {
+                        errback(error);
+                    } else {
+                        callback();
+                    }
+                }
+            );
+        }
+    };
+
+    return tar;
+});
+/**
+ * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
+ * Available via the MIT or new BSD license.
+ * see: http://github.com/volojs/volo for details
+ */
+
+
+/*jslint */
+/*global define, console */
+
+define('volo/packageJson',['require','path','fs'],function (require) {
+    var path = require('path'),
+        fs = require('fs'),
+        commentRegExp = /\/\*package\.json([\s\S]*?)\*\//,
+        endsInJsRegExp = /\.js$/;
+
+    function extractCommentData(file) {
+        var match = commentRegExp.exec(fs.readFileSync(file, 'utf8')),
+            json = match && match[1] && match[1].trim();
+        if (json) {
+            return JSON.parse(json);
+        } else {
+            return null;
+        }
+    }
+
+    function packageJson(fileOrDir) {
+        var result = {
+            file: null,
+            data: null,
+            singleFile: false
+        },
+        packagePath = path.join(fileOrDir, 'package.json'),
+        jsFiles, filePath, packageData;
+
+        if (fs.statSync(fileOrDir).isFile()) {
+            //A .js file that may have a package.json content
+            result.data = extractCommentData(fileOrDir);
+            result.file = fileOrDir;
+            result.singleFile = true;
+        } else {
+            //Check for /*package.json */ in a .js file if it is the
+            //only .js file in the dir.
+            jsFiles = fs.readdirSync(fileOrDir).filter(function (item) {
+                return endsInJsRegExp.test(item);
+            });
+
+            if (jsFiles.length === 1) {
+                filePath = path.join(fileOrDir, jsFiles[0]);
+                packageData = extractCommentData(filePath);
+            }
+
+            if (packageData || !path.existsSync(packagePath)) {
+                result.data = packageData;
+                result.file = filePath;
+                result.singleFile = true;
+            } else if (path.existsSync(packagePath)) {
+                //Plain package.json case
+                packagePath = path.join(fileOrDir, 'package.json');
+                result.file = packagePath;
+                result.data = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+            }
+        }
+
+        return result;
+    }
+
+
+    return packageJson;
 });
 
 /**
@@ -3350,649 +4287,38 @@ define('volo/main',['require','./commands','q'],function (require) {
     });
 }());
 
-/**
- * @license Copyright (c) 2010-2011, The Dojo Foundation All Rights Reserved.
- * Available via the MIT or new BSD license.
- * see: http://github.com/jrburke/requirejs for details
- */
+define('text!acquire/doc.md',[],function () { return '## Usage\n\n    volo.js acquire [flags] archive [localName]\n\nwhere the allowed flags, archive value and localName values are all the same\nas the **add** command.\n\nThis command just delegates to **add** but installs the code in a **volo**\ndirectory that is the sibling of the volo.js file used to run the command.\n\n## Notes\n\nThe user running this command needs to have write access to the directory that\ncontains volo.js so the volo directory can be created and have file installed\ninto it.\n';});
 
-/*jslint plusplus: false, strict: false */
-/*global define: false */
+define('text!rejuvenate/doc.md',[],function () { return '## Usage\n\n    volo.js rejuvenate [flags] [archive#path/to/volo.js]\n\nIt will replace volo.js with the most recent version tag of volo.js.\n\nBy default it uses **volojs/volo#dist/volo.js** for the archive, but you\ncan use any archive value that is supported by the **add** command. Just\nbe sure to list the path to volo.js in the archive.\n\nrejuvenate accepts the same flags as the **add** command. It explicitly forces\nthe install via the add commands -f flag.\n\nI you want to live on the edge, then you could use the following command:\n\n    volo.js rejuvenate volojs/volo/master#dist/volo.js\n\n## Notes\n\nThe user running this command needs to have write access to the directory that\ncontains volo.js so the volo directory can be created and have file installed\ninto it.\n';});
 
-define('volo/lang',[],function () {
-    var lang = {
-        backSlashRegExp: /\\/g,
-        ostring: Object.prototype.toString,
-
-        isArray: Array.isArray ? Array.isArray : function (it) {
-            return lang.ostring.call(it) === "[object Array]";
-        },
-
-        /**
-         * Simple function to mix in properties from source into target,
-         * but only if target does not already have a property of the same name.
-         */
-        mixin: function (target, source, override) {
-            //Use an empty object to avoid other bad JS code that modifies
-            //Object.prototype.
-            var empty = {}, prop;
-            for (prop in source) {
-                if (override || !(prop in target)) {
-                    target[prop] = source[prop];
-                }
-            }
-        },
-
-        delegate: (function () {
-            // boodman/crockford delegation w/ cornford optimization
-            function TMP() {}
-            return function (obj, props) {
-                TMP.prototype = obj;
-                var tmp = new TMP();
-                TMP.prototype = null;
-                if (props) {
-                    lang.mixin(tmp, props);
-                }
-                return tmp; // Object
-            };
-        }())
-    };
-    return lang;
-});
+define('text!create/doc.md',[],function () { return '## Usage\n\n    volo.js create appName [templateArchive]\n\n**appName** is the name of the directory that should be created containing the\ncontents of the templateArchive.\n\n**templateArchive** defaults to a value of \'volojs/volo-create-template\', but\nany archive value that is usable by **add** can work here instead. The only\nrestriction is that the archive value should resolve to a .tar.gz file and\na #specific/file.js type of archive value should not be used.\n';});
 
 /**
  * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
- * see: http://github.com/jrburke/volo for details
- */
-
-
-/*jslint */
-/*global define */
-
-define('volo/config',['require','fs','path','./lang','./baseUrl'],function (require) {
-    var fs = require('fs'),
-        path = require('path'),
-        lang = require('./lang'),
-        //volo/baseUrl is set up in tools/requirejsVars.js
-        baseUrl = require('./baseUrl'),
-        localConfigUrl = path.join(baseUrl, '.config.js'),
-        localConfig, config, contents;
-
-    // The defaults to use.
-    config = {
-        "registry": "https://registry.npmjs.org/",
-
-        "github": {
-            "scheme": "https",
-            "host": "github.com",
-            "apiHost": "api.github.com",
-            "rawUrlPattern": "https://raw.github.com/{owner}/{repo}/{version}/{file}",
-            "overrides": {
-                "jquery/jquery": {
-                    "pattern": "http://code.jquery.com/jquery-{version}.js"
-                }
-            }
-        },
-
-        "volo/add": {
-            "discard": {
-                "test": true,
-                "tests": true,
-                "doc": true,
-                "docs": true,
-                "example": true,
-                "examples": true,
-                "demo": true,
-                "demos": true
-            }
-        }
-    };
-
-    //Allow a local config at baseUrl + '.config.js'
-    if (path.existsSync(localConfigUrl)) {
-        contents = (fs.readFileSync(localConfigUrl, 'utf8') || '').trim();
-
-        if (contents) {
-            localConfig = JSON.parse(contents);
-            lang.mixin(config, localConfig, true);
-        }
-    }
-
-    return config;
-});
-
-/**
- * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
- * Available via the MIT or new BSD license.
- * see: http://github.com/jrburke/volo for details
- */
-
-
-/*jslint plusplus: false */
-/*global define, console */
-
-define('volo/version',['require'],function (require) {
-    var hasSuffixRegExp = /\d+([\w]+)(\d+)?$/,
-        vPrefixRegExp = /^v/;
-
-    return {
-        /**
-         * A Compare function that can be used in an array sort call.
-         * a and b should be N.N.N or vN.N.N version strings. If a is a greater
-         * version number than b, then the function returns -1 to indicate
-         * it should be sorted before b. In other words, the sorted
-         * values will be from highest version to lowest version when
-         * using this function for sorting.
-         *
-         * If the string starts with a "v" it will be stripped before the
-         * comparison.
-         */
-        compare: function (a, b) {
-            var aParts = a.split('.'),
-                bParts = b.split('.'),
-                length = Math.max(aParts.length, bParts.length),
-                i, aPart, bPart, aHasSuffix, bHasSuffix;
-
-            //Remove any "v" prefixes
-            aParts[0] = aParts[0].replace(vPrefixRegExp, '');
-            bParts[0] = bParts[0].replace(vPrefixRegExp, '');
-
-            for (i = 0; i < length; i++) {
-                aPart = parseInt(aParts[i] || '0', 10);
-                bPart = parseInt(bParts[i] || '0', 10);
-
-                if (aPart > bPart) {
-                    return -1;
-                } else if (aPart < bPart) {
-                    return 1;
-                } else {
-                    //parseInt values are equal. Favor string
-                    //values that do not have character suffixes.
-                    //So, 1.0.0 should be sorted higher than 1.0.0.pre
-                    aHasSuffix = hasSuffixRegExp.exec(aParts[i]);
-                    bHasSuffix = hasSuffixRegExp.exec(bParts[i]);
-                    if (!aHasSuffix && !bHasSuffix) {
-                        continue;
-                    } else if (!aHasSuffix && bHasSuffix) {
-                        return -1;
-                    } else if (aHasSuffix && !bHasSuffix) {
-                        return 1;
-                    } else {
-                        //If the character parts of the suffix differ,
-                        //do a lexigraphic compare.
-                        if (aHasSuffix[1] > bHasSuffix[1]) {
-                            return -1;
-                        } else if (aHasSuffix[1] < bHasSuffix[1]) {
-                            return 1;
-                        } else {
-                            //character parts match, so compare the trailing
-                            //digits.
-                            aPart = parseInt(aHasSuffix[2] || '0', 10);
-                            bPart = parseInt(bHasSuffix[2] || '0', 10);
-                            if (aPart > bPart) {
-                                return -1;
-                            } else {
-                                return 1;
-                            }
-                        }
-                    }
-                }
-            }
-
-            return 0;
-        }
-    };
-});
-
-/**
- * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
- * Available via the MIT or new BSD license.
- * see: http://github.com/jrburke/volo for details
- */
-
-
-/*jslint regexp: false */
-/*global define, console */
-
-define('volo/github',['require','q','https','volo/config','volo/version'],function (require) {
-    var q = require('q'),
-        https = require('https'),
-        config = require('volo/config').github,
-        scheme = config.scheme,
-        version = require('volo/version'),
-        host = config.host,
-        apiHost = config.apiHost,
-        versionRegExp = /^(v)?(\d+\..+)/;
-
-    function github(path) {
-        var args = {
-            host: apiHost,
-            path: '/' + path
-        },
-        d = q.defer();
-
-        https.get(args, function (response) {
-            //console.log("statusCode: ", response.statusCode);
-            //console.log("headers: ", response.headers);
-            var body = '';
-
-            response.on('data', function (data) {
-                body += data;
-            });
-
-            response.on('end', function () {
-                //Convert the response into an object
-                d.resolve(JSON.parse(body));
-            });
-        }).on('error', function (e) {
-            d.reject(e);
-        });
-
-        return d.promise;
-    }
-
-    github.url = function (path) {
-        return scheme + '://' + host + '/' + path;
-    };
-
-    github.apiUrl = function (path) {
-        return scheme + '://' + apiHost + '/' + path;
-    };
-
-    github.rawUrl = function (ownerPlusRepo, version, specificFile) {
-        var parts = ownerPlusRepo.split('/'),
-            owner = parts[0],
-            repo = parts[1];
-
-        return config.rawUrlPattern
-                     .replace(/\{owner\}/g, owner)
-                     .replace(/\{repo\}/g, repo)
-                     .replace(/\{version\}/g, version)
-                     .replace(/\{file\}/g, specificFile);
-    };
-
-    github.tarballUrl = function (ownerPlusRepo, version) {
-        return github.url(ownerPlusRepo) + '/tarball/' + version;
-    };
-
-    github.tags = function (ownerPlusRepo) {
-        return github('repos/' + ownerPlusRepo + '/tags').then(function (data) {
-            data = data.map(function (data) {
-                return data.name;
-            });
-
-            return data;
-        });
-    };
-
-
-    github.versionTags = function (ownerPlusRepo) {
-        return github.tags(ownerPlusRepo).then(function (tagNames) {
-            //Only collect tags that are version tags.
-            tagNames = tagNames.filter(function (tag) {
-                return versionRegExp.test(tag);
-            });
-
-            //Now order the tags in tag order.
-            tagNames.sort(version.compare);
-
-            //Default to master if no version tags available.
-            if (!tagNames.length) {
-                tagNames = ['master'];
-            }
-
-            return tagNames;
-        });
-    };
-
-    github.latestTag = function (ownerPlusRepo) {
-        //If ownerPlusRepo includes the version, just use that.
-        var parts = ownerPlusRepo.split('/'),
-            d;
-        if (parts.length === 3) {
-            d = q.defer();
-            d.resolve(parts[2]);
-            return d.promise;
-        } else {
-            return github.versionTags(ownerPlusRepo).then(function (tagNames) {
-                return tagNames[0];
-            });
-        }
-    };
-
-    return github;
-});
-
-
-/*jslint */
-/*global define */
-
-define('volo/fileUtil',['require','fs','path','child_process'],function (require) {
-    var fs = require('fs'),
-        path = require('path'),
-        exec = require('child_process').exec,
-        fileUtil;
-
-    function findMatches(matches, dir, regExpInclude, regExpExclude, dirRegExpExclude) {
-        if (path.existsSync(dir) && fs.statSync(dir).isDirectory()) {
-            var files = fs.readdirSync(dir);
-            files.forEach(function (filePath) {
-                filePath = path.join(dir, filePath);
-                var stat = fs.statSync(filePath),
-                    ok = false;
-                if (stat.isFile()) {
-                    ok = true;
-                    if (regExpInclude) {
-                        ok = filePath.match(regExpInclude);
-                    }
-                    if (ok && regExpExclude) {
-                        ok = !filePath.match(regExpExclude);
-                    }
-
-                    if (ok) {
-                        matches.push(filePath);
-                    }
-                } else if (stat.isDirectory() && !dirRegExpExclude.test(filePath)) {
-                    findMatches(matches, filePath, regExpInclude, regExpExclude, dirRegExpExclude);
-                }
-            });
-        }
-    }
-
-    fileUtil = {
-        /**
-         * Recurses startDir and finds matches to the files that match
-         * regExpFilters.include and do not match regExpFilters.exclude.
-         * Or just one regexp can be passed in for regExpFilters,
-         * and it will be treated as the "include" case.
-         *
-         * @param {String} startDir the directory to start the search
-         * @param {RegExp} regExpInclude regexp to match files to include
-         * @param {RegExp} [regExpExclude] regexp to exclude files.
-         * @param {RegExp} [dirRegExpExclude] regexp to exclude directories. By default
-         * ignores .git, .hg, .svn and CVS directories.
-         *
-         * @returns {Array} List of file paths. Could be zero length if no matches.
-         */
-        getFilteredFileList: function (startDir, regExpInclude, regExpExclude, dirRegExpExclude) {
-            var files = [];
-
-            //By default avoid source control directories
-            if (!dirRegExpExclude) {
-                dirRegExpExclude = /\.git|\.hg|\.svn|CVS/;
-            }
-
-            findMatches(files, startDir, regExpInclude, regExpExclude, dirRegExpExclude);
-
-            return files;
-        },
-
-        /**
-         * Reads a file, synchronously.
-         * @param {String} path the path to the file.
-         */
-        readFile: function (path) {
-            return fs.readFileSync(path, 'utf8');
-        },
-
-        /**
-         * Recursively creates directories in dir string.
-         * @param {String} dir the directory to create.
-         */
-        mkdirs: function (dir) {
-            var parts = dir.split('/'),
-                currDir = '',
-                first = true;
-
-            parts.forEach(function (part) {
-                //First part may be empty string if path starts with a slash.
-                currDir += part + '/';
-                first = false;
-
-                if (part) {
-                    if (!path.existsSync(currDir)) {
-                        fs.mkdirSync(currDir, 511);
-                    }
-                }
-            });
-        },
-
-        /**
-         * Does an rm -rf on a directory. Like a boss.
-         */
-        rmdir: function (dir, callback, errback) {
-            if (!dir) {
-                callback();
-            }
-
-            dir = path.resolve(dir);
-
-            if (!path.existsSync(dir)) {
-                callback();
-            }
-
-            if (dir === '/') {
-                if (errback) {
-                    errback(new Error('fileUtil.rmdir cannot handle /'));
-                }
-            }
-
-            exec('rm -rf ' + dir,
-                function (error, stdout, stderr) {
-                    if (error && errback) {
-                        errback(error);
-                    } else if (callback) {
-                        callback();
-                    }
-                }
-            );
-        },
-
-        /**
-         * Returns the first directory found inside a directory.
-         * The return results is dir + firstDir name.
-         */
-        firstDir: function (dir) {
-            var firstDir = null;
-
-            fs.readdirSync(dir).some(function (file) {
-                firstDir = path.join(dir, file);
-                if (fs.statSync(firstDir).isDirectory()) {
-                    return true;
-                } else {
-                    firstDir = null;
-                    return false;
-                }
-            });
-
-            return firstDir;
-        }
-    };
-
-    return fileUtil;
-});
-
-/**
- * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
- * Available via the MIT or new BSD license.
- * see: http://github.com/jrburke/volo for details
+ * see: http://github.com/volojs/volo for details
  */
 
 
 /*jslint */
 /*global define, console, process */
 
-define('volo/tempDir',['require','path','fs','volo/fileUtil'],function (require) {
-    var path = require('path'),
-        fs = require('fs'),
-        fileUtil = require('volo/fileUtil'),
-        counter = 0,
-        tempDir;
-
-    tempDir = {
-
-        create: function (seed, callback, errback) {
-            var temp = tempDir.createTempName(seed);
-            if (path.existsSync(temp)) {
-                fileUtil.rmdir(temp, function () {
-                    fs.mkdirSync(temp);
-                    callback(temp);
-                }, errback);
-            } else {
-                fs.mkdirSync(temp);
-                callback(temp);
-            }
-        },
-
-        createTempName: function (seed) {
-            counter += 1;
-            return seed.replace(/\//g, '-') + '-temp-' + counter;
-        }
-    };
-
-    return tempDir;
-});
-
-/**
- * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
- * Available via the MIT or new BSD license.
- * see: http://github.com/jrburke/volo for details
- */
-
-
-/*jslint plusplus: false */
-/*global define, console */
-
-define('volo/download',['require','https','http','fs','url'],function (require) {
-    var https = require('https'),
-        http = require('http'),
-        fs = require('fs'),
-        urlLib = require('url');
-
-    function download(url, path, callback, errback) {
-        try {
-            var parts = urlLib.parse(url),
-                protocol = parts.protocol === 'https:' ? https : http,
-                writeStream = fs.createWriteStream(path);
-
-            protocol.get(parts, function (response) {
-
-                //console.log("statusCode: ", response.statusCode);
-                //console.log("headers: ", response.headers);
-                try {
-                    if (response.statusCode === 200) {
-
-                        console.log('Downloading: ' + url);
-
-                        //Bingo, do the download.
-                        response.on('data', function (data) {
-                            writeStream.write(data);
-                        });
-
-                        response.on('end', function () {
-                            writeStream.end();
-                            callback(path);
-                        });
-                    } else if (response.statusCode === 302) {
-                        //Redirect, try the new location
-                        download(response.headers.location, path, callback, errback);
-                    } else {
-                        if (errback) {
-                            errback(response);
-                        }
-                    }
-                } catch (e) {
-                    if (errback) {
-                        errback(e);
-                    }
-                }
-            }).on('error', function (e) {
-                if (errback) {
-                    errback(e);
-                } else {
-                    console.error(e);
-                }
-            });
-        } catch (e) {
-            if (errback) {
-                errback(e);
-            }
-        }
-
-    }
-
-    return download;
-});
-/**
- * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
- * Available via the MIT or new BSD license.
- * see: http://github.com/jrburke/volo for details
- */
-
-
-/*jslint */
-/*global define, console */
-
-define('volo/tar',['require','child_process','path'],function (require) {
-    var exec = require('child_process').exec,
-        path = require('path'),
-        gzRegExp = /\.gz$/,
-        tar;
-
-    tar = {
-        untar: function (fileName, callback, errback) {
-
-            var flags = 'xf',
-                dirName = path.dirname(fileName),
-                command;
-
-            //If a .gz file add z to the flags.
-            if (gzRegExp.test(fileName)) {
-                flags = 'z' + flags;
-            }
-
-            command = 'tar -' + flags + ' ' + fileName;
-            if (dirName) {
-                command += ' -C ' + dirName;
-            }
-
-            exec(command,
-                function (error, stdout, stderr) {
-                    if (error && errback) {
-                        errback(error);
-                    } else {
-                        callback();
-                    }
-                }
-            );
-        }
-    };
-
-    return tar;
-});
-/**
- * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
- * Available via the MIT or new BSD license.
- * see: http://github.com/jrburke/volo for details
- */
-
-
-/*jslint */
-/*global define, console, process */
-
-define('create',['require','exports','module','fs','path','volo/tempDir','volo/github','volo/fileUtil','volo/download','volo/tar','volo/commands'],function (require, exports, module) {
+define('create',['require','exports','module','fs','path','q','volo/tempDir','volo/archive','volo/fileUtil','volo/download','volo/tar','text!./create/doc.md','volo/commands'],function (require, exports, module) {
     var fs = require('fs'),
         path = require('path'),
+        q = require('q'),
         tempDir = require('volo/tempDir'),
-        github = require('volo/github'),
+        archive = require('volo/archive'),
         fileUtil = require('volo/fileUtil'),
         download = require('volo/download'),
         tar = require('volo/tar'),
         create;
 
     create = {
-        doc: 'Creates a new web project.',
+        summary: 'Creates a new web project.',
+
+        doc: require('text!./create/doc.md'),
+
         validate: function (namedArgs, appName) {
             if (!appName || !(/^[A-Za-z\d\-]+$/.test(appName))) {
                 return new Error('appName can only contain alphanumeric and dash characters.');
@@ -4001,14 +4327,11 @@ define('create',['require','exports','module','fs','path','volo/tempDir','volo/g
             }
             return undefined;
         },
-        run: function (deferred, namedArgs, appName) {
 
-            var template = namedArgs.template || 'jrburke/volo-create-template',
-                parts = template.split('/'),
-                ownerPlusRepo = parts[0] + '/' + parts[1];
+        run: function (deferred, namedArgs, appName, template) {
+            template = template || 'volojs/volo-create-template';
 
-            github.latestTag(template).then(function (version) {
-
+            q.when(archive.resolve(template), function (archiveInfo) {
                 tempDir.create(template, function (tempDirName) {
                     var tarFileName = path.join(tempDirName, 'template.tar.gz');
 
@@ -4019,7 +4342,7 @@ define('create',['require','exports','module','fs','path','volo/tempDir','volo/g
                     }
 
                     //Download the tarball.
-                    download(github.tarballUrl(ownerPlusRepo, version), tarFileName, function (filePath) {
+                    download(archiveInfo.url, tarFileName, function (filePath) {
                         //Unpack the zip file.
                         tar.untar(tarFileName, function () {
                             //Move the untarred directory to the final location.
@@ -4031,7 +4354,7 @@ define('create',['require','exports','module','fs','path','volo/tempDir','volo/g
                                 //Clean up temp area.
                                 fileUtil.rmdir(tempDirName);
 
-                                console.log(ownerPlusRepo + '/' + version +
+                                console.log(archiveInfo.url +
                                             ' used to create ' + appName);
                                 deferred.resolve();
                             } else {
@@ -4040,9 +4363,7 @@ define('create',['require','exports','module','fs','path','volo/tempDir','volo/g
                         }, errCleanUp);
                     }, errCleanUp);
                 }, deferred.reject);
-            }, function (err) {
-                deferred.reject(err);
-            });
+            }, deferred.reject);
         }
     };
 
@@ -4050,94 +4371,25 @@ define('create',['require','exports','module','fs','path','volo/tempDir','volo/g
     return require('volo/commands').register(module.id, create);
 });
 
-/**
- * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
- * Available via the MIT or new BSD license.
- * see: http://github.com/jrburke/volo for details
- */
-
-
-/*jslint */
-/*global define, console */
-
-define('volo/packageJson',['require','path','fs'],function (require) {
-    var path = require('path'),
-        fs = require('fs'),
-        commentRegExp = /\/\*package\.json([\s\S]*?)\*\//,
-        endsInJsRegExp = /\.js$/;
-
-    function extractCommentData(file) {
-        var match = commentRegExp.exec(fs.readFileSync(file, 'utf8')),
-            json = match && match[1] && match[1].trim();
-        if (json) {
-            return JSON.parse(json);
-        } else {
-            return null;
-        }
-    }
-
-    function packageJson(fileOrDir) {
-        var result = {
-            file: null,
-            data: null,
-            singleFile: false
-        },
-        packagePath = path.join(fileOrDir, 'package.json'),
-        jsFiles, filePath, packageData;
-
-        if (fs.statSync(fileOrDir).isFile()) {
-            //A .js file that may have a package.json content
-            result.data = extractCommentData(fileOrDir);
-            result.file = fileOrDir;
-            result.singleFile = true;
-        } else {
-            //Check for /*package.json */ in a .js file if it is the
-            //only .js file in the dir.
-            jsFiles = fs.readdirSync(fileOrDir).filter(function (item) {
-                return endsInJsRegExp.test(item);
-            });
-
-            if (jsFiles.length === 1) {
-                filePath = path.join(fileOrDir, jsFiles[0]);
-                packageData = extractCommentData(filePath);
-            }
-
-            if (packageData || !path.existsSync(packagePath)) {
-                result.data = packageData;
-                result.file = filePath;
-                result.singleFile = true;
-            } else if (path.existsSync(packagePath)) {
-                //Plain package.json case
-                packagePath = path.join(fileOrDir, 'package.json');
-                result.file = packagePath;
-                result.data = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
-            }
-        }
-
-        return result;
-    }
-
-
-    return packageJson;
-});
+define('text!add/doc.md',[],function () { return '## Usage\n\n    volo.js add [flags] archive [localName]\n\nwhere the allowed flags are:\n\n* -f: Forces the add even if the code has already been added to the project.\n\n**archive** is in one of the following formats:\n\n* user/repo: Download the tar.gz from GitHub for the user/repo, using the latest\n  version tag, or "master" if no version tags.\n* user/repo/tag: Download the tar.gz from GitHub for the user/repo, using the\n  specific tag/branch name listed.\n* user/repo/tag#specific/file.js: Download the tar.gz from GitHub for the user/\n  repo, using the specific tag/branch name listed, then extracting only\n  the specific/file.js from that archive and installing it.\n* http://some.domain.com/path/to/archive.tar.gz: Downloads the tar.gz file and\n  installs it.\n* http://some.domain.com/path/to/archive.tar.gz#specific/file.js: Download\n  the tar.gz file and only install specific/file.js.\n\nIf **localName** is specified then that name is used for the installed name.\nIf the installed item is a directory, the directory will have this name. If\na specific file from the the archive, the file will have this name.\n\nIf **localName** is not specified, the installed directory name will be the\nname of the .tar.gz file without the tar.gz extension, or if a GitHub\nreference, the repo name. If it is a specific file from within a .tar.gz file,\nthen that file\'s name will be used.\n\n## Specifics of installation.\n\nFor the directory in which add is run, it will look for the following to know\nwhere to install:\n\n* Looks for a package.json file and if there is an amd.baseUrl defined in it.\n* Looks for a **js** directory\n* Looks for a **scripts** directory\n\nIf none of those result in a subdirectory for installation, then the current\nworking directory is used.\n\nIf the archive has a top level .js file in it and it is the same name\nas the repo\'s/tar.gz file name, then only that .js file will be installed.\n\nOr, if there is only one top level .js file in the repo and it has a\n/*package.json */ comment with JSON inside that comment, it will be used.\n';});
 
 /**
  * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
- * see: http://github.com/jrburke/volo for details
+ * see: http://github.com/volojs/volo for details
  */
 
 
 /*jslint */
 /*global define, console, process */
 
-define('add',['require','exports','module','fs','path','q','volo/config','volo/github','volo/download','volo/packageJson','volo/tar','volo/fileUtil','volo/tempDir','volo/commands'],function (require, exports, module) {
+define('add',['require','exports','module','fs','path','q','volo/config','volo/archive','volo/download','volo/packageJson','volo/tar','volo/fileUtil','volo/tempDir','text!./add/doc.md','volo/commands'],function (require, exports, module) {
     var fs = require('fs'),
         path = require('path'),
         q = require('q'),
         config = require('volo/config'),
         myConfig = config['volo/add'],
-        github = require('volo/github'),
+        archive = require('volo/archive'),
         download = require('volo/download'),
         packageJson = require('volo/packageJson'),
         tar = require('volo/tar'),
@@ -4145,268 +4397,254 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/g
         tempDir = require('volo/tempDir'),
         add;
 
-    function fetchGitHub(namedArgs, ownerPlusRepo, version, specificFile,
-                         localName, isExplicitLocalName) {
-        //First check if localName exists and its version.
-        var pkg = packageJson('.'),
-            baseUrl = pkg.data && pkg.data.amd && pkg.data.amd.baseUrl,
-            d = q.defer(),
-            existingPath, tempDirName;
-
-        //If no baseUrl, then look for an existing js directory
-        if (!baseUrl) {
-            baseUrl = path.join('.', 'js');
-            if (!path.existsSync(baseUrl)) {
-                //Allow for a 'scripts' option instead of js/, in case
-                //it is something uses transpiled scripts so 'js/' would
-                //not be accurate.
-                baseUrl = path.join('.', 'scripts');
-                if (!path.existsSync(baseUrl)) {
-                    //No js or scripts subdir, so just use current directory.
-                    baseUrl = '.';
-                }
-            }
-        }
-
-        //Function used to clean up in case of errors.
-        function errCleanUp(err) {
-            fileUtil.rmdir(tempDirName);
-            d.reject(err);
-        }
-
-        //Function to handle moving the file(s) from temp dir to final location.
-        function moveFromTemp() {
-            try {
-                //Find the directory that was unpacked in tempDirName
-                var dirName = fileUtil.firstDir(tempDirName),
-                    info, targetName, contents, mainName, completeMessage;
-
-                if (dirName) {
-                    //Figure out if this is a one file install.
-                    info = packageJson(dirName);
-
-                    if (info.singleFile) {
-                        //Just move the single file into position.
-                        if (isExplicitLocalName) {
-                            targetName = path.join(baseUrl, localName + '.js');
-                        } else {
-                            targetName = path.join(baseUrl, path.basename(info.file));
-                        }
-
-                        //Check for the existence of the singleFileName, and if it
-                        //already exists, bail out.
-                        if (path.existsSync(targetName) && !namedArgs.force) {
-                            errCleanUp(targetName + ' already exists. To ' +
-                                'install anyway, pass -f to the command');
-                            return;
-                        }
-                        fs.renameSync(info.file, targetName);
-                    } else {
-                        //A complete directory install.
-                        targetName = path.join(baseUrl, localName);
-
-                        //Found the unpacked directory, move it.
-                        fs.renameSync(dirName, targetName);
-
-                        //If directory, remove common directories not needed
-                        //for install. This is a bit goofy, fileUtil.rmdir
-                        //is actually callback based, but cheating here a bit
-                        //TODO: make this Q-based at some point.
-                        if (myConfig.discard) {
-                            fs.readdirSync(targetName).forEach(function (name) {
-                                if (myConfig.discard[name]) {
-                                    fileUtil.rmdir(path.join(targetName, name));
-                                }
-                            });
-                        }
-
-                        if (info.data.main) {
-                            //Trim off any leading dot and file extension, if they exist.
-                            mainName = info.data.main.replace(/^\.\//, '').replace(/\.js$/, '');
-
-                            //Add in adapter module for AMD code
-                            contents = "define(['" + localName + "/" +
-                                mainName + "'], function (main) {\n" +
-                                "    return main;\n" +
-                                "});";
-                            fs.writeFileSync(targetName + '.js', contents, 'utf8');
-
-
-                        }
-                    }
-
-                    //Stamp the app's package.json with the dependency??
-
-                    //Trace nested dependencies in the package.json
-                    //TODO
-
-                    //All done.
-                    fileUtil.rmdir(tempDirName);
-                    completeMessage = namedArgs.silent ? '' : 'Installed ' +
-                            ownerPlusRepo + '/' +
-                            version +
-                            (specificFile ? '#' + specificFile : '') +
-                            ' at ' + targetName + '\nFor AMD-based ' +
-                            'projects use \'' + localName + '\' as the ' +
-                            'dependency name.';
-                    d.resolve(completeMessage);
-                } else {
-                    errCleanUp('Unexpected tarball configuration');
-                }
-            } catch (e) {
-                errCleanUp(e);
-            }
-        }
-
-        try {
-            //If the baseUrl does not exist, create it.
-            fileUtil.mkdirs(baseUrl);
-
-            //Get the package JSON data for dependency, if it is already on disk.
-            existingPath = path.join(baseUrl, localName);
-            if (!path.existsSync(existingPath)) {
-                existingPath += '.js';
-                if (!path.existsSync(existingPath)) {
-                    existingPath = null;
-                }
-            }
-
-            pkg = (existingPath && packageJson(existingPath)) || {};
-
-            if (existingPath && !namedArgs.force) {
-                d.reject(existingPath + ' already exists. To ' +
-                                 'install anyway, pass -f to the command');
-                return d.promise;
-            }
-
-        } catch (e) {
-            errCleanUp(e);
-        }
-
-        //Create a temporary directory to download the code.
-        tempDir.create(ownerPlusRepo + '/' + version, function (newTempDir) {
-            tempDirName = newTempDir;
-
-            var override = config.github.overrides[ownerPlusRepo],
-                url, urlDir, ext;
-
-            //If there is a specific override to finding the file,
-            //for instance jQuery releases are put on a CDN and are not
-            //committed to github, use the override.
-            if (specificFile || (override && override.pattern)) {
-
-                //If a specific file in the repo. Do not need the full tarball,
-                //just use a raw github url to get it.
-                if (specificFile) {
-                    url = github.rawUrl(ownerPlusRepo, version, specificFile);
-                    //Adjust local name to be the specificFile name, unless
-                    //there was a specific localName specified.
-                    if (!isExplicitLocalName) {
-                        localName = path.basename(specificFile);
-                        //Strip off extension name.
-                        localName = localName.substring(0, localName.lastIndexOf('.'));
-                        isExplicitLocalName = true;
-                    }
-                } else {
-                    //An override situation.
-                    url = override.pattern.replace(/\{version\}/, version);
-                }
-
-                ext = url.substring(url.lastIndexOf('.') + 1, url.length);
-
-                //Create a directory inside tempDirName to receive the file,
-                //since the tarball path has a similar setup.
-                urlDir = path.join(tempDirName, 'download');
-                fs.mkdirSync(urlDir);
-
-                download(url, path.join(urlDir, localName + '.' + ext),
-                         function (filePath) {
-
-                    moveFromTemp();
-                }, errCleanUp);
-            } else {
-                download(github.tarballUrl(ownerPlusRepo, version), path.join(tempDirName,
-                         localName + '.tar.gz'), function (filePath) {
-
-                    //Unpack the zip file.
-                    tar.untar(path.join(tempDirName, localName + '.tar.gz'), function () {
-                        moveFromTemp();
-                    }, errCleanUp);
-                }, errCleanUp);
-            }
-        }, errCleanUp);
-
-        return d.promise;
-    }
-
     add = {
-        doc: 'Add code to your project.',
-        validate: function (namedArgs, packageName, version) {
-            if (!packageName) {
-                return new Error('Please specify a package name or an URL.');
+        summary: 'Add code to your project.',
+
+        doc: require('text!./add/doc.md'),
+
+        flags: {
+            'f': 'force'
+        },
+
+        validate: function (namedArgs, archiveName, version) {
+            if (!archiveName) {
+                return new Error('Please specify an archive name or an URL.');
             }
 
             //Make sure we are in an app directory with a package.json file,
             //or a JS file with
             if (!packageJson('.').data) {
-                return new Error('Please run the add command inside a directory ' +
-                                 'with a package.json file, or a JS file ' +
-                                 'with a /*package.json */ comment');
+                return new Error('Please run the add command inside a ' +
+                                 'directory with a package.json file, or a ' +
+                                 'JS file with a /*package.json */ comment');
             }
 
-            //Adjust any shorthand command flags to long name values.
-            if (namedArgs.f) {
-                namedArgs.force = true;
-            }
-            if (namedArgs.s) {
-                namedArgs.silent = true;
-            }
             return undefined;
         },
-        run: function (deferred, namedArgs, packageName, localName) {
+        run: function (deferred, namedArgs, archiveName, specificLocalName) {
 
-            //Parse the packageName
-            var index = packageName.indexOf(':'),
-                fragIndex = packageName.indexOf('#'),
-                isExplicitLocalName = !!localName,
-                scheme, parts, ownerPlusRepo, version, lastPart, specificFile;
+            q.when(archive.resolve(archiveName), function (archiveInfo) {
 
-            //Figure out the scheme. Default is github.
-            if (index === -1) {
-                scheme = 'github';
-            } else {
-                scheme = packageName.substring(0, index);
-                packageName = packageName.substring(index + 1);
-            }
+                var pkg = packageJson('.'),
+                    baseUrl = pkg.data && pkg.data.amd && pkg.data.amd.baseUrl,
+                    existingPath, tempDirName;
 
-            //If there is a specific file desired inside the archive, peel
-            //that off.
-            if (fragIndex !== -1) {
-                specificFile = packageName.substring(fragIndex + 1);
-                packageName = packageName.substring(0, fragIndex);
-            }
-
-            if (scheme === 'github') {
-                //A github location.
-                parts = packageName.split('/');
-
-                //Last part can be a #file to be found in the location.
-                lastPart = parts[parts.length - 1];
-
-                if (!localName) {
-                    localName = parts[1];
+                //If no baseUrl, then look for an existing js directory
+                if (!baseUrl) {
+                    baseUrl = path.join('.', 'js');
+                    if (!path.existsSync(baseUrl)) {
+                        //Allow for a 'scripts' option instead of js/, in case
+                        //it is something uses transpiled scripts so 'js/'
+                        //would not be accurate.
+                        baseUrl = path.join('.', 'scripts');
+                        if (!path.existsSync(baseUrl)) {
+                            //No js or scripts subdir, so just use current
+                            //directory.
+                            baseUrl = '.';
+                        }
+                    }
                 }
 
-                ownerPlusRepo = parts[0] + '/'  + parts[1];
-                version = parts[2];
+                //Store the final local name. Value given in add command
+                //takes precedence over the calculated name.
+                archiveInfo.finalLocalName = specificLocalName ||
+                                             archiveInfo.localName;
 
-                //Fetch the latest version
-                github.latestTag(ownerPlusRepo + (version ? '/' + version : '')).then(function (tag) {
-                    return fetchGitHub(namedArgs, ownerPlusRepo, tag, specificFile, localName, isExplicitLocalName);
-                }).then(deferred.resolve, deferred.reject);
-            } else {
-                deferred.reject(packageName + ' format is not supported yet.');
-            }
+                //Function used to clean up in case of errors.
+                function errCleanUp(err) {
+                    fileUtil.rmdir(tempDirName);
+                    deferred.reject(err);
+                }
+
+                //Function to handle moving the file(s) from temp dir to final
+                //location.
+                function moveFromTemp() {
+                    try {
+                        //Find the directory that was unpacked in tempDirName
+                        var dirName = fileUtil.firstDir(tempDirName),
+                            info, sourceName, targetName, contents, mainName,
+                            completeMessage, listing, defaultName;
+
+                        if (dirName) {
+                            //If the directory only contains one file, then
+                            //that is the install target.
+                            listing = fs.readdirSync(dirName);
+                            if (dirName.length === 1) {
+                                sourceName = path.join(dirName, listing[0]);
+                                defaultName = listing[0];
+                            } else {
+                                //packagJson will look for one top level .js
+                                //file, and if so, and has package data via
+                                //a package.json comment, only install that
+                                //file.
+                                info = packageJson(dirName);
+                                if (info.singleFile && info.data) {
+                                    sourceName = info.singleFile;
+                                    defaultName = path.basename(info.file);
+                                } else {
+                                    //Also, look for a single .js file that
+                                    //matches the localName of the archive,
+                                    //and if there is a match, only install
+                                    //that file.
+                                    defaultName = archiveInfo.localName + '.js';
+                                    sourceName = path.join(dirName, defaultName);
+                                    if (!path.existsSync(sourceName)) {
+                                        sourceName = null;
+                                    }
+                                }
+                            }
+
+                            if (sourceName) {
+                                //Just move the single file into position.
+                                if (specificLocalName) {
+                                    targetName = path.join(baseUrl,
+                                                           specificLocalName +
+                                                           '.js');
+                                } else {
+                                    targetName = path.join(baseUrl, defaultName);
+                                }
+
+                                //Check for the existence of the
+                                //singleFileName, and if it already exists,
+                                //bail out.
+                                if (path.existsSync(targetName) &&
+                                    !namedArgs.force) {
+                                    errCleanUp(targetName + ' already exists.' +
+                                        ' To install anyway, pass -f to the ' +
+                                        'command');
+                                    return;
+                                }
+                                fs.renameSync(sourceName, targetName);
+                            } else {
+                                //A complete directory install.
+                                targetName = path.join(baseUrl,
+                                                       archiveInfo.localName);
+
+                                //Found the unpacked directory, move it.
+                                fs.renameSync(dirName, targetName);
+
+                                //If directory, remove common directories not
+                                //needed for install. This is a bit goofy,
+                                //fileUtil.rmdir is actually callback based,
+                                //but cheating here a bit
+                                //TODO: make this Q-based at some point.
+                                if (myConfig.discard) {
+                                    fs.readdirSync(targetName).forEach(
+                                        function (name) {
+                                        if (myConfig.discard[name]) {
+                                            fileUtil.rmdir(path.join(targetName,
+                                                                     name));
+                                        }
+                                    });
+                                }
+
+                                if (info.data.main) {
+                                    //Trim off any leading dot and file
+                                    //extension, if they exist.
+                                    mainName = info.data.main
+                                                   .replace(/^\.\//, '')
+                                                   .replace(/\.js$/, '');
+
+                                    //Add in adapter module for AMD code
+                                    contents = "define(['" +
+                                        archiveInfo.localName + "/" +
+                                        mainName + "'], function (main) {\n" +
+                                        "    return main;\n" +
+                                        "});";
+                                    fs.writeFileSync(targetName + '.js',
+                                                     contents, 'utf8');
+
+
+                                }
+                            }
+
+                            //Stamp app's package.json with the dependency??
+
+                            //Trace nested dependencies in the package.json
+                            //TODO
+
+                            //All done.
+                            fileUtil.rmdir(tempDirName);
+                            completeMessage = 'Installed ' +
+                                archiveInfo.url +
+                                (archiveInfo.fragment ? '#' +
+                                 archiveInfo.fragment : '') +
+                                ' at ' + targetName + '\nFor AMD-based ' +
+                                'projects use \'' + archiveInfo.localName +
+                                '\' as the ' + 'dependency name.';
+                            deferred.resolve(completeMessage);
+                        } else {
+                            errCleanUp('Unexpected tarball configuration');
+                        }
+                    } catch (e) {
+                        errCleanUp(e);
+                    }
+                }
+
+                try {
+                    //If the baseUrl does not exist, create it.
+                    fileUtil.mkdirs(baseUrl);
+
+                    //Get the package JSON data for dependency, if it is
+                    //already on disk.
+                    existingPath = path.join(baseUrl, archiveInfo.localName);
+                    if (!path.existsSync(existingPath)) {
+                        existingPath += '.js';
+                        if (!path.existsSync(existingPath)) {
+                            existingPath = null;
+                        }
+                    }
+
+                    pkg = (existingPath && packageJson(existingPath)) || {};
+
+                    if (existingPath && !namedArgs.force) {
+                        deferred.reject(existingPath + ' already exists. To ' +
+                                'install anyway, pass -f to the command');
+                        return;
+                    }
+
+                } catch (e) {
+                    errCleanUp(e);
+                }
+
+                //Create a temporary directory to download the code.
+                tempDir.create(archiveInfo.localName, function (newTempDir) {
+                    tempDirName = newTempDir;
+
+                    var url = archiveInfo.url,
+                        localName = archiveInfo.localName,
+                        ext = archiveInfo.isArchive ? '.tar.gz' :
+                              url.substring(url.lastIndexOf('.') + 1,
+                                            url.length),
+                        urlDir, tarName;
+
+                    if (archiveInfo.isArchive) {
+                        download(url, path.join(tempDirName,
+                                 localName + '.tar.gz'), function (filePath) {
+
+                            //Unpack the zip file.
+                            tarName = path.join(tempDirName, localName +
+                                                '.tar.gz');
+                            tar.untar(tarName, function () {
+                                moveFromTemp();
+                            }, errCleanUp);
+                        }, errCleanUp);
+                    } else {
+                        //Create a directory inside tempDirName to receive the
+                        //file, since the tarball path has a similar setup.
+                        urlDir = path.join(tempDirName, 'download');
+                        fs.mkdirSync(urlDir);
+
+                        download(url, path.join(urlDir, localName + '.' + ext),
+                            function (filePath) {
+                                moveFromTemp();
+                            },
+                            errCleanUp
+                        );
+                    }
+                }, errCleanUp);
+
+            }, deferred.reject);
         }
     };
 
@@ -4416,14 +4654,14 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/g
 /**
  * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
- * see: http://github.com/jrburke/volo for details
+ * see: http://github.com/volojs/volo for details
  */
 
 
 /*jslint */
 /*global define, console, process */
 
-define('acquire',['require','exports','module','fs','q','path','add','volo/commands'],function (require, exports, module) {
+define('acquire',['require','exports','module','fs','q','path','add','text!./acquire/doc.md','volo/commands'],function (require, exports, module) {
     var fs = require('fs'),
         q = require('q'),
         path = require('path'),
@@ -4431,10 +4669,16 @@ define('acquire',['require','exports','module','fs','q','path','add','volo/comma
         acquire;
 
     acquire = {
-        doc: 'Adds a new command to volo.',
+        summary: 'Adds a new command to volo.',
+
+        doc: require('text!./acquire/doc.md'),
+
+        flags: add.flags,
+
         validate: function (namedArgs, appName) {
             add.validate.apply(add, arguments);
         },
+
         run: function (deferred, namedArgs, packageName, localName) {
             //Create a 'volo' directory as a sibling to the volo.js file
             var execName = process.argv[1],
@@ -4478,22 +4722,28 @@ define('acquire',['require','exports','module','fs','q','path','add','volo/comma
 /**
  * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
- * see: http://github.com/jrburke/volo for details
+ * see: http://github.com/volojs/volo for details
  */
 
 
 /*jslint */
 /*global define, console, process */
 
-define('rejuvenate',['require','exports','module','q','path','add','volo/commands'],function (require, exports, module) {
+define('rejuvenate',['require','exports','module','q','path','add','text!./rejuvenate/doc.md','volo/commands'],function (require, exports, module) {
     var q = require('q'),
         path = require('path'),
         add = require('add'),
         rejuvenate;
 
     rejuvenate = {
-        doc: 'Updates volo.js to latest version.',
+        summary: 'Updates volo.js to latest version.',
+
+        doc: require('text!./rejuvenate/doc.md'),
+
+        flags: add.flags,
+
         validate: function (namedArgs) {},
+
         run: function (deferred, namedArgs, from) {
             //Create a 'volo' directory as a sibling to the volo.js file
             var execName = process.argv[1],
@@ -4502,7 +4752,7 @@ define('rejuvenate',['require','exports','module','q','path','add','volo/command
                 cwd = process.cwd(),
                 d = q.defer();
 
-            from = from || 'jrburke/volo#dist/volo.js';
+            from = from || 'volojs/volo#dist/volo.js';
 
             //Change directory to the one holding volo.js
             process.chdir(dirName);
@@ -4510,6 +4760,10 @@ define('rejuvenate',['require','exports','module','q','path','add','volo/command
             function finish(result) {
                 process.chdir(cwd);
             }
+
+            //Set force: true in namedArgs so that add will do the
+            //work even though volo.js exists.
+            namedArgs.force = true;
 
             add.run(d, namedArgs, from, baseName);
 
@@ -4539,6 +4793,7 @@ requirejs(['volo/main'], function (main) {
             console.log(message);
         }
     }, function (err) {
-        console.log('ERROR: ' + err);
+        console.log(err.toString());
+        process.exit(1);
     });
 });

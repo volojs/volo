@@ -1,7 +1,7 @@
 /**
  * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
- * see: http://github.com/jrburke/volo for details
+ * see: http://github.com/volojs/volo for details
  */
 
 'use strict';
@@ -34,7 +34,7 @@ define(function (require, exports, module) {
         },
 
         run: function (deferred, namedArgs, appName, template) {
-            template = template || 'jrburke/volo-create-template';
+            template = template || 'volojs/volo-create-template';
 
             q.when(archive.resolve(template), function (archiveInfo) {
                 tempDir.create(template, function (tempDirName) {
