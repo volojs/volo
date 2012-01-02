@@ -35,8 +35,15 @@ define(function (require) {
             });
 
             response.on('end', function () {
-                //Convert the response into an object
-                d.resolve(JSON.parse(body));
+                if (response.statusCode === 404) {
+                    d.reject(args.host + args.path + ' does not exist');
+                } else if (response.statusCode === 200) {
+                    //Convert the response into an object
+                    d.resolve(JSON.parse(body));
+                } else {
+                    d.reject(args.host + args.path + ' returned status: ' +
+                             response.statusCode + '. ' + body);
+                }
             });
         }).on('error', function (e) {
             d.reject(e);

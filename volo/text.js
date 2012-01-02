@@ -20,7 +20,7 @@
 
     define(function () {
         var text, get, fs;
-debugger;
+
         if (typeof window !== "undefined" && window.navigator && window.document) {
             get = function (url, callback) {
                 var xhr = text.createXhr();
@@ -204,7 +204,6 @@ debugger;
             },
 
             load: function (name, req, onLoad, config) {
-debugger;
                 //Name has format: some.module.filext!strip
                 //The strip part is optional.
                 //if strip is present, then that means only get the string contents

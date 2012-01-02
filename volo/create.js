@@ -11,8 +11,9 @@
 define(function (require, exports, module) {
     var fs = require('fs'),
         path = require('path'),
+        q = require('q'),
         tempDir = require('volo/tempDir'),
-        github = require('volo/github'),
+        archive = require('volo/archive'),
         fileUtil = require('volo/fileUtil'),
         download = require('volo/download'),
         tar = require('volo/tar'),
@@ -31,14 +32,9 @@ define(function (require, exports, module) {
         },
 
         run: function (deferred, namedArgs, appName, template) {
-            var parts, ownerPlusRepo;
-
             template = template || 'jrburke/volo-create-template';
-            parts = template.split('/');
-            ownerPlusRepo = parts[0] + '/' + parts[1];
 
-            github.latestTag(template).then(function (version) {
-
+            q.when(archive.resolve(template), function (archiveInfo) {
                 tempDir.create(template, function (tempDirName) {
                     var tarFileName = path.join(tempDirName, 'template.tar.gz');
 
@@ -49,7 +45,7 @@ define(function (require, exports, module) {
                     }
 
                     //Download the tarball.
-                    download(github.tarballUrl(ownerPlusRepo, version), tarFileName, function (filePath) {
+                    download(archiveInfo.url, tarFileName, function (filePath) {
                         //Unpack the zip file.
                         tar.untar(tarFileName, function () {
                             //Move the untarred directory to the final location.
@@ -61,7 +57,7 @@ define(function (require, exports, module) {
                                 //Clean up temp area.
                                 fileUtil.rmdir(tempDirName);
 
-                                console.log(ownerPlusRepo + '/' + version +
+                                console.log(archiveInfo.url +
                                             ' used to create ' + appName);
                                 deferred.resolve();
                             } else {
@@ -70,9 +66,7 @@ define(function (require, exports, module) {
                         }, errCleanUp);
                     }, errCleanUp);
                 }, deferred.reject);
-            }, function (err) {
-                deferred.reject(err);
-            });
+            }, deferred.reject);
         }
     };
 

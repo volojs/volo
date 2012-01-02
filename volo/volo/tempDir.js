@@ -32,7 +32,7 @@ define(function (require) {
 
         createTempName: function (seed) {
             counter += 1;
-            return seed.replace(/\//g, '-') + '-temp-' + counter;
+            return seed.replace(/[\/\:]/g, '-') + '-temp-' + counter;
         }
     };
 

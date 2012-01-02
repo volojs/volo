@@ -16,6 +16,7 @@
         '../tools/node',
         'volo/main',
         'volo/github',
+        'volo/resolve/github',
         'help',
         'acquire',
         'rejuvenate',
