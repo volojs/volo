@@ -16,10 +16,14 @@ define(function (require, exports, module) {
         acquire;
 
     acquire = {
-        doc: 'Adds a new command to volo.',
+        summary: 'Adds a new command to volo.',
+
+        flags: add.flags,
+
         validate: function (namedArgs, appName) {
             add.validate.apply(add, arguments);
         },
+
         run: function (deferred, namedArgs, packageName, localName) {
             //Create a 'volo' directory as a sibling to the volo.js file
             var execName = process.argv[1],

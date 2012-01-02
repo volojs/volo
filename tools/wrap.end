@@ -12,6 +12,7 @@ requirejs(['volo/main'], function (main) {
             console.log(message);
         }
     }, function (err) {
-        console.log('ERROR: ' + err);
+        console.log(err.toString());
+        process.exit(1);
     });
 });

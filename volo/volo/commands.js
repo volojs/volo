@@ -53,7 +53,7 @@ define(function (require) {
                 ids.sort();
 
                 for (i = 0; i < ids.length; i++) {
-                    message += ids[i] + ': ' + require(ids[i]).doc + '\n\n';
+                    message += ids[i] + ': ' + require(ids[i]).summary + '\n\n';
                 }
 
                 callback(message);

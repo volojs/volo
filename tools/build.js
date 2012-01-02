@@ -1,8 +1,6 @@
 ({
     baseUrl: '../volo',
     paths: {
-        'q': 'volo/q',
-        'text': 'volo/text',
         'fs': 'empty:',
         'path': 'empty:',
         'url': 'empty:',
@@ -17,12 +15,15 @@
         '../tools/requirejsVars',
         '../tools/node',
         'volo/main',
-        'text',
         'volo/github',
+        'help',
         'acquire',
         'rejuvenate',
         'create',
-        'add'
+        'add',
+
+        //Leave this one last, see r.js issue #70
+        'text'
     ],
     wrap: {
         startFile: "wrap.start",

@@ -15,8 +15,12 @@ define(function (require, exports, module) {
         rejuvenate;
 
     rejuvenate = {
-        doc: 'Updates volo.js to latest version.',
+        summary: 'Updates volo.js to latest version.',
+
+        flags: add.flags,
+
         validate: function (namedArgs) {},
+
         run: function (deferred, namedArgs, from) {
             //Create a 'volo' directory as a sibling to the volo.js file
             var execName = process.argv[1],

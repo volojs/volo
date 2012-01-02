@@ -19,7 +19,8 @@ define(function (require, exports, module) {
         create;
 
     create = {
-        doc: 'Creates a new web project.',
+        summary: 'Creates a new web project.',
+
         validate: function (namedArgs, appName) {
             if (!appName || !(/^[A-Za-z\d\-]+$/.test(appName))) {
                 return new Error('appName can only contain alphanumeric and dash characters.');
@@ -28,11 +29,13 @@ define(function (require, exports, module) {
             }
             return undefined;
         },
-        run: function (deferred, namedArgs, appName) {
 
-            var template = namedArgs.template || 'jrburke/volo-create-template',
-                parts = template.split('/'),
-                ownerPlusRepo = parts[0] + '/' + parts[1];
+        run: function (deferred, namedArgs, appName, template) {
+            var parts, ownerPlusRepo;
+
+            template = template || 'jrburke/volo-create-template';
+            parts = template.split('/');
+            ownerPlusRepo = parts[0] + '/' + parts[1];
 
             github.latestTag(template).then(function (version) {
 

@@ -16,16 +16,18 @@ define(function (require) {
         var deferred = q.defer(),
             //First two args are 'node' and 'volo.js'
             args = process.argv.slice(2),
-            namedArgs = {}, aryArgs = [],
+            namedArgs = {},
+            aryArgs = [],
+            flags = [],
             commandName, combinedArgs;
 
         //Cycle through args, pulling off name=value pairs into an object.
         args.forEach(function (arg) {
             if (arg.indexOf('=') === -1) {
                 //If passed a flag like -f, convert to named
-                //arg .f = true
+                //argument based on the command's configuration.
                 if (arg.indexOf('-') === 0) {
-                    namedArgs[arg.substring(1)] = true;
+                    flags.push(arg.substring(1));
                 } else {
                     //Regular array arg.
                     aryArgs.push(arg);
@@ -45,12 +47,33 @@ define(function (require) {
             combinedArgs = [namedArgs].concat(aryArgs);
 
             require([commandName], function (command) {
-                var result = command.validate.apply(command, combinedArgs);
-                if (result) {
-                    //Any result from a validate is considered an error result.
-                    deferred.reject(result);
-                } else {
-                    command.run.apply(command, [deferred].concat(combinedArgs));
+
+                //Really have the command. Now convert the flags into
+                //named arguments.
+                var hasFlagError = false,
+                    validationError;
+
+                flags.some(function (flag) {
+                    if (command.flags && command.flags[flag]) {
+                        namedArgs[command.flags[flag]] = true;
+                    } else {
+                        hasFlagError = true;
+                        deferred.reject('Invalid flag for ' + commandName + ': -' + flag);
+                    }
+
+                    return hasFlagError;
+                });
+
+                if (!hasFlagError) {
+                    if (command.validate) {
+                        validationError = command.validate.apply(command, combinedArgs);
+                    }
+                    if (validationError) {
+                        //Any result from a validate is considered an error result.
+                        deferred.reject(validationError);
+                    } else {
+                        command.run.apply(command, [deferred].concat(combinedArgs));
+                    }
                 }
             });
         } else {

@@ -20,6 +20,7 @@ define(function (require, exports, module) {
         tar = require('volo/tar'),
         fileUtil = require('volo/fileUtil'),
         tempDir = require('volo/tempDir'),
+        docText = require('text!./add/doc.md'),
         add;
 
     function fetchGitHub(namedArgs, ownerPlusRepo, version, specificFile,
@@ -119,13 +120,13 @@ define(function (require, exports, module) {
 
                     //All done.
                     fileUtil.rmdir(tempDirName);
-                    completeMessage = namedArgs.silent ? '' : 'Installed ' +
-                            ownerPlusRepo + '/' +
-                            version +
-                            (specificFile ? '#' + specificFile : '') +
-                            ' at ' + targetName + '\nFor AMD-based ' +
-                            'projects use \'' + localName + '\' as the ' +
-                            'dependency name.';
+                    completeMessage = 'Installed ' +
+                        ownerPlusRepo + '/' +
+                        version +
+                        (specificFile ? '#' + specificFile : '') +
+                        ' at ' + targetName + '\nFor AMD-based ' +
+                        'projects use \'' + localName + '\' as the ' +
+                        'dependency name.';
                     d.resolve(completeMessage);
                 } else {
                     errCleanUp('Unexpected tarball configuration');
@@ -217,7 +218,14 @@ define(function (require, exports, module) {
     }
 
     add = {
-        doc: 'Add code to your project.',
+        summary: 'Add code to your project.',
+
+        doc: docText,
+
+        flags: {
+            'f': 'force'
+        },
+
         validate: function (namedArgs, packageName, version) {
             if (!packageName) {
                 return new Error('Please specify a package name or an URL.');
@@ -231,13 +239,6 @@ define(function (require, exports, module) {
                                  'with a /*package.json */ comment');
             }
 
-            //Adjust any shorthand command flags to long name values.
-            if (namedArgs.f) {
-                namedArgs.force = true;
-            }
-            if (namedArgs.s) {
-                namedArgs.silent = true;
-            }
             return undefined;
         },
         run: function (deferred, namedArgs, packageName, localName) {
