@@ -34,6 +34,10 @@ define(function (require, exports, module) {
                 process.chdir(cwd);
             }
 
+            //Set force: true in namedArgs so that add will do the
+            //work even though volo.js exists.
+            namedArgs.force = true;
+
             add.run(d, namedArgs, from, baseName);
 
             q.when(d.promise, function (result) {
