@@ -40,9 +40,9 @@ define(function (require, exports, module) {
             //Make sure we are in an app directory with a package.json file,
             //or a JS file with
             if (!packageJson('.').data) {
-                return new Error('Please run the add command inside a directory ' +
-                                 'with a package.json file, or a JS file ' +
-                                 'with a /*package.json */ comment');
+                return new Error('Please run the add command inside a ' +
+                                 'directory with a package.json file, or a ' +
+                                 'JS file with a /*package.json */ comment');
             }
 
             return undefined;
@@ -60,19 +60,21 @@ define(function (require, exports, module) {
                     baseUrl = path.join('.', 'js');
                     if (!path.existsSync(baseUrl)) {
                         //Allow for a 'scripts' option instead of js/, in case
-                        //it is something uses transpiled scripts so 'js/' would
-                        //not be accurate.
+                        //it is something uses transpiled scripts so 'js/'
+                        //would not be accurate.
                         baseUrl = path.join('.', 'scripts');
                         if (!path.existsSync(baseUrl)) {
-                            //No js or scripts subdir, so just use current directory.
+                            //No js or scripts subdir, so just use current
+                            //directory.
                             baseUrl = '.';
                         }
                     }
                 }
 
-                if (specificLocalName) {
-                    archiveInfo.localName = specificLocalName;
-                }
+                //Store the final local name. Value given in add command
+                //takes precedence over the calculated name.
+                archiveInfo.finalLocalName = specificLocalName ||
+                                             archiveInfo.localName;
 
                 //Function used to clean up in case of errors.
                 function errCleanUp(err) {
@@ -80,68 +82,109 @@ define(function (require, exports, module) {
                     deferred.reject(err);
                 }
 
-                //Function to handle moving the file(s) from temp dir to final location.
+                //Function to handle moving the file(s) from temp dir to final
+                //location.
                 function moveFromTemp() {
                     try {
                         //Find the directory that was unpacked in tempDirName
                         var dirName = fileUtil.firstDir(tempDirName),
-                            info, targetName, contents, mainName, completeMessage;
+                            info, sourceName, targetName, contents, mainName,
+                            completeMessage, listing, defaultName;
 
                         if (dirName) {
-                            //Figure out if this is a one file install.
-                            info = packageJson(dirName);
+                            //If the directory only contains one file, then
+                            //that is the install target.
+                            listing = fs.readdirSync(dirName);
+                            if (dirName.length === 1) {
+                                sourceName = path.join(dirName, listing[0]);
+                                defaultName = listing[0];
+                            } else {
+                                //packagJson will look for one top level .js
+                                //file, and if so, and has package data via
+                                //a package.json comment, only install that
+                                //file.
+                                info = packageJson(dirName);
+                                if (info.singleFile && info.data) {
+                                    sourceName = info.singleFile;
+                                    defaultName = path.basename(info.file);
+                                } else {
+                                    //Also, look for a single .js file that
+                                    //matches the localName of the archive,
+                                    //and if there is a match, only install
+                                    //that file.
+                                    defaultName = archiveInfo.localName + '.js';
+                                    sourceName = path.join(dirName, defaultName);
+                                    if (!path.existsSync(sourceName)) {
+                                        sourceName = null;
+                                    }
+                                }
+                            }
 
-                            if (info.singleFile) {
+                            if (sourceName) {
                                 //Just move the single file into position.
                                 if (specificLocalName) {
-                                    targetName = path.join(baseUrl, specificLocalName + '.js');
+                                    targetName = path.join(baseUrl,
+                                                           specificLocalName +
+                                                           '.js');
                                 } else {
-                                    targetName = path.join(baseUrl, path.basename(info.file));
+                                    targetName = path.join(baseUrl, defaultName);
                                 }
 
-                                //Check for the existence of the singleFileName, and if it
-                                //already exists, bail out.
-                                if (path.existsSync(targetName) && !namedArgs.force) {
-                                    errCleanUp(targetName + ' already exists. To ' +
-                                        'install anyway, pass -f to the command');
+                                //Check for the existence of the
+                                //singleFileName, and if it already exists,
+                                //bail out.
+                                if (path.existsSync(targetName) &&
+                                    !namedArgs.force) {
+                                    errCleanUp(targetName + ' already exists.' +
+                                        ' To install anyway, pass -f to the ' +
+                                        'command');
                                     return;
                                 }
-                                fs.renameSync(info.file, targetName);
+                                fs.renameSync(sourceName, targetName);
                             } else {
                                 //A complete directory install.
-                                targetName = path.join(baseUrl, archiveInfo.localName);
+                                targetName = path.join(baseUrl,
+                                                       archiveInfo.localName);
 
                                 //Found the unpacked directory, move it.
                                 fs.renameSync(dirName, targetName);
 
-                                //If directory, remove common directories not needed
-                                //for install. This is a bit goofy, fileUtil.rmdir
-                                //is actually callback based, but cheating here a bit
+                                //If directory, remove common directories not
+                                //needed for install. This is a bit goofy,
+                                //fileUtil.rmdir is actually callback based,
+                                //but cheating here a bit
                                 //TODO: make this Q-based at some point.
                                 if (myConfig.discard) {
-                                    fs.readdirSync(targetName).forEach(function (name) {
+                                    fs.readdirSync(targetName).forEach(
+                                        function (name) {
                                         if (myConfig.discard[name]) {
-                                            fileUtil.rmdir(path.join(targetName, name));
+                                            fileUtil.rmdir(path.join(targetName,
+                                                                     name));
                                         }
                                     });
                                 }
 
                                 if (info.data.main) {
-                                    //Trim off any leading dot and file extension, if they exist.
-                                    mainName = info.data.main.replace(/^\.\//, '').replace(/\.js$/, '');
+                                    //Trim off any leading dot and file
+                                    //extension, if they exist.
+                                    mainName = info.data.main
+                                                   .replace(/^\.\//, '')
+                                                   .replace(/\.js$/, '');
 
                                     //Add in adapter module for AMD code
-                                    contents = "define(['" + archiveInfo.localName + "/" +
+                                    contents = "define(['" +
+                                        archiveInfo.localName + "/" +
                                         mainName + "'], function (main) {\n" +
                                         "    return main;\n" +
                                         "});";
-                                    fs.writeFileSync(targetName + '.js', contents, 'utf8');
+                                    fs.writeFileSync(targetName + '.js',
+                                                     contents, 'utf8');
 
 
                                 }
                             }
 
-                            //Stamp the app's package.json with the dependency??
+                            //Stamp app's package.json with the dependency??
 
                             //Trace nested dependencies in the package.json
                             //TODO
@@ -150,10 +193,11 @@ define(function (require, exports, module) {
                             fileUtil.rmdir(tempDirName);
                             completeMessage = 'Installed ' +
                                 archiveInfo.url +
-                                (archiveInfo.fragment ? '#' + archiveInfo.fragment : '') +
+                                (archiveInfo.fragment ? '#' +
+                                 archiveInfo.fragment : '') +
                                 ' at ' + targetName + '\nFor AMD-based ' +
-                                'projects use \'' + archiveInfo.localName + '\' as the ' +
-                                'dependency name.';
+                                'projects use \'' + archiveInfo.localName +
+                                '\' as the ' + 'dependency name.';
                             deferred.resolve(completeMessage);
                         } else {
                             errCleanUp('Unexpected tarball configuration');
@@ -167,7 +211,8 @@ define(function (require, exports, module) {
                     //If the baseUrl does not exist, create it.
                     fileUtil.mkdirs(baseUrl);
 
-                    //Get the package JSON data for dependency, if it is already on disk.
+                    //Get the package JSON data for dependency, if it is
+                    //already on disk.
                     existingPath = path.join(baseUrl, archiveInfo.localName);
                     if (!path.existsSync(existingPath)) {
                         existingPath += '.js';
@@ -180,7 +225,7 @@ define(function (require, exports, module) {
 
                     if (existingPath && !namedArgs.force) {
                         deferred.reject(existingPath + ' already exists. To ' +
-                                         'install anyway, pass -f to the command');
+                                'install anyway, pass -f to the command');
                         return;
                     }
 
@@ -195,22 +240,24 @@ define(function (require, exports, module) {
                     var url = archiveInfo.url,
                         localName = archiveInfo.localName,
                         ext = archiveInfo.isArchive ? '.tar.gz' :
-                              url.substring(url.lastIndexOf('.') + 1, url.length),
-                        urlDir;
+                              url.substring(url.lastIndexOf('.') + 1,
+                                            url.length),
+                        urlDir, tarName;
 
                     if (archiveInfo.isArchive) {
                         download(url, path.join(tempDirName,
                                  localName + '.tar.gz'), function (filePath) {
 
                             //Unpack the zip file.
-                            tar.untar(path.join(tempDirName, localName + '.tar.gz'), function () {
+                            tarName = path.join(tempDirName, localName +
+                                                '.tar.gz');
+                            tar.untar(tarName, function () {
                                 moveFromTemp();
                             }, errCleanUp);
                         }, errCleanUp);
-
                     } else {
-                        //Create a directory inside tempDirName to receive the file,
-                        //since the tarball path has a similar setup.
+                        //Create a directory inside tempDirName to receive the
+                        //file, since the tarball path has a similar setup.
                         urlDir = path.join(tempDirName, 'download');
                         fs.mkdirSync(urlDir);
 

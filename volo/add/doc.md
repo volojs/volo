@@ -17,6 +17,8 @@ where the allowed flags are:
   the specific/file.js from that archive and installing it.
 * http://some.domain.com/path/to/archive.tar.gz: Downloads the tar.gz file and
   installs it.
+* http://some.domain.com/path/to/archive.tar.gz#specific/file.js: Download
+  the tar.gz file and only install specific/file.js.
 
 If **localName** is specified then that name is used for the installed name.
 If the installed item is a directory, the directory will have this name. If
@@ -29,5 +31,18 @@ then that file's name will be used.
 
 ## Specifics of installation.
 
-Mention amd.baseUrl, js/ scripts/ current directory.
+For the directory in which add is run, it will look for the following to know
+where to install:
 
+* Looks for a package.json file and if there is an amd.baseUrl defined in it.
+* Looks for a **js** directory
+* Looks for a **scripts** directory
+
+If none of those result in a subdirectory for installation, then the current
+working directory is used.
+
+If the archive has a top level .js file in it and it is the same name
+as the repo's/tar.gz file name, then only that .js file will be installed.
+
+Or, if there is only one top level .js file in the repo and it has a
+/*package.json */ comment with JSON inside that comment, it will be used.
