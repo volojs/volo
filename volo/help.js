@@ -15,7 +15,7 @@ define(function (require, exports, module) {
     help = {
         summary: 'Gives more detailed help on a volo command.',
 
-        doc: 'volo.js help commandName',
+        doc: '##Usage\n\n    volo.js help commandName',
 
         validate: function (namedArgs, commandName) {
             if (!commandName) {

@@ -17,6 +17,8 @@ define(function (require, exports, module) {
     rejuvenate = {
         summary: 'Updates volo.js to latest version.',
 
+        doc: require('text!./rejuvenate/doc.md'),
+
         flags: add.flags,
 
         validate: function (namedArgs) {},

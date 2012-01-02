@@ -20,13 +20,12 @@ define(function (require, exports, module) {
         tar = require('volo/tar'),
         fileUtil = require('volo/fileUtil'),
         tempDir = require('volo/tempDir'),
-        docText = require('text!./add/doc.md'),
         add;
 
     add = {
         summary: 'Add code to your project.',
 
-        doc: docText,
+        doc: require('text!./add/doc.md'),
 
         flags: {
             'f': 'force'

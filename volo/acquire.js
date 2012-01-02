@@ -18,6 +18,8 @@ define(function (require, exports, module) {
     acquire = {
         summary: 'Adds a new command to volo.',
 
+        doc: require('text!./acquire/doc.md'),
+
         flags: add.flags,
 
         validate: function (namedArgs, appName) {

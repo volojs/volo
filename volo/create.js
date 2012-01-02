@@ -22,6 +22,8 @@ define(function (require, exports, module) {
     create = {
         summary: 'Creates a new web project.',
 
+        doc: require('text!./create/doc.md'),
+
         validate: function (namedArgs, appName) {
             if (!appName || !(/^[A-Za-z\d\-]+$/.test(appName))) {
                 return new Error('appName can only contain alphanumeric and dash characters.');
