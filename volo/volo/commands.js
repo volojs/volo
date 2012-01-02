@@ -18,6 +18,9 @@ define(function (require) {
 
     commands = {
         register: function (id, value) {
+            //Only take the first part of the ID
+            id = id.split('/')[0];
+
             registry[id] = value;
             return value;
         },
