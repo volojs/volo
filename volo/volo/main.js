@@ -79,7 +79,9 @@ define(function (require) {
         } else {
             //Show usage info.
             commands.list(function (message) {
-                deferred.resolve('\nvolo.js, a JavaScript tool to make ' +
+                //voloVersion set in tools/wrap.start
+                deferred.resolve('volo.js v' + voloVersion +
+                                ', a JavaScript tool to make ' +
                                 'JavaScript projects. Allowed commands:\n\n' +
                                 message);
             });

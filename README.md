@@ -33,7 +33,7 @@ Suggested path:
 * cd ~
 * mkdir ~/scripts
 * cd ~/scripts
-* curl https://raw.github.com/volojs/volo/master/dist/volo.js
+* curl https://raw.github.com/volojs/volo/master/dist/volo.js > volo.js
 * chmod +x volo.js
 
 Since it is just a single JS file, you can have multiple copies laying around,
