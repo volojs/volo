@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
 /**
- * @license volo 0.0.0 Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
+ * @license volo 0.0.1 Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
  * see: http://github.com/volojs/volo for details
  */
 
-var voloVersion = '0.0.0';
+var voloVersion = '0.0.1';
 
 /** vim: et:ts=4:sw=4:sts=4
  * @license RequireJS 1.0.2 Copyright (c) 2010-2011, The Dojo Foundation All Rights Reserved.

@@ -26,8 +26,12 @@ Windows? Help out with [issue #1](https://github.com/volojs/volo/issues/1).
 
 ## Install
 
-    > curl https://raw.github.com/volojs/volo/master/dist/volo.js > volo.js
+    > curl https://raw.github.com/volojs/volo/v0.0.1/dist/volo.js > volo.js
     > chmod +x volo.js
+
+If you like to live dangerously on the edge, use the master version:
+
+https://raw.github.com/volojs/volo/master/dist/volo.js
 
 It is best to put volo.js in your path, but *do not* install it as root.
 
@@ -35,7 +39,7 @@ Suggested path so that it is always available:
 
     > mkdir ~/scripts
     > cd ~/scripts
-    > curl https://raw.github.com/volojs/volo/master/dist/volo.js > volo.js
+    > curl https://raw.github.com/volojs/volo/v0.0.1/dist/volo.js > volo.js
     > chmod +x volo.js
 
 Then add **~/scripts** to your PATH in your .profile.
@@ -60,11 +64,10 @@ Backbone, jQuery and underscore:
     > volo.js add jrburke/backbone/optamd3
 
 Set up an HTML5 Boilerplate project that does not use AMD/RequireJS, but does
-use Backbone, jQuery and underscore:
+use Backbone and underscore (the Boilerplate already has jQuery):
 
     > volo.js create html5fast h5bp/html5-boilerplate
     > cd html5fast
-    > volo.js add jquery/jquery
     > volo.js add documentcloud/underscore
     > volo.js add documentcloud/backbone
 
