@@ -219,7 +219,7 @@ define(function (require, exports, module) {
                                 if (info.data.main && isAmdProject) {
                                     makeMainAmdAdapter(info.data.main,
                                                        archiveInfo.finalLocalName,
-                                                       targetName);
+                                                       targetName + '.js');
                                 }
                             }
 

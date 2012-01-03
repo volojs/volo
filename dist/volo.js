@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 
 /**
- * @license volo Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
+ * @license volo 0.0.0 Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
  * see: http://github.com/volojs/volo for details
  */
+
+var voloVersion = '0.0.0';
 
 /** vim: et:ts=4:sw=4:sts=4
  * @license RequireJS 1.0.2 Copyright (c) 2010-2011, The Dojo Foundation All Rights Reserved.
@@ -2176,7 +2178,7 @@ define('volo/commands',['require','./baseUrl','fs','path'],function (require) {
                 ids.sort();
 
                 for (i = 0; i < ids.length; i++) {
-                    message += ids[i] + ': ' + require(ids[i]).summary + '\n\n';
+                    message += ids[i] + ': ' + require(ids[i]).summary + '\n';
                 }
 
                 callback(message);
@@ -3080,7 +3082,9 @@ define('volo/main',['require','./commands','q'],function (require) {
         } else {
             //Show usage info.
             commands.list(function (message) {
-                deferred.resolve('\nvolo.js, a JavaScript tool to make ' +
+                //voloVersion set in tools/wrap.start
+                deferred.resolve('volo.js v' + voloVersion +
+                                ', a JavaScript tool to make ' +
                                 'JavaScript projects. Allowed commands:\n\n' +
                                 message);
             });
@@ -4599,7 +4603,7 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
                                 if (info.data.main && isAmdProject) {
                                     makeMainAmdAdapter(info.data.main,
                                                        archiveInfo.finalLocalName,
-                                                       targetName);
+                                                       targetName + '.js');
                                 }
                             }
 
