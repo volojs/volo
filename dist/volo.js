@@ -4438,14 +4438,6 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
                 return new Error('Please specify an archive name or an URL.');
             }
 
-            //Make sure we are in an app directory with a package.json file,
-            //or a JS file with
-            if (!packageJson('.').data) {
-                return new Error('Please run the add command inside a ' +
-                                 'directory with a package.json file, or a ' +
-                                 'JS file with a /*package.json */ comment');
-            }
-
             return undefined;
         },
         run: function (deferred, namedArgs, archiveName, specificLocalName) {
