@@ -3,7 +3,7 @@
     > volo.js create yourcommand volojs/create-command-template
     > cd yourcommand
 
-yourcommand/main.js is the main function of the file.
+yourcommand/main.js is where the command is implemented.
 
 See
 [create-command-template's README.md](https://github.com/volojs/create-command-template)

@@ -69,12 +69,12 @@ use Backbone, jQuery and underscore:
 
 ## Details
 
-* Design goals
-* Create a volo command
+* [Design goals](https://github.com/volojs/volo/blob/master/docs/designGoals.md)
+* [Create a volo command](https://github.com/volojs/volo/blob/master/docs/createCommand.md)
 * License: [MIT and new BSD](https://github.com/volojs/volo/blob/master/LICENSE)
 
 ## Engage
 
 * [Discussion list](http://groups.google.com/group/volojs)
 * [File an issue](https://github.com/volojs/volo/issues)
-* [Working with the volo code]()
+* [Working with the volo code](https://github.com/volojs/volo/blob/master/docs/workingWithCode.md)
