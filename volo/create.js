@@ -34,7 +34,7 @@ define(function (require, exports, module) {
         },
 
         run: function (deferred, namedArgs, appName, template) {
-            template = template || 'volojs/volo-create-template';
+            template = template || 'volojs/create-template';
 
             q.when(archive.resolve(template), function (archiveInfo) {
                 tempDir.create(template, function (tempDirName) {

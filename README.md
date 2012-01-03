@@ -1,17 +1,18 @@
 # volo
 
-A command line JavaScript tool to set up JavaScript-based projects.
+A command line JavaScript tool to set up JavaScript-based projects. It likes
+GitHub.
 
 The basic tool is a generic command completion tool -- you can create new
 commands that volo can run, and you can use commands others have created.
 
-By default, volo knows how to create a new web project that uses
-RequireJS and knows how to convert some scripts to an AMD format. volo can
-install script dependencies from the command line.
+By default, volo.js knows how to:
 
-volo.js can download scripts from GitHub or an URL as part of the project setup,
-so it can be extended to run any sort of JavaScript-based action that can run
-in node
+* [create a new web project](https://github.com/volojs/volo/blob/master/volo/create/doc.md)
+* [add scripts for a web project from the command line](https://github.com/volojs/volo/blob/master/volo/add/doc.md)
+* [acquire new commands for volo.js](https://github.com/volojs/volo/blob/master/volo/acquire/doc.md)
+* [update volo.js](https://github.com/volojs/volo/blob/master/volo/rejuvenate/doc.md)
+* [convert some scripts to AMD format](https://github.com/volojs/volo/blob/master/volo/amdify/doc.md)
 
 It is still very early in development. Lots may change and it has some sharp
 corners, but it is already fun to use. It is just one file, so it is
