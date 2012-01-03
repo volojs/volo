@@ -2138,6 +2138,9 @@ define('volo/commands',['require','./baseUrl','fs','path'],function (require) {
 
     commands = {
         register: function (id, value) {
+            //Only take the first part of the ID
+            id = id.split('/')[0];
+
             registry[id] = value;
             return value;
         },
@@ -3470,14 +3473,15 @@ define('volo/archive',['require','q','path'],function (require) {
                 archive = archive.substring(0, fragIndex);
             }
 
-            if (scheme === 'http' || scheme === 'https') {
+            if (scheme === 'http' || scheme === 'https' || scheme === 'symlink') {
                 //localName is the file name without extension. If a .tar.gz
                 //file, then a does not include .tar.gz
                 localName = archive.substring(archive.lastIndexOf('/') + 1);
                 localName = localName.replace(fileExtRegExp, '');
 
                 d.resolve({
-                    url: archive,
+                    scheme: scheme,
+                    url: scheme + ':' + archive,
                     isArchive: tarGzRegExp.test(archive),
                     fragment: fragment,
                     localName: localName
@@ -3568,6 +3572,7 @@ define('volo/resolve/github',['require','path','../config','../archive','../gith
                 }
 
                 return {
+                    scheme: 'github',
                     url: url,
                     isArchive: isArchive,
                     fragment: fragment,
@@ -4287,7 +4292,7 @@ define('volo/packageJson',['require','path','fs'],function (require) {
     });
 }());
 
-define('text!acquire/doc.md',[],function () { return '## Usage\n\n    volo.js acquire [flags] archive [localName]\n\nwhere the allowed flags, archive value and localName values are all the same\nas the **add** command.\n\nThis command just delegates to **add** but installs the code in a **volo**\ndirectory that is the sibling of the volo.js file used to run the command.\n\n## Notes\n\nThe user running this command needs to have write access to the directory that\ncontains volo.js so the volo directory can be created and have file installed\ninto it.\n';});
+define('text!acquire/doc.md',[],function () { return '## Usage\n\n    volo.js acquire [flags] archive [localName]\n\nwhere the allowed flags, archive value and localName values are all the same\nas the **add** command.\n\nThis command just delegates to **add** but installs the code in a **volo**\ndirectory that is the sibling of the volo.js file used to run the command.\n\n## Notes\n\nThe user running this command needs to have write access to the directory that\ncontains volo.js so the volo directory can be created and have file installed\ninto it.\n\nIf a symlink: archive value is used, if a relative path is used, it must be\nrelative to the volo directory that will house the symlink. It is best to\njust use an absolute path until this bug is fixed:\n\nhttps://github.com/volojs/volo/issues/11\n';});
 
 define('text!rejuvenate/doc.md',[],function () { return '## Usage\n\n    volo.js rejuvenate [flags] [archive#path/to/volo.js]\n\nIt will replace volo.js with the most recent version tag of volo.js.\n\nBy default it uses **volojs/volo#dist/volo.js** for the archive, but you\ncan use any archive value that is supported by the **add** command. Just\nbe sure to list the path to volo.js in the archive.\n\nrejuvenate accepts the same flags as the **add** command. It explicitly forces\nthe install via the add commands -f flag.\n\nI you want to live on the edge, then you could use the following command:\n\n    volo.js rejuvenate volojs/volo/master#dist/volo.js\n\n## Notes\n\nThe user running this command needs to have write access to the directory that\ncontains volo.js so the volo directory can be created and have file installed\ninto it.\n';});
 
@@ -4371,7 +4376,7 @@ define('create',['require','exports','module','fs','path','q','volo/tempDir','vo
     return require('volo/commands').register(module.id, create);
 });
 
-define('text!add/doc.md',[],function () { return '## Usage\n\n    volo.js add [flags] archive [localName]\n\nwhere the allowed flags are:\n\n* -f: Forces the add even if the code has already been added to the project.\n\n**archive** is in one of the following formats:\n\n* user/repo: Download the tar.gz from GitHub for the user/repo, using the latest\n  version tag, or "master" if no version tags.\n* user/repo/tag: Download the tar.gz from GitHub for the user/repo, using the\n  specific tag/branch name listed.\n* user/repo/tag#specific/file.js: Download the tar.gz from GitHub for the user/\n  repo, using the specific tag/branch name listed, then extracting only\n  the specific/file.js from that archive and installing it.\n* http://some.domain.com/path/to/archive.tar.gz: Downloads the tar.gz file and\n  installs it.\n* http://some.domain.com/path/to/archive.tar.gz#specific/file.js: Download\n  the tar.gz file and only install specific/file.js.\n\nIf **localName** is specified then that name is used for the installed name.\nIf the installed item is a directory, the directory will have this name. If\na specific file from the the archive, the file will have this name.\n\nIf **localName** is not specified, the installed directory name will be the\nname of the .tar.gz file without the tar.gz extension, or if a GitHub\nreference, the repo name. If it is a specific file from within a .tar.gz file,\nthen that file\'s name will be used.\n\n## Specifics of installation.\n\nFor the directory in which add is run, it will look for the following to know\nwhere to install:\n\n* Looks for a package.json file and if there is an amd.baseUrl defined in it.\n* Looks for a **js** directory\n* Looks for a **scripts** directory\n\nIf none of those result in a subdirectory for installation, then the current\nworking directory is used.\n\nIf the archive has a top level .js file in it and it is the same name\nas the repo\'s/tar.gz file name, then only that .js file will be installed.\n\nOr, if there is only one top level .js file in the repo and it has a\n/*package.json */ comment with JSON inside that comment, it will be used.\n';});
+define('text!add/doc.md',[],function () { return '## Usage\n\n    volo.js add [flags] archive [localName]\n\nwhere the allowed flags are:\n\n* -f: Forces the add even if the code has already been added to the project.\n* -amd: Indicates the project is an AMD project. If the project has a\n  package.json entry for "amd": {} then this flag is not needed.\n\n**archive** is in one of the following formats:\n\n* user/repo: Download the tar.gz from GitHub for the user/repo, using the latest\n  version tag, or "master" if no version tags.\n* user/repo/tag: Download the tar.gz from GitHub for the user/repo, using the\n  specific tag/branch name listed.\n* user/repo/tag#specific/file.js: Download the tar.gz from GitHub for the user/\n  repo, using the specific tag/branch name listed, then extracting only\n  the specific/file.js from that archive and installing it.\n* http://some.domain.com/path/to/archive.tar.gz: Downloads the tar.gz file and\n  installs it.\n* http://some.domain.com/path/to/archive.tar.gz#specific/file.js: Download\n  the tar.gz file and only install specific/file.js.\n* symlink:path/to/directory/or/file.js: Creates a symlink to the specific\n  location in the project. If it is a directory and the project using the\n  directory is an AMD project, an adapter module will also be created.\n\nIf **localName** is specified then that name is used for the installed name.\nIf the installed item is a directory, the directory will have this name. If\na specific file from the the archive, the file will have this name.\n\nIf **localName** is not specified, the installed directory name will be the\nname of the .tar.gz file without the tar.gz extension, or if a GitHub\nreference, the repo name. If it is a specific file from within a .tar.gz file,\nthen that file\'s name will be used.\n\n## Installation Details\n\nFor the directory in which add is run, it will look for the following to know\nwhere to install:\n\n* Looks for a package.json file and if there is an amd.baseUrl defined in it.\n* Looks for a **js** directory\n* Looks for a **scripts** directory\n\nIf none of those result in a subdirectory for installation, then the current\nworking directory is used.\n\nIf the archive has a top level .js file in it and it is the same name\nas the repo\'s/tar.gz file name, then only that .js file will be installed.\n\nOr, if there is only one top level .js file in the repo and it has a\n/*package.json */ comment with JSON inside that comment, it will be used.\n';});
 
 /**
  * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
@@ -4397,13 +4402,31 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
         tempDir = require('volo/tempDir'),
         add;
 
+    function makeMainAmdAdapter(mainValue, localName, targetFileName) {
+        //Trim off any leading dot and file
+        //extension, if they exist.
+        var mainName = mainValue
+                       .replace(/^\.\//, '')
+                       .replace(/\.js$/, ''),
+        contents;
+
+        //Add in adapter module for AMD code
+        contents = "define(['" + localName + "/" + mainName +
+                   "'], function (main) {\n" +
+                    "    return main;\n" +
+                    "});";
+
+        fs.writeFileSync(targetFileName, contents, 'utf8');
+    }
+
     add = {
         summary: 'Add code to your project.',
 
         doc: require('text!./add/doc.md'),
 
         flags: {
-            'f': 'force'
+            'f': 'force',
+            'amd': 'amd'
         },
 
         validate: function (namedArgs, archiveName, version) {
@@ -4426,8 +4449,10 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
             q.when(archive.resolve(archiveName), function (archiveInfo) {
 
                 var pkg = packageJson('.'),
+                    isAmdProject = namedArgs.amd || (pkg.data && pkg.data.amd),
                     baseUrl = pkg.data && pkg.data.amd && pkg.data.amd.baseUrl,
-                    existingPath, tempDirName;
+                    existingPath, tempDirName, linkPath, linkStat, linkTarget,
+                    info;
 
                 //If no baseUrl, then look for an existing js directory
                 if (!baseUrl) {
@@ -4450,6 +4475,39 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
                 archiveInfo.finalLocalName = specificLocalName ||
                                              archiveInfo.localName;
 
+                //If the archive scheme is just a symlink, set that up now,
+                //then bail.
+                if (archiveInfo.scheme === 'symlink') {
+                    linkPath = path.resolve(archiveInfo.url.substring(archiveInfo.url.indexOf(':') + 1));
+
+                    if (!path.existsSync(linkPath)) {
+                        return deferred.reject(new Error(linkPath + ' does not exist'));
+                    }
+
+                    linkStat = fs.statSync(linkPath);
+                    if (linkStat.isFile()) {
+                        //Simple symlink.
+                        linkTarget = path.join(baseUrl, archiveInfo.finalLocalName + '.js');
+                        fs.symlinkSync(path.resolve(linkPath), linkTarget);
+                    } else {
+                        //A directory. Set the symlink.
+                        linkTarget = path.join(baseUrl, archiveInfo.finalLocalName);
+                        fs.symlinkSync(linkPath, linkTarget);
+
+                        //Create an adapter module if an AMD project.
+                        info = packageJson(linkPath);
+                        if (info.data.main && isAmdProject) {
+                            makeMainAmdAdapter(info.data.main,
+                                               archiveInfo.finalLocalName,
+                                               linkTarget + '.js');
+                        }
+                    }
+
+                    deferred.resolve(linkTarget + ' points to ' + linkPath +
+                                     '\nIf using AMD, \'' + archiveInfo.finalLocalName +
+                                     '\' is the dependency name');
+                }
+
                 //Function used to clean up in case of errors.
                 function errCleanUp(err) {
                     fileUtil.rmdir(tempDirName);
@@ -4462,10 +4520,11 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
                     try {
                         //Find the directory that was unpacked in tempDirName
                         var dirName = fileUtil.firstDir(tempDirName),
-                            info, sourceName, targetName, contents, mainName,
-                            completeMessage, listing, defaultName;
+                            info, sourceName, targetName, completeMessage,
+                            listing, defaultName;
 
                         if (dirName) {
+                            info = packageJson(dirName);
                             //If the directory only contains one file, then
                             //that is the install target.
                             listing = fs.readdirSync(dirName);
@@ -4477,7 +4536,6 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
                                 //file, and if so, and has package data via
                                 //a package.json comment, only install that
                                 //file.
-                                info = packageJson(dirName);
                                 if (info.singleFile && info.data) {
                                     sourceName = info.singleFile;
                                     defaultName = path.basename(info.file);
@@ -4486,7 +4544,7 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
                                     //matches the localName of the archive,
                                     //and if there is a match, only install
                                     //that file.
-                                    defaultName = archiveInfo.localName + '.js';
+                                    defaultName = archiveInfo.finalLocalName + '.js';
                                     sourceName = path.join(dirName, defaultName);
                                     if (!path.existsSync(sourceName)) {
                                         sourceName = null;
@@ -4518,7 +4576,7 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
                             } else {
                                 //A complete directory install.
                                 targetName = path.join(baseUrl,
-                                                       archiveInfo.localName);
+                                                       archiveInfo.finalLocalName);
 
                                 //Found the unpacked directory, move it.
                                 fs.renameSync(dirName, targetName);
@@ -4538,23 +4596,10 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
                                     });
                                 }
 
-                                if (info.data.main) {
-                                    //Trim off any leading dot and file
-                                    //extension, if they exist.
-                                    mainName = info.data.main
-                                                   .replace(/^\.\//, '')
-                                                   .replace(/\.js$/, '');
-
-                                    //Add in adapter module for AMD code
-                                    contents = "define(['" +
-                                        archiveInfo.localName + "/" +
-                                        mainName + "'], function (main) {\n" +
-                                        "    return main;\n" +
-                                        "});";
-                                    fs.writeFileSync(targetName + '.js',
-                                                     contents, 'utf8');
-
-
+                                if (info.data.main && isAmdProject) {
+                                    makeMainAmdAdapter(info.data.main,
+                                                       archiveInfo.finalLocalName,
+                                                       targetName);
                                 }
                             }
 
@@ -4570,7 +4615,7 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
                                 (archiveInfo.fragment ? '#' +
                                  archiveInfo.fragment : '') +
                                 ' at ' + targetName + '\nFor AMD-based ' +
-                                'projects use \'' + archiveInfo.localName +
+                                'projects use \'' + archiveInfo.finalLocalName +
                                 '\' as the ' + 'dependency name.';
                             deferred.resolve(completeMessage);
                         } else {
@@ -4587,7 +4632,7 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
 
                     //Get the package JSON data for dependency, if it is
                     //already on disk.
-                    existingPath = path.join(baseUrl, archiveInfo.localName);
+                    existingPath = path.join(baseUrl, archiveInfo.finalLocalName);
                     if (!path.existsSync(existingPath)) {
                         existingPath += '.js';
                         if (!path.existsSync(existingPath)) {
@@ -4598,9 +4643,8 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
                     pkg = (existingPath && packageJson(existingPath)) || {};
 
                     if (existingPath && !namedArgs.force) {
-                        deferred.reject(existingPath + ' already exists. To ' +
+                        return deferred.reject(existingPath + ' already exists. To ' +
                                 'install anyway, pass -f to the command');
-                        return;
                     }
 
                 } catch (e) {
@@ -4608,11 +4652,11 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
                 }
 
                 //Create a temporary directory to download the code.
-                tempDir.create(archiveInfo.localName, function (newTempDir) {
+                tempDir.create(archiveInfo.finalLocalName, function (newTempDir) {
                     tempDirName = newTempDir;
 
                     var url = archiveInfo.url,
-                        localName = archiveInfo.localName,
+                        localName = archiveInfo.finalLocalName,
                         ext = archiveInfo.isArchive ? '.tar.gz' :
                               url.substring(url.lastIndexOf('.') + 1,
                                             url.length),
@@ -4644,6 +4688,7 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
                     }
                 }, errCleanUp);
 
+                return undefined;
             }, deferred.reject);
         }
     };
@@ -4704,6 +4749,9 @@ define('acquire',['require','exports','module','fs','q','path','add','text!./acq
                 process.chdir(cwd);
             }
 
+            //Update the namedArgs to indicate amd is true for volo
+            namedArgs.amd = true;
+
             add.run.apply(add, args);
 
             q.when(d.promise, function (result) {
@@ -4711,7 +4759,14 @@ define('acquire',['require','exports','module','fs','q','path','add','text!./acq
                 deferred.resolve(result + '\nNew volo command aquired!');
             }, function (err) {
                 finish();
-                deferred.reject(err);
+                var message = '';
+                if (packageName.indexOf('symlink:') === 0) {
+                    message = '\nIf using a relative path for the symlink, ' +
+                              'there is a bug with using relative paths with ' +
+                              'acquire, see this issue:\n' +
+                              'https://github.com/volojs/volo/issues/11';
+                }
+                deferred.reject(err + message);
             });
         }
     };
@@ -4778,6 +4833,83 @@ define('rejuvenate',['require','exports','module','q','path','add','text!./rejuv
     };
 
     return require('volo/commands').register(module.id, rejuvenate);
+});
+
+define('text!amdify/template.js',[],function () { return '\n//File modified by volo amdify\n//Wrapped in an outer function to preserve global this\n\n(function (root) {\n  define([/*DEPENDENCIES*/], function () {\n    (function () {\n\n/*CONTENTS*/\n\n    }.call(root));\n  });\n}(this));\n';});
+
+define('text!amdify/doc.md',[],function () { return '## Usage\n\n    volo.js amdify path/to/file.js dependencies\n\nwhere dependencies is a comma-separated list of dependencies, with no spaces.\n\n## Details\n\nThe file.js will be modified to include a define() wrapper with the given\ndependency names.\n\nThis example:\n\n    volo.js amdify www/js/aplugin.jquery.js jquery\n\nWill result in modifying the www/js/aplugin.jquery.js contents to have a\nfunction wrapping that includes:\n\n    define([\'jquery\'], function () {});\n\namdify should only be used on files that use browser globals but just need\nto wait to execute the body of the script until its dependencies are loaded.\n\nIdeally the target file would optionally call define() itself, and use\nthe local script references instead of browser globals. However, for\nbootstrapping existing projects to use an AMD loader, amdify can be useful to\nget started.\n\n';});
+
+/**
+ * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
+ * Available via the MIT or new BSD license.
+ * see: http://github.com/volojs/volo for details
+ */
+
+
+/*jslint */
+/*global define */
+
+define('amdify',['require','exports','module','fs','path','text!./amdify/template.js','text!./amdify/doc.md','volo/commands'],function (require, exports, module) {
+    var fs = require('fs'),
+        path = require('path'),
+        template = require('text!./amdify/template.js'),
+        depsRegExp = /\/\*DEPENDENCIES\*\//,
+        contentsRegExp = /\/\*CONTENTS\*\//,
+        amdifyRegExp = /volo amdify/,
+        main;
+
+    main = {
+        //Text summary used when listing commands.
+        summary: 'Does a simple AMD wrapping for JS libraries that use ' +
+                 'browser globals',
+
+        doc: require('text!./amdify/doc.md'),
+
+        //Validate any arguments here.
+        validate: function (namedArgs, target, deps) {
+            if (!target) {
+                return new Error('A target file needs to be specified');
+            }
+
+            if (!deps) {
+                return new Error('Please pass dependencies. Scripts that do ' +
+                                 'not need dependencies do not need to be ' +
+                                 'converted by amdify.');
+            }
+
+            if (!path.existsSync(target)) {
+                return new Error(target + ' does not exist!');
+            }
+
+            return undefined;
+        },
+
+        run: function (deferred, namedArgs, target, deps) {
+            deps = deps.split(',').map(function (value) {
+                return "'" + value + "'";
+            });
+
+            //Convert the deps to a string.
+            deps = deps.join(',');
+
+            var contents = fs.readFileSync(target, 'utf8');
+
+            if (amdifyRegExp.test(contents)) {
+                return deferred.reject('Looks like amdify has already been ' +
+                                       'applied to ' + target);
+            } else {
+                contents = template
+                            .replace(depsRegExp, deps)
+                            .replace(contentsRegExp, contents);
+
+                fs.writeFileSync(target, contents, 'utf8');
+
+                return deferred.resolve('amdify has modified ' + target);
+            }
+        }
+    };
+
+    return require('volo/commands').register(module.id, main);
 });
 
 //Trigger processing of all defined modules.
