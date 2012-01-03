@@ -4300,7 +4300,7 @@ define('text!acquire/doc.md',[],function () { return '## Usage\n\n    volo.js ac
 
 define('text!rejuvenate/doc.md',[],function () { return '## Usage\n\n    volo.js rejuvenate [flags] [archive#path/to/volo.js]\n\nIt will replace volo.js with the most recent version tag of volo.js.\n\nBy default it uses **volojs/volo#dist/volo.js** for the archive, but you\ncan use any archive value that is supported by the **add** command. Just\nbe sure to list the path to volo.js in the archive.\n\nrejuvenate accepts the same flags as the **add** command. It explicitly forces\nthe install via the add commands -f flag.\n\nI you want to live on the edge, then you could use the following command:\n\n    volo.js rejuvenate volojs/volo/master#dist/volo.js\n\n## Notes\n\nThe user running this command needs to have write access to the directory that\ncontains volo.js so the volo directory can be created and have file installed\ninto it.\n';});
 
-define('text!create/doc.md',[],function () { return '## Usage\n\n    volo.js create appName [templateArchive]\n\n**appName** is the name of the directory that should be created containing the\ncontents of the templateArchive.\n\n**templateArchive** defaults to a value of \'volojs/volo-create-template\', but\nany archive value that is usable by **add** can work here instead. The only\nrestriction is that the archive value should resolve to a .tar.gz file and\na #specific/file.js type of archive value should not be used.\n';});
+define('text!create/doc.md',[],function () { return '## Usage\n\n    volo.js create appName [templateArchive]\n\n**appName** is the name of the directory that should be created containing the\ncontents of the templateArchive.\n\n**templateArchive** defaults to a value of \'volojs/create-template\', but\nany archive value that is usable by **add** can work here instead. The only\nrestriction is that the archive value should resolve to a .tar.gz file and\na #specific/file.js type of archive value should not be used.\n';});
 
 /**
  * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
@@ -4338,7 +4338,7 @@ define('create',['require','exports','module','fs','path','q','volo/tempDir','vo
         },
 
         run: function (deferred, namedArgs, appName, template) {
-            template = template || 'volojs/volo-create-template';
+            template = template || 'volojs/create-template';
 
             q.when(archive.resolve(template), function (archiveInfo) {
                 tempDir.create(template, function (tempDirName) {
