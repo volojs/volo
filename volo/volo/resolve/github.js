@@ -58,6 +58,7 @@ define(function (require) {
                 }
 
                 return {
+                    scheme: 'github',
                     url: url,
                     isArchive: isArchive,
                     fragment: fragment,

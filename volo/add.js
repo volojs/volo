@@ -22,13 +22,31 @@ define(function (require, exports, module) {
         tempDir = require('volo/tempDir'),
         add;
 
+    function makeMainAmdAdapter(mainValue, localName, targetFileName) {
+        //Trim off any leading dot and file
+        //extension, if they exist.
+        var mainName = mainValue
+                       .replace(/^\.\//, '')
+                       .replace(/\.js$/, ''),
+        contents;
+
+        //Add in adapter module for AMD code
+        contents = "define(['" + localName + "/" + mainName +
+                   "'], function (main) {\n" +
+                    "    return main;\n" +
+                    "});";
+
+        fs.writeFileSync(targetFileName, contents, 'utf8');
+    }
+
     add = {
         summary: 'Add code to your project.',
 
         doc: require('text!./add/doc.md'),
 
         flags: {
-            'f': 'force'
+            'f': 'force',
+            'amd': 'amd'
         },
 
         validate: function (namedArgs, archiveName, version) {
@@ -51,8 +69,10 @@ define(function (require, exports, module) {
             q.when(archive.resolve(archiveName), function (archiveInfo) {
 
                 var pkg = packageJson('.'),
+                    isAmdProject = namedArgs.amd || (pkg.data && pkg.data.amd),
                     baseUrl = pkg.data && pkg.data.amd && pkg.data.amd.baseUrl,
-                    existingPath, tempDirName;
+                    existingPath, tempDirName, linkPath, linkStat, linkTarget,
+                    info;
 
                 //If no baseUrl, then look for an existing js directory
                 if (!baseUrl) {
@@ -75,6 +95,39 @@ define(function (require, exports, module) {
                 archiveInfo.finalLocalName = specificLocalName ||
                                              archiveInfo.localName;
 
+                //If the archive scheme is just a symlink, set that up now,
+                //then bail.
+                if (archiveInfo.scheme === 'symlink') {
+                    linkPath = path.resolve(archiveInfo.url.substring(archiveInfo.url.indexOf(':') + 1));
+
+                    if (!path.existsSync(linkPath)) {
+                        return deferred.reject(new Error(linkPath + ' does not exist'));
+                    }
+
+                    linkStat = fs.statSync(linkPath);
+                    if (linkStat.isFile()) {
+                        //Simple symlink.
+                        linkTarget = path.join(baseUrl, archiveInfo.finalLocalName + '.js');
+                        fs.symlinkSync(path.resolve(linkPath), linkTarget);
+                    } else {
+                        //A directory. Set the symlink.
+                        linkTarget = path.join(baseUrl, archiveInfo.finalLocalName);
+                        fs.symlinkSync(linkPath, linkTarget);
+
+                        //Create an adapter module if an AMD project.
+                        info = packageJson(linkPath);
+                        if (info.data.main && isAmdProject) {
+                            makeMainAmdAdapter(info.data.main,
+                                               archiveInfo.finalLocalName,
+                                               linkTarget + '.js');
+                        }
+                    }
+
+                    deferred.resolve(linkTarget + ' points to ' + linkPath +
+                                     '\nIf using AMD, \'' + archiveInfo.finalLocalName +
+                                     '\' is the dependency name');
+                }
+
                 //Function used to clean up in case of errors.
                 function errCleanUp(err) {
                     fileUtil.rmdir(tempDirName);
@@ -87,10 +140,11 @@ define(function (require, exports, module) {
                     try {
                         //Find the directory that was unpacked in tempDirName
                         var dirName = fileUtil.firstDir(tempDirName),
-                            info, sourceName, targetName, contents, mainName,
-                            completeMessage, listing, defaultName;
+                            info, sourceName, targetName, completeMessage,
+                            listing, defaultName;
 
                         if (dirName) {
+                            info = packageJson(dirName);
                             //If the directory only contains one file, then
                             //that is the install target.
                             listing = fs.readdirSync(dirName);
@@ -102,7 +156,6 @@ define(function (require, exports, module) {
                                 //file, and if so, and has package data via
                                 //a package.json comment, only install that
                                 //file.
-                                info = packageJson(dirName);
                                 if (info.singleFile && info.data) {
                                     sourceName = info.singleFile;
                                     defaultName = path.basename(info.file);
@@ -111,7 +164,7 @@ define(function (require, exports, module) {
                                     //matches the localName of the archive,
                                     //and if there is a match, only install
                                     //that file.
-                                    defaultName = archiveInfo.localName + '.js';
+                                    defaultName = archiveInfo.finalLocalName + '.js';
                                     sourceName = path.join(dirName, defaultName);
                                     if (!path.existsSync(sourceName)) {
                                         sourceName = null;
@@ -143,7 +196,7 @@ define(function (require, exports, module) {
                             } else {
                                 //A complete directory install.
                                 targetName = path.join(baseUrl,
-                                                       archiveInfo.localName);
+                                                       archiveInfo.finalLocalName);
 
                                 //Found the unpacked directory, move it.
                                 fs.renameSync(dirName, targetName);
@@ -163,23 +216,10 @@ define(function (require, exports, module) {
                                     });
                                 }
 
-                                if (info.data.main) {
-                                    //Trim off any leading dot and file
-                                    //extension, if they exist.
-                                    mainName = info.data.main
-                                                   .replace(/^\.\//, '')
-                                                   .replace(/\.js$/, '');
-
-                                    //Add in adapter module for AMD code
-                                    contents = "define(['" +
-                                        archiveInfo.localName + "/" +
-                                        mainName + "'], function (main) {\n" +
-                                        "    return main;\n" +
-                                        "});";
-                                    fs.writeFileSync(targetName + '.js',
-                                                     contents, 'utf8');
-
-
+                                if (info.data.main && isAmdProject) {
+                                    makeMainAmdAdapter(info.data.main,
+                                                       archiveInfo.finalLocalName,
+                                                       targetName);
                                 }
                             }
 
@@ -195,7 +235,7 @@ define(function (require, exports, module) {
                                 (archiveInfo.fragment ? '#' +
                                  archiveInfo.fragment : '') +
                                 ' at ' + targetName + '\nFor AMD-based ' +
-                                'projects use \'' + archiveInfo.localName +
+                                'projects use \'' + archiveInfo.finalLocalName +
                                 '\' as the ' + 'dependency name.';
                             deferred.resolve(completeMessage);
                         } else {
@@ -212,7 +252,7 @@ define(function (require, exports, module) {
 
                     //Get the package JSON data for dependency, if it is
                     //already on disk.
-                    existingPath = path.join(baseUrl, archiveInfo.localName);
+                    existingPath = path.join(baseUrl, archiveInfo.finalLocalName);
                     if (!path.existsSync(existingPath)) {
                         existingPath += '.js';
                         if (!path.existsSync(existingPath)) {
@@ -223,9 +263,8 @@ define(function (require, exports, module) {
                     pkg = (existingPath && packageJson(existingPath)) || {};
 
                     if (existingPath && !namedArgs.force) {
-                        deferred.reject(existingPath + ' already exists. To ' +
+                        return deferred.reject(existingPath + ' already exists. To ' +
                                 'install anyway, pass -f to the command');
-                        return;
                     }
 
                 } catch (e) {
@@ -233,11 +272,11 @@ define(function (require, exports, module) {
                 }
 
                 //Create a temporary directory to download the code.
-                tempDir.create(archiveInfo.localName, function (newTempDir) {
+                tempDir.create(archiveInfo.finalLocalName, function (newTempDir) {
                     tempDirName = newTempDir;
 
                     var url = archiveInfo.url,
-                        localName = archiveInfo.localName,
+                        localName = archiveInfo.finalLocalName,
                         ext = archiveInfo.isArchive ? '.tar.gz' :
                               url.substring(url.lastIndexOf('.') + 1,
                                             url.length),
@@ -269,6 +308,7 @@ define(function (require, exports, module) {
                     }
                 }, errCleanUp);
 
+                return undefined;
             }, deferred.reject);
         }
     };

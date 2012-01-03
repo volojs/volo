@@ -5,6 +5,8 @@
 where the allowed flags are:
 
 * -f: Forces the add even if the code has already been added to the project.
+* -amd: Indicates the project is an AMD project. If the project has a
+  package.json entry for "amd": {} then this flag is not needed.
 
 **archive** is in one of the following formats:
 
@@ -19,6 +21,9 @@ where the allowed flags are:
   installs it.
 * http://some.domain.com/path/to/archive.tar.gz#specific/file.js: Download
   the tar.gz file and only install specific/file.js.
+* symlink:path/to/directory/or/file.js: Creates a symlink to the specific
+  location in the project. If it is a directory and the project using the
+  directory is an AMD project, an adapter module will also be created.
 
 If **localName** is specified then that name is used for the installed name.
 If the installed item is a directory, the directory will have this name. If
@@ -29,7 +34,7 @@ name of the .tar.gz file without the tar.gz extension, or if a GitHub
 reference, the repo name. If it is a specific file from within a .tar.gz file,
 then that file's name will be used.
 
-## Specifics of installation.
+## Installation Details
 
 For the directory in which add is run, it will look for the following to know
 where to install:

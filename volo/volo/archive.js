@@ -58,13 +58,14 @@ define(function (require) {
                 archive = archive.substring(0, fragIndex);
             }
 
-            if (scheme === 'http' || scheme === 'https') {
+            if (scheme === 'http' || scheme === 'https' || scheme === 'symlink') {
                 //localName is the file name without extension. If a .tar.gz
                 //file, then a does not include .tar.gz
                 localName = archive.substring(archive.lastIndexOf('/') + 1);
                 localName = localName.replace(fileExtRegExp, '');
 
                 d.resolve({
+                    scheme: scheme,
                     url: scheme + ':' + archive,
                     isArchive: tarGzRegExp.test(archive),
                     fragment: fragment,
