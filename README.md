@@ -13,8 +13,9 @@ volo.js can download scripts from GitHub or an URL as part of the project setup,
 so it can be extended to run any sort of JavaScript-based action that can run
 in node
 
-It is still very early in development, so lots may change, but it is already
-fun to use.
+It is still very early in development. Lots may change and it has some sharp
+corners, but it is already fun to use. It is just one file, so it is
+easy to try out and discard.
 
 ### Prerequisites
 
@@ -24,18 +25,17 @@ Windows? Help out with [issue #1](https://github.com/volojs/volo/issues/1).
 
 ## Install
 
-* curl https://raw.github.com/volojs/volo/master/dist/volo.js > volo.js
-* chmod +x volo.js
+    > curl https://raw.github.com/volojs/volo/master/dist/volo.js > volo.js
+    > chmod +x volo.js
 
 It is best to put volo.js in your path, but *do not* install it as root.
 
 Suggested path so that it is always available:
 
-* cd ~
-* mkdir ~/scripts
-* cd ~/scripts
-* curl https://raw.github.com/volojs/volo/master/dist/volo.js > volo.js
-* chmod +x volo.js
+    > mkdir ~/scripts
+    > cd ~/scripts
+    > curl https://raw.github.com/volojs/volo/master/dist/volo.js > volo.js
+    > chmod +x volo.js
 
 Then add **~/scripts** to your PATH in your .profile.
 
@@ -71,9 +71,10 @@ use Backbone, jQuery and underscore:
 
 * Design goals
 * Create a volo command
-* License: [MIT and new BSD]()
+* License: [MIT and new BSD](https://github.com/volojs/volo/blob/master/LICENSE)
 
 ## Engage
 
-* Email list
-* File a bug
+* [Discussion list](http://groups.google.com/group/volojs)
+* [File an issue](https://github.com/volojs/volo/issues)
+* [Working with the volo code]()
