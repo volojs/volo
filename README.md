@@ -1,12 +1,12 @@
 # volo
 
-A command line JavaScript tool to set up JavaScript-based projects. It likes
+A command line JavaScript tool for JavaScript-based projects. It likes
 GitHub.
 
 The basic tool is a generic command completion tool -- you can create new
-commands that volo can run, and you can use commands others have created.
+commands for volo, and you can use commands others have created.
 
-By default, volo.js knows how to:
+By default, volo knows how to:
 
 * [create a new web project](https://github.com/volojs/volo/blob/master/volo/create/doc.md)
 * [add scripts for a web project from the command line](https://github.com/volojs/volo/blob/master/volo/add/doc.md)
@@ -49,7 +49,7 @@ tailored to use specific commands for specific purposes.
 
 ## Usage
 
-volo.js can use GitHub to retrieve code, so one of the core concepts when using
+volo can use GitHub to retrieve code, so one of the core concepts when using
 it is understanding **user/repo** for archive names. See the
 [add doc](https://github.com/volojs/volo/blob/master/volo/add/doc.md) for more
 info on the types of archive names to use.
