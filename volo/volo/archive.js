@@ -65,7 +65,7 @@ define(function (require) {
                 localName = localName.replace(fileExtRegExp, '');
 
                 d.resolve({
-                    url: archive,
+                    url: scheme + ':' + archive,
                     isArchive: tarGzRegExp.test(archive),
                     fragment: fragment,
                     localName: localName

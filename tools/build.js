@@ -22,6 +22,7 @@
         'rejuvenate',
         'create',
         'add',
+        'amdify',
 
         //Leave this one last, see r.js issue #70
         'text'
