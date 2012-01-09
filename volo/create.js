@@ -14,7 +14,7 @@ define(function (require, exports, module) {
         q = require('q'),
         tempDir = require('volo/tempDir'),
         archive = require('volo/archive'),
-        fileUtil = require('volo/fileUtil'),
+        file = require('volo/file'),
         download = require('volo/download'),
         tar = require('volo/tar'),
         create;
@@ -36,17 +36,18 @@ define(function (require, exports, module) {
         run: function (deferred, namedArgs, appName, template) {
             template = template || 'volojs/create-template';
 
-            var d = q.defer(),
-                archiveInfo;
+            var archiveInfo;
 
-            d.resolve()
-            .then(function () {
+            //Find out how to get the template
+            deferred.resolve(q.call(function () {
                 return archive.resolve(template);
             })
+            //Create a tempdir to store the archive.
             .then(function (info) {
                 archiveInfo = info;
                 return tempDir.create(template);
             })
+            //Download and unpack the template.
             .then(function (tempDirName) {
                 var tarFileName = path.join(tempDirName, 'template.tar.gz'),
                     d = q.defer(),
@@ -54,7 +55,7 @@ define(function (require, exports, module) {
 
                 //Function used to clean up in case of errors.
                 function errCleanUp(err) {
-                    fileUtil.rmdir(tempDirName);
+                    file.rmdir(tempDirName);
                     return err;
                 }
 
@@ -74,13 +75,13 @@ define(function (require, exports, module) {
                 //Move the contents to the final destination.
                 step = step.then(function () {
                     //Move the untarred directory to the final location.
-                    var dirName = fileUtil.firstDir(tempDirName);
+                    var dirName = file.firstDir(tempDirName);
                     if (dirName) {
                         //Move the unpacked template to appName
                         fs.renameSync(dirName, appName);
 
                         //Clean up temp area.
-                        fileUtil.rmdir(tempDirName);
+                        file.rmdir(tempDirName);
 
                         return archiveInfo.url + ' used to create ' + appName;
                     } else {
@@ -89,8 +90,7 @@ define(function (require, exports, module) {
                 }, errCleanUp);
 
                 return step;
-            })
-            .then(deferred.resolve, deferred.reject);
+            }));
         }
     };
 

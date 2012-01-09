@@ -4,7 +4,7 @@
  * see: http://github.com/volojs/volo for details
  */
 
-/*jslint nomen: false, evil: true */
+/*jslint nomen: false, strict: false evil: true */
 /*global require, requirejs, doh, __dirname, skipDohSetup: true */
 //'use strict';
 
@@ -24,11 +24,14 @@ bootstrap = [
     '../tools/node.js'
 ];
 
-function load(path) {
-    var contents = fs.readFileSync(path, 'utf8');
+function load(testPath) {
+    var contents = fs.readFileSync(testPath, 'utf8');
 
     return requirejs.exec(contents, {
-        doh: doh
+        doh: doh,
+        __filename: testPath,
+        __dirname: path.dirname(testPath),
+        setTimeout: setTimeout
     });
 }
 
@@ -50,6 +53,7 @@ requirejs.config({
 //Tests
 load('lib/volo/packageJson/tests.js');
 load('lib/volo/version.js');
+load('commands/create/tests.js');
 
 //Print out test results
 doh.run();

@@ -6,16 +6,16 @@
 
 'use strict';
 /*jslint plusplus: false */
-/*global define, process, console */
+/*global define, voloVersion, console */
 
 define(function (require) {
     var commands = require('./commands'),
+        config = require('./config'),
+        path = require('path'),
         q = require('q');
 
-    function main(callback, errback) {
+    function main(args, callback, errback) {
         var deferred = q.defer(),
-            //First two args are 'node' and 'volo.js'
-            args = process.argv.slice(2),
             namedArgs = {},
             aryArgs = [],
             flags = [],
@@ -80,14 +80,14 @@ define(function (require) {
             //Show usage info.
             commands.list(function (message) {
                 //voloVersion set in tools/wrap.start
-                deferred.resolve('volo.js v' + voloVersion +
+                deferred.resolve(path.basename(config.volo.path) + ' v' + voloVersion +
                                 ', a JavaScript tool to make ' +
                                 'JavaScript projects. Allowed commands:\n\n' +
                                 message);
             });
         }
 
-        q.when(deferred.promise, callback, errback);
+        return q.when(deferred.promise, callback, errback);
     }
 
     return main;

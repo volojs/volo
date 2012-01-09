@@ -7,7 +7,10 @@ requirejs(['volo/main']);
 //the commands that are built into volo.js may not have
 //been registered yet.
 requirejs(['volo/main'], function (main) {
-    main(function (message) {
+    //First two args are 'node' and 'volo.js'
+    var args = process.argv.slice(2);
+
+    main(args, function (message) {
         if (message) {
             console.log(message);
         }

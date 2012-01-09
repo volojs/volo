@@ -18,7 +18,7 @@ define(function (require, exports, module) {
         download = require('volo/download'),
         packageJson = require('volo/packageJson'),
         tar = require('volo/tar'),
-        fileUtil = require('volo/fileUtil'),
+        file = require('volo/file'),
         tempDir = require('volo/tempDir'),
         add;
 
@@ -122,7 +122,7 @@ define(function (require, exports, module) {
 
                 //Function used to clean up in case of errors.
                 function errCleanUp(err) {
-                    fileUtil.rmdir(tempDirName);
+                    file.rmdir(tempDirName);
                     deferred.reject(err);
                 }
 
@@ -131,7 +131,7 @@ define(function (require, exports, module) {
                 function moveFromTemp() {
                     try {
                         //Find the directory that was unpacked in tempDirName
-                        var dirName = fileUtil.firstDir(tempDirName),
+                        var dirName = file.firstDir(tempDirName),
                             info, sourceName, targetName, completeMessage,
                             listing, defaultName;
 
@@ -195,14 +195,14 @@ define(function (require, exports, module) {
 
                                 //If directory, remove common directories not
                                 //needed for install. This is a bit goofy,
-                                //fileUtil.rmdir is actually callback based,
+                                //file.rmdir is actually callback based,
                                 //but cheating here a bit
                                 //TODO: make this Q-based at some point.
                                 if (myConfig.discard) {
                                     fs.readdirSync(targetName).forEach(
                                         function (name) {
                                         if (myConfig.discard[name]) {
-                                            fileUtil.rmdir(path.join(targetName,
+                                            file.rmdir(path.join(targetName,
                                                                      name));
                                         }
                                     });
@@ -221,7 +221,7 @@ define(function (require, exports, module) {
                             //TODO
 
                             //All done.
-                            fileUtil.rmdir(tempDirName);
+                            file.rmdir(tempDirName);
                             completeMessage = 'Installed ' +
                                 archiveInfo.url +
                                 (archiveInfo.fragment ? '#' +
@@ -240,7 +240,7 @@ define(function (require, exports, module) {
 
                 try {
                     //If the baseUrl does not exist, create it.
-                    fileUtil.mkdirs(baseUrl);
+                    file.mkdirs(baseUrl);
 
                     //Get the package JSON data for dependency, if it is
                     //already on disk.

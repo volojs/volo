@@ -19,6 +19,11 @@ define(function (require) {
 
     // The defaults to use.
     config = {
+        "volo": {
+            //Hold on to the name of the script
+            "path": process.argv[1]
+        },
+
         "registry": "https://registry.npmjs.org/",
 
         "github": {

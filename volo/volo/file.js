@@ -6,7 +6,8 @@ define(function (require) {
     var fs = require('fs'),
         path = require('path'),
         exec = require('child_process').exec,
-        fileUtil;
+        qutil = require('./qutil'),
+        file;
 
     function frontSlash(path) {
         return path.replace(/\\/g, '/');
@@ -38,7 +39,7 @@ define(function (require) {
         }
     }
 
-    fileUtil = {
+    file = {
         /**
          * Recurses startDir and finds matches to the files that match
          * regExpFilters.include and do not match regExpFilters.exclude.
@@ -100,6 +101,8 @@ define(function (require) {
          * Does an rm -rf on a directory. Like a boss.
          */
         rmdir: function (dir, callback, errback) {
+            var d = qutil.convert(callback, errback);
+
             if (!dir) {
                 callback();
             }
@@ -111,20 +114,20 @@ define(function (require) {
             }
 
             if (dir === '/') {
-                if (errback) {
-                    errback(new Error('fileUtil.rmdir cannot handle /'));
-                }
+                d.reject(new Error('file.rmdir cannot handle /'));
             }
 
             exec('rm -rf ' + dir,
                 function (error, stdout, stderr) {
-                    if (error && errback) {
-                        errback(error);
-                    } else if (callback) {
-                        callback();
+                    if (error) {
+                        d.reject(error);
+                    } else {
+                        d.resolve();
                     }
                 }
             );
+
+            return d;
         },
 
         /**
@@ -157,14 +160,14 @@ define(function (require) {
             srcDir = frontSlash(path.normalize(srcDir));
             destDir = frontSlash(path.normalize(destDir));
 
-            var fileNames = fileUtil.getFilteredFileList(srcDir, regExpFilter, true),
+            var fileNames = file.getFilteredFileList(srcDir, regExpFilter, true),
             copiedFiles = [], i, srcFileName, destFileName;
 
             for (i = 0; i < fileNames.length; i++) {
                 srcFileName = fileNames[i];
                 destFileName = srcFileName.replace(srcDir, destDir);
 
-                if (fileUtil.copyFile(srcFileName, destFileName, onlyCopyNew)) {
+                if (file.copyFile(srcFileName, destFileName, onlyCopyNew)) {
                     copiedFiles.push(destFileName);
                 }
             }
@@ -192,7 +195,7 @@ define(function (require) {
             //Make sure destination dir exists.
             parentDir = path.dirname(destFileName);
             if (!path.existsSync(parentDir)) {
-                fileUtil.mkdirs(parentDir);
+                file.mkdirs(parentDir);
             }
 
             fs.writeFileSync(destFileName, fs.readFileSync(srcFileName, 'binary'), 'binary');
@@ -201,5 +204,5 @@ define(function (require) {
         }
     };
 
-    return fileUtil;
+    return file;
 });

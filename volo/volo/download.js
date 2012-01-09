@@ -14,7 +14,7 @@ define(function (require) {
         fs = require('fs'),
         urlLib = require('url'),
         qutil = require('volo/qutil'),
-        fileUtil = require('volo/fileUtil'),
+        file = require('volo/file'),
         localRegExp = /^local\:/;
 
     function download(url, path, callback, errback) {
@@ -25,7 +25,7 @@ define(function (require) {
             //Handle local URLs
             if (localRegExp.test(url)) {
                 url = url.substring(url.indexOf(':') + 1);
-                fileUtil.copyDir(url, path);
+                file.copyDir(url, path);
                 d.resolve(path);
             } else {
 

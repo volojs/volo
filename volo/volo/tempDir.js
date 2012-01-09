@@ -11,7 +11,7 @@
 define(function (require) {
     var path = require('path'),
         fs = require('fs'),
-        fileUtil = require('./fileUtil'),
+        file = require('./file'),
         qutil = require('./qutil'),
         counter = 0,
         tempDir;
@@ -23,7 +23,7 @@ define(function (require) {
                 d = qutil.convert(callback, errback);
 
             if (path.existsSync(temp)) {
-                fileUtil.rmdir(temp, function () {
+                file.rmdir(temp, function () {
                     fs.mkdirSync(temp);
                     d.resolve(temp);
                 }, d.reject);
