@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
 /**
- * @license volo 0.0.1 Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
+ * @license volo 0.0.1+ Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
  * see: http://github.com/volojs/volo for details
  */
 
-var voloVersion = '0.0.1';
+var voloVersion = '0.0.1+';
 
 /** vim: et:ts=4:sw=4:sts=4
  * @license RequireJS 1.0.2 Copyright (c) 2010-2011, The Dojo Foundation All Rights Reserved.
@@ -3432,7 +3432,13 @@ define('volo/archive',['require','q','path'],function (require) {
         path = require('path'),
         tarGzRegExp = /\.tar\.gz$/,
         //Regexp used to strip off file extension
-        fileExtRegExp = /\.tar\.gz$|\.\w+$/;
+        fileExtRegExp = /\.tar\.gz$|\.\w+$/,
+        handledSchemes = {
+            http: true,
+            https: true,
+            local: true,
+            symlink: true
+        };
 
     return {
         /**
@@ -3462,9 +3468,14 @@ define('volo/archive',['require','q','path'],function (require) {
                 fragment = null,
                 scheme,  resolverId, localName;
 
-            //Figure out the scheme. Default is github.
+            //Figure out the scheme. Default is github, unless a local
+            //path matches.
             if (index === -1) {
-                scheme = 'github';
+                if (path.existsSync(archive)) {
+                    scheme = 'local';
+                } else {
+                    scheme = 'github';
+                }
             } else {
                 scheme = archive.substring(0, index);
                 archive = archive.substring(index + 1);
@@ -3477,7 +3488,7 @@ define('volo/archive',['require','q','path'],function (require) {
                 archive = archive.substring(0, fragIndex);
             }
 
-            if (scheme === 'http' || scheme === 'https' || scheme === 'symlink') {
+            if (handledSchemes.hasOwnProperty(scheme)) {
                 //localName is the file name without extension. If a .tar.gz
                 //file, then a does not include .tar.gz
                 localName = archive.substring(archive.lastIndexOf('/') + 1);
@@ -3634,8 +3645,43 @@ define('help',['require','exports','module','volo/commands','volo/commands'],fun
     return require('volo/commands').register(module.id, help);
 });
 
+/**
+ * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
+ * Available via the MIT or new BSD license.
+ * see: http://github.com/volojs/volo for details
+ */
+
 
 /*jslint */
+/*global define */
+
+define('volo/qutil',['require','q'],function (require) {
+    var q = require('q');
+
+    return {
+        convert: function (callback, errback) {
+            var d = q.defer();
+            q.when(d.promise, callback, errback);
+            return d;
+        },
+
+        add: function (array, promise) {
+            var prevPromise = array[array.length - 1];
+            if (prevPromise) {
+
+                deferred.resolve(prevPromise);
+            }
+            array.push(deferred.promise);
+
+            return array;
+        }
+    }
+
+    return callDefer;
+});
+
+
+/*jslint plusplus: false */
 /*global define */
 
 define('volo/fileUtil',['require','fs','path','child_process'],function (require) {
@@ -3643,6 +3689,10 @@ define('volo/fileUtil',['require','fs','path','child_process'],function (require
         path = require('path'),
         exec = require('child_process').exec,
         fileUtil;
+
+    function frontSlash(path) {
+        return path.replace(/\\/g, '/');
+    }
 
     function findMatches(matches, dir, regExpInclude, regExpExclude, dirRegExpExclude) {
         if (path.existsSync(dir) && fs.statSync(dir).isDirectory()) {
@@ -3777,6 +3827,59 @@ define('volo/fileUtil',['require','fs','path','child_process'],function (require
             });
 
             return firstDir;
+        },
+
+        copyDir: function (/*String*/srcDir, /*String*/destDir, /*RegExp?*/regExpFilter, /*boolean?*/onlyCopyNew) {
+            //summary: copies files from srcDir to destDir using the regExpFilter to determine if the
+            //file should be copied. Returns a list file name strings of the destinations that were copied.
+            regExpFilter = regExpFilter || /\w/;
+
+            //Normalize th directory names, but keep front slashes.
+            //path module on windows now returns backslashed paths.
+            srcDir = frontSlash(path.normalize(srcDir));
+            destDir = frontSlash(path.normalize(destDir));
+
+            var fileNames = fileUtil.getFilteredFileList(srcDir, regExpFilter, true),
+            copiedFiles = [], i, srcFileName, destFileName;
+
+            for (i = 0; i < fileNames.length; i++) {
+                srcFileName = fileNames[i];
+                destFileName = srcFileName.replace(srcDir, destDir);
+
+                if (fileUtil.copyFile(srcFileName, destFileName, onlyCopyNew)) {
+                    copiedFiles.push(destFileName);
+                }
+            }
+
+            return copiedFiles.length ? copiedFiles : null; //Array or null
+        },
+
+
+        copyFile: function (/*String*/srcFileName, /*String*/destFileName, /*boolean?*/onlyCopyNew) {
+            //summary: copies srcFileName to destFileName. If onlyCopyNew is set, it only copies the file if
+            //srcFileName is newer than destFileName. Returns a boolean indicating if the copy occurred.
+            var parentDir;
+
+            //logger.trace("Src filename: " + srcFileName);
+            //logger.trace("Dest filename: " + destFileName);
+
+            //If onlyCopyNew is true, then compare dates and only copy if the src is newer
+            //than dest.
+            if (onlyCopyNew) {
+                if (path.existsSync(destFileName) && fs.statSync(destFileName).mtime.getTime() >= fs.statSync(srcFileName).mtime.getTime()) {
+                    return false; //Boolean
+                }
+            }
+
+            //Make sure destination dir exists.
+            parentDir = path.dirname(destFileName);
+            if (!path.existsSync(parentDir)) {
+                fileUtil.mkdirs(parentDir);
+            }
+
+            fs.writeFileSync(destFileName, fs.readFileSync(srcFileName, 'binary'), 'binary');
+
+            return true; //Boolean
         }
     };
 
@@ -3793,26 +3896,31 @@ define('volo/fileUtil',['require','fs','path','child_process'],function (require
 /*jslint */
 /*global define, console, process */
 
-define('volo/tempDir',['require','path','fs','volo/fileUtil'],function (require) {
+define('volo/tempDir',['require','path','fs','./fileUtil','./qutil'],function (require) {
     var path = require('path'),
         fs = require('fs'),
-        fileUtil = require('volo/fileUtil'),
+        fileUtil = require('./fileUtil'),
+        qutil = require('./qutil'),
         counter = 0,
         tempDir;
 
     tempDir = {
 
         create: function (seed, callback, errback) {
-            var temp = tempDir.createTempName(seed);
+            var temp = tempDir.createTempName(seed),
+                d = qutil.convert(callback, errback);
+
             if (path.existsSync(temp)) {
                 fileUtil.rmdir(temp, function () {
                     fs.mkdirSync(temp);
-                    callback(temp);
-                }, errback);
+                    d.resolve(temp);
+                }, d.reject);
             } else {
                 fs.mkdirSync(temp);
-                callback(temp);
+                d.resolve(temp);
             }
+
+            return d.promise;
         },
 
         createTempName: function (seed) {
@@ -3834,62 +3942,68 @@ define('volo/tempDir',['require','path','fs','volo/fileUtil'],function (require)
 /*jslint plusplus: false */
 /*global define, console */
 
-define('volo/download',['require','https','http','fs','url'],function (require) {
+define('volo/download',['require','https','http','fs','url','volo/qutil','volo/fileUtil'],function (require) {
     var https = require('https'),
         http = require('http'),
         fs = require('fs'),
-        urlLib = require('url');
+        urlLib = require('url'),
+        qutil = require('volo/qutil'),
+        fileUtil = require('volo/fileUtil'),
+        localRegExp = /^local\:/;
 
     function download(url, path, callback, errback) {
+        var d = qutil.convert(callback, errback),
+            parts, protocol, writeStream;
+
         try {
-            var parts = urlLib.parse(url),
-                protocol = parts.protocol === 'https:' ? https : http,
+            //Handle local URLs
+            if (localRegExp.test(url)) {
+                url = url.substring(url.indexOf(':') + 1);
+                fileUtil.copyDir(url, path);
+                d.resolve(path);
+            } else {
+
+                //Do the network fetch.
+                parts = urlLib.parse(url);
+                protocol = parts.protocol === 'https:' ? https : http;
                 writeStream = fs.createWriteStream(path);
 
-            protocol.get(parts, function (response) {
+                protocol.get(parts, function (response) {
 
-                //console.log("statusCode: ", response.statusCode);
-                //console.log("headers: ", response.headers);
-                try {
-                    if (response.statusCode === 200) {
+                    //console.log("statusCode: ", response.statusCode);
+                    //console.log("headers: ", response.headers);
+                    try {
+                        if (response.statusCode === 200) {
 
-                        console.log('Downloading: ' + url);
+                            console.log('Downloading: ' + url);
 
-                        //Bingo, do the download.
-                        response.on('data', function (data) {
-                            writeStream.write(data);
-                        });
+                            //Bingo, do the download.
+                            response.on('data', function (data) {
+                                writeStream.write(data);
+                            });
 
-                        response.on('end', function () {
-                            writeStream.end();
-                            callback(path);
-                        });
-                    } else if (response.statusCode === 302) {
-                        //Redirect, try the new location
-                        download(response.headers.location, path, callback, errback);
-                    } else {
-                        if (errback) {
-                            errback(response);
+                            response.on('end', function () {
+                                writeStream.end();
+                                d.resolve(path);
+                            });
+                        } else if (response.statusCode === 302) {
+                            //Redirect, try the new location
+                            d.resolve(download(response.headers.location, path));
+                        } else {
+                            d.resolve(response);
                         }
+                    } catch (e) {
+                        d.reject(e);
                     }
-                } catch (e) {
-                    if (errback) {
-                        errback(e);
-                    }
-                }
-            }).on('error', function (e) {
-                if (errback) {
-                    errback(e);
-                } else {
-                    console.error(e);
-                }
-            });
-        } catch (e) {
-            if (errback) {
-                errback(e);
+                }).on('error', function (e) {
+                    d.reject(e);
+                });
             }
+        } catch (e) {
+            d.reject(e);
         }
 
+        return d.promise;
     }
 
     return download;
@@ -3904,9 +4018,10 @@ define('volo/download',['require','https','http','fs','url'],function (require) 
 /*jslint */
 /*global define, console */
 
-define('volo/tar',['require','child_process','path'],function (require) {
+define('volo/tar',['require','child_process','path','volo/qutil'],function (require) {
     var exec = require('child_process').exec,
         path = require('path'),
+        qutil = require('volo/qutil'),
         gzRegExp = /\.gz$/,
         tar;
 
@@ -3915,6 +4030,7 @@ define('volo/tar',['require','child_process','path'],function (require) {
 
             var flags = 'xf',
                 dirName = path.dirname(fileName),
+                d = qutil.convert(callback, errback),
                 command;
 
             //If a .gz file add z to the flags.
@@ -3929,13 +4045,15 @@ define('volo/tar',['require','child_process','path'],function (require) {
 
             exec(command,
                 function (error, stdout, stderr) {
-                    if (error && errback) {
-                        errback(error);
+                    if (error) {
+                        d.reject(error);
                     } else {
-                        callback();
+                        d.resolve();
                     }
                 }
             );
+
+            return d.promise;
         }
     };
 
@@ -4340,39 +4458,61 @@ define('create',['require','exports','module','fs','path','q','volo/tempDir','vo
         run: function (deferred, namedArgs, appName, template) {
             template = template || 'volojs/create-template';
 
-            q.when(archive.resolve(template), function (archiveInfo) {
-                tempDir.create(template, function (tempDirName) {
-                    var tarFileName = path.join(tempDirName, 'template.tar.gz');
+            var d = q.defer(),
+                archiveInfo;
 
-                    //Function used to clean up in case of errors.
-                    function errCleanUp(err) {
-                        fileUtil.rmdir(tempDirName);
-                        deferred.reject(err);
-                    }
+            d.resolve()
+            .then(function () {
+                return archive.resolve(template);
+            })
+            .then(function (info) {
+                archiveInfo = info;
+                return tempDir.create(template);
+            })
+            .then(function (tempDirName) {
+                var tarFileName = path.join(tempDirName, 'template.tar.gz'),
+                    d = q.defer(),
+                    step;
 
-                    //Download the tarball.
-                    download(archiveInfo.url, tarFileName, function (filePath) {
-                        //Unpack the zip file.
-                        tar.untar(tarFileName, function () {
-                            //Move the untarred directory to the final location.
-                            var dirName = fileUtil.firstDir(tempDirName);
-                            if (dirName) {
-                                //Move the unpacked template to appName
-                                fs.renameSync(dirName, appName);
+                //Function used to clean up in case of errors.
+                function errCleanUp(err) {
+                    fileUtil.rmdir(tempDirName);
+                    return err;
+                }
 
-                                //Clean up temp area.
-                                fileUtil.rmdir(tempDirName);
+                //Download
+                step = d.resolve()
+                .then(function () {
+                    return download(archiveInfo.url, tarFileName);
+                }, errCleanUp);
 
-                                console.log(archiveInfo.url +
-                                            ' used to create ' + appName);
-                                deferred.resolve();
-                            } else {
-                                errCleanUp('Unexpected tarball configuration');
-                            }
-                        }, errCleanUp);
+                //If an archive unpack it.
+                if (archiveInfo.isArchive) {
+                    step = step.then(function () {
+                        return tar.untar(tarFileName);
                     }, errCleanUp);
-                }, deferred.reject);
-            }, deferred.reject);
+                }
+
+                //Move the contents to the final destination.
+                step = step.then(function () {
+                    //Move the untarred directory to the final location.
+                    var dirName = fileUtil.firstDir(tempDirName);
+                    if (dirName) {
+                        //Move the unpacked template to appName
+                        fs.renameSync(dirName, appName);
+
+                        //Clean up temp area.
+                        fileUtil.rmdir(tempDirName);
+
+                        return archiveInfo.url + ' used to create ' + appName;
+                    } else {
+                        return errCleanUp(new Error('Unexpected tarball configuration'));
+                    }
+                }, errCleanUp);
+
+                return step;
+            })
+            .then(deferred.resolve, deferred.reject);
         }
     };
 

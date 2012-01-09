@@ -11,6 +11,7 @@
 define(function (require) {
     var exec = require('child_process').exec,
         path = require('path'),
+        qutil = require('volo/qutil'),
         gzRegExp = /\.gz$/,
         tar;
 
@@ -19,6 +20,7 @@ define(function (require) {
 
             var flags = 'xf',
                 dirName = path.dirname(fileName),
+                d = qutil.convert(callback, errback),
                 command;
 
             //If a .gz file add z to the flags.
@@ -33,13 +35,15 @@ define(function (require) {
 
             exec(command,
                 function (error, stdout, stderr) {
-                    if (error && errback) {
-                        errback(error);
+                    if (error) {
+                        d.reject(error);
                     } else {
-                        callback();
+                        d.resolve();
                     }
                 }
             );
+
+            return d.promise;
         }
     };
 

@@ -13,7 +13,13 @@ define(function (require) {
         path = require('path'),
         tarGzRegExp = /\.tar\.gz$/,
         //Regexp used to strip off file extension
-        fileExtRegExp = /\.tar\.gz$|\.\w+$/;
+        fileExtRegExp = /\.tar\.gz$|\.\w+$/,
+        handledSchemes = {
+            http: true,
+            https: true,
+            local: true,
+            symlink: true
+        };
 
     return {
         /**
@@ -43,9 +49,14 @@ define(function (require) {
                 fragment = null,
                 scheme,  resolverId, localName;
 
-            //Figure out the scheme. Default is github.
+            //Figure out the scheme. Default is github, unless a local
+            //path matches.
             if (index === -1) {
-                scheme = 'github';
+                if (path.existsSync(archive)) {
+                    scheme = 'local';
+                } else {
+                    scheme = 'github';
+                }
             } else {
                 scheme = archive.substring(0, index);
                 archive = archive.substring(index + 1);
@@ -58,7 +69,7 @@ define(function (require) {
                 archive = archive.substring(0, fragIndex);
             }
 
-            if (scheme === 'http' || scheme === 'https' || scheme === 'symlink') {
+            if (handledSchemes.hasOwnProperty(scheme)) {
                 //localName is the file name without extension. If a .tar.gz
                 //file, then a does not include .tar.gz
                 localName = archive.substring(archive.lastIndexOf('/') + 1);

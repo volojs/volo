@@ -36,39 +36,61 @@ define(function (require, exports, module) {
         run: function (deferred, namedArgs, appName, template) {
             template = template || 'volojs/create-template';
 
-            q.when(archive.resolve(template), function (archiveInfo) {
-                tempDir.create(template, function (tempDirName) {
-                    var tarFileName = path.join(tempDirName, 'template.tar.gz');
+            var d = q.defer(),
+                archiveInfo;
 
-                    //Function used to clean up in case of errors.
-                    function errCleanUp(err) {
-                        fileUtil.rmdir(tempDirName);
-                        deferred.reject(err);
-                    }
+            d.resolve()
+            .then(function () {
+                return archive.resolve(template);
+            })
+            .then(function (info) {
+                archiveInfo = info;
+                return tempDir.create(template);
+            })
+            .then(function (tempDirName) {
+                var tarFileName = path.join(tempDirName, 'template.tar.gz'),
+                    d = q.defer(),
+                    step;
 
-                    //Download the tarball.
-                    download(archiveInfo.url, tarFileName, function (filePath) {
-                        //Unpack the zip file.
-                        tar.untar(tarFileName, function () {
-                            //Move the untarred directory to the final location.
-                            var dirName = fileUtil.firstDir(tempDirName);
-                            if (dirName) {
-                                //Move the unpacked template to appName
-                                fs.renameSync(dirName, appName);
+                //Function used to clean up in case of errors.
+                function errCleanUp(err) {
+                    fileUtil.rmdir(tempDirName);
+                    return err;
+                }
 
-                                //Clean up temp area.
-                                fileUtil.rmdir(tempDirName);
+                //Download
+                step = d.resolve()
+                .then(function () {
+                    return download(archiveInfo.url, tarFileName);
+                }, errCleanUp);
 
-                                console.log(archiveInfo.url +
-                                            ' used to create ' + appName);
-                                deferred.resolve();
-                            } else {
-                                errCleanUp('Unexpected tarball configuration');
-                            }
-                        }, errCleanUp);
+                //If an archive unpack it.
+                if (archiveInfo.isArchive) {
+                    step = step.then(function () {
+                        return tar.untar(tarFileName);
                     }, errCleanUp);
-                }, deferred.reject);
-            }, deferred.reject);
+                }
+
+                //Move the contents to the final destination.
+                step = step.then(function () {
+                    //Move the untarred directory to the final location.
+                    var dirName = fileUtil.firstDir(tempDirName);
+                    if (dirName) {
+                        //Move the unpacked template to appName
+                        fs.renameSync(dirName, appName);
+
+                        //Clean up temp area.
+                        fileUtil.rmdir(tempDirName);
+
+                        return archiveInfo.url + ' used to create ' + appName;
+                    } else {
+                        return errCleanUp(new Error('Unexpected tarball configuration'));
+                    }
+                }, errCleanUp);
+
+                return step;
+            })
+            .then(deferred.resolve, deferred.reject);
         }
     };
 

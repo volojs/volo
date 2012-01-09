@@ -11,23 +11,28 @@
 define(function (require) {
     var path = require('path'),
         fs = require('fs'),
-        fileUtil = require('volo/fileUtil'),
+        fileUtil = require('./fileUtil'),
+        qutil = require('./qutil'),
         counter = 0,
         tempDir;
 
     tempDir = {
 
         create: function (seed, callback, errback) {
-            var temp = tempDir.createTempName(seed);
+            var temp = tempDir.createTempName(seed),
+                d = qutil.convert(callback, errback);
+
             if (path.existsSync(temp)) {
                 fileUtil.rmdir(temp, function () {
                     fs.mkdirSync(temp);
-                    callback(temp);
-                }, errback);
+                    d.resolve(temp);
+                }, d.reject);
             } else {
                 fs.mkdirSync(temp);
-                callback(temp);
+                d.resolve(temp);
             }
+
+            return d.promise;
         },
 
         createTempName: function (seed) {

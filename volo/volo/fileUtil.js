@@ -1,5 +1,5 @@
 'use strict';
-/*jslint */
+/*jslint plusplus: false */
 /*global define */
 
 define(function (require) {
@@ -7,6 +7,10 @@ define(function (require) {
         path = require('path'),
         exec = require('child_process').exec,
         fileUtil;
+
+    function frontSlash(path) {
+        return path.replace(/\\/g, '/');
+    }
 
     function findMatches(matches, dir, regExpInclude, regExpExclude, dirRegExpExclude) {
         if (path.existsSync(dir) && fs.statSync(dir).isDirectory()) {
@@ -141,6 +145,59 @@ define(function (require) {
             });
 
             return firstDir;
+        },
+
+        copyDir: function (/*String*/srcDir, /*String*/destDir, /*RegExp?*/regExpFilter, /*boolean?*/onlyCopyNew) {
+            //summary: copies files from srcDir to destDir using the regExpFilter to determine if the
+            //file should be copied. Returns a list file name strings of the destinations that were copied.
+            regExpFilter = regExpFilter || /\w/;
+
+            //Normalize th directory names, but keep front slashes.
+            //path module on windows now returns backslashed paths.
+            srcDir = frontSlash(path.normalize(srcDir));
+            destDir = frontSlash(path.normalize(destDir));
+
+            var fileNames = fileUtil.getFilteredFileList(srcDir, regExpFilter, true),
+            copiedFiles = [], i, srcFileName, destFileName;
+
+            for (i = 0; i < fileNames.length; i++) {
+                srcFileName = fileNames[i];
+                destFileName = srcFileName.replace(srcDir, destDir);
+
+                if (fileUtil.copyFile(srcFileName, destFileName, onlyCopyNew)) {
+                    copiedFiles.push(destFileName);
+                }
+            }
+
+            return copiedFiles.length ? copiedFiles : null; //Array or null
+        },
+
+
+        copyFile: function (/*String*/srcFileName, /*String*/destFileName, /*boolean?*/onlyCopyNew) {
+            //summary: copies srcFileName to destFileName. If onlyCopyNew is set, it only copies the file if
+            //srcFileName is newer than destFileName. Returns a boolean indicating if the copy occurred.
+            var parentDir;
+
+            //logger.trace("Src filename: " + srcFileName);
+            //logger.trace("Dest filename: " + destFileName);
+
+            //If onlyCopyNew is true, then compare dates and only copy if the src is newer
+            //than dest.
+            if (onlyCopyNew) {
+                if (path.existsSync(destFileName) && fs.statSync(destFileName).mtime.getTime() >= fs.statSync(srcFileName).mtime.getTime()) {
+                    return false; //Boolean
+                }
+            }
+
+            //Make sure destination dir exists.
+            parentDir = path.dirname(destFileName);
+            if (!path.existsSync(parentDir)) {
+                fileUtil.mkdirs(parentDir);
+            }
+
+            fs.writeFileSync(destFileName, fs.readFileSync(srcFileName, 'binary'), 'binary');
+
+            return true; //Boolean
         }
     };
 
