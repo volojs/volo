@@ -6,39 +6,17 @@ define(function (require, exports, module) {
 
     var q = require('q'),
         main = require('volo/main'),
-        d = q.defer(),
+        start = q.defer(),
         fs = require('fs'),
         path = require('path'),
         file = require('volo/file'),
         cwd = process.cwd(),
-        expected = 1,
-        actual = 0,
         dir = path.dirname(module.uri),
-        testDir = path.join(dir, 'output');
-
-    //Function used for test cleanup, test if expected number or tests
-    //actually ran.
-    function done(result) {
-        process.chdir(cwd);
-
-        doh.register("createExpected",
-            [
-                function createExpected(t) {
-
-                    if (!(result instanceof Error)) {
-                        actual += 1;
-                    }
-
-                    t.is(expected, actual);
-                    d.resolve(result);
-                }
-            ]
-        );
-        doh.run();
-    }
+        testDir = path.join(dir, 'output'),
+        end;
 
     //Clean up old test output, create a fresh directory for it.
-    q.call(function () {
+    end = start.promise.then(function () {
         if (path.existsSync(testDir)) {
             return file.rmdir(testDir);
         }
@@ -66,8 +44,13 @@ define(function (require, exports, module) {
 
     })
     */
-    .then(done, done);
+    .then(function (result) {
+        process.chdir(cwd);
+    });
 
-    return d.promise;
+    return {
+        start: start,
+        end: end
+    };
 });
 

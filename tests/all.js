@@ -44,8 +44,6 @@ requirejs._reset = function () {
 //Ask for q first, to set the nocatch before any promises are generated.
 requirejs(['q'], function (q) {
 
-    q.shouldWhenCatch(false);
-
     //Tests
     requirejs([
         'q',
@@ -54,27 +52,29 @@ requirejs(['q'], function (q) {
         '../tests/commands/create/tests'
     ], function (q) {
 
-        //All the tests return a promise. Wait for all of them to
-        //complete before printing out the final summary.
-        var args = [].slice.call(arguments, 1);
+        //All the tests return a an object with the following properties:
+        //* start: a deferred to resolve to start the tests for that test module
+        //* end: a promise that resolves when the tests are done for that test module.
+        var promises = [].slice.call(arguments, 1),
+            master = q.defer(),
+            last;
 
-        function onError(err) {
-            //An error occurred, dump it out.
-            console.error(err);
-        }
-
-        //For each promise, register an error handler.
-        args = args.map(function (promise) {
-            return q.when(promise, null, onError);
+        last = promises.reduce(function (previous, current) {
+            current.start.resolve(previous.end);
+            return current;
+        }, {
+            start: master,
+            end: master.promise
         });
 
-        //Register a success handler for the q.join operation.
-        args.push(function () {
+        //Indicate this is the end of the promises, so we get errors
+        //logged correctly.
+        last.end.then(function () {
             //All promises are done, print out summary.
             doh.run();
-        });
+        }).end();
 
-        q.join.apply(q, args);
+        //Start the cascade
+        master.resolve();
     });
-
 });

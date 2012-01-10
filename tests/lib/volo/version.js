@@ -1,11 +1,12 @@
 
 /*jslint plusplus: false */
-/*global require, doh */
+/*global define, doh */
 'use strict';
 
 define(['volo/version', 'q'], function (version, q) {
 
-    var d = q.defer();
+    var start = q.defer(),
+        end;
 
     function validate(t, expected, actual) {
         var i;
@@ -17,18 +18,22 @@ define(['volo/version', 'q'], function (version, q) {
         }
     }
 
-    doh.register("versionTests",
-        [
-            function versionTests(t) {
-                var list1 = ['0.2.0', '0.2.1', '0.3.1', '0.3.0', '1.3.1beta1', '1.3.1pre1', '1.3.1pre2', '1.2.0', '1.3.1'],
-                    expected1 = ['1.3.1', '1.3.1pre2', '1.3.1pre1', '1.3.1beta1', '1.2.0', '0.3.1', '0.3.0', '0.2.1', '0.2.0'];
+    end = start.promise.then(function () {
+        doh.register("versionTests",
+            [
+                function versionTests(t) {
+                    var list1 = ['0.2.0', '0.2.1', '0.3.1', '0.3.0', '1.3.1beta1', '1.3.1pre1', '1.3.1pre2', '1.2.0', '1.3.1'],
+                        expected1 = ['1.3.1', '1.3.1pre2', '1.3.1pre1', '1.3.1beta1', '1.2.0', '0.3.1', '0.3.0', '0.2.1', '0.2.0'];
 
-                validate(t, expected1, list1.sort(version.compare));
-                d.resolve();
-            }
-        ]
-    );
-    doh.run();
+                    validate(t, expected1, list1.sort(version.compare));
+                }
+            ]
+        );
+        doh.run();
+    });
 
-    return d.promise;
+    return {
+        start: start,
+        end: end.promise
+    };
 });
