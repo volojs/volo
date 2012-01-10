@@ -473,6 +473,16 @@ exports.view = function (object) {
 };
 
 /**
+ * WARNING: modification from stock q.js by James Burke, so that tests
+ * throwing give accurate error info location. Usage inside
+ * when() is also a custom modification.
+ */
+var _shouldWhenCatch = true;
+exports.shouldWhenCatch = function (value) {
+    _shouldWhenCatch = !!value;
+};
+
+/**
  * Registers an observer on a promise.
  *
  * Guarantees:
@@ -493,20 +503,33 @@ function when(value, fulfilled, rejected) {
     var done = false;   // ensure the untrusted promise makes at most a
                         // single call to one of the callbacks
 
-    function _fulfilled(value) {
-        try {
-            return fulfilled ? fulfilled(value) : value;
-        } catch (exception) {
-            return reject(exception);
-        }
-    }
+    var _fulfilled, _rejected;
 
-    function _rejected(reason) {
-        try {
+    //WARNING: custom modification. see _shouldWhenCatch notes above.
+    if (_shouldWhenCatch) {
+        _fulfilled = function (value) {
+            try {
+                return fulfilled ? fulfilled(value) : value;
+            } catch (exception) {
+                return reject(exception);
+            }
+        };
+
+        _rejected = function (reason) {
+            try {
+                return rejected ? rejected(reason) : reject(reason);
+            } catch (exception) {
+                return reject(exception);
+            }
+        };
+    } else {
+        _fulfilled = function (value) {
+            return fulfilled ? fulfilled(value) : value;
+        };
+
+        _rejected = function (reason) {
             return rejected ? rejected(reason) : reject(reason);
-        } catch (exception) {
-            return reject(exception);
-        }
+        };
     }
 
     nextTick(function () {
