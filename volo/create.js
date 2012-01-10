@@ -40,7 +40,7 @@ define(function (require, exports, module) {
 
             //Find out how to get the template
             deferred.resolve(q.call(function () {
-                return archive.resolve(template);
+                return archive.resolve(template, namedArgs.volo.resolve);
             })
             //Create a tempdir to store the archive.
             .then(function (info) {

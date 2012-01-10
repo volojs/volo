@@ -23,7 +23,7 @@ define(function (require, exports, module) {
         flags: add.flags,
 
         validate: function (namedArgs, appName) {
-            add.validate.apply(add, arguments);
+            return add.validate.apply(add, arguments);
         },
 
         run: function (deferred, namedArgs, packageName, localName) {
@@ -61,13 +61,6 @@ define(function (require, exports, module) {
                 deferred.resolve(result + '\nNew volo command aquired!');
             }, function (err) {
                 finish();
-                var message = '';
-                if (packageName.indexOf('symlink:') === 0) {
-                    message = '\nIf using a relative path for the symlink, ' +
-                              'there is a bug with using relative paths with ' +
-                              'acquire, see this issue:\n' +
-                              'https://github.com/volojs/volo/issues/11';
-                }
                 deferred.reject(err + message);
             });
         }

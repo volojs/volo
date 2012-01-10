@@ -58,7 +58,7 @@ define(function (require, exports, module) {
         },
         run: function (deferred, namedArgs, archiveName, specificLocalName) {
 
-            q.when(archive.resolve(archiveName), function (archiveInfo) {
+            q.when(archive.resolve(archiveName, namedArgs.volo.resolve), function (archiveInfo) {
 
                 var pkg = packageJson('.'),
                     isAmdProject = namedArgs.amd || (pkg.data && pkg.data.amd),

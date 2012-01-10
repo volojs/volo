@@ -30,6 +30,9 @@ define(function (require) {
          * @param {String} archive a string that can somehow resolved to
          * an http/https URL to a .tar.gz or individual file.
          *
+         * @param {Function} [resolve] an optional resolve function to use
+         * to resolve relative local file paths.
+         *
          * Returns a promise with the properly resolved value being an
          * object with the following properties:
          *
@@ -41,7 +44,7 @@ define(function (require) {
          *              value. Useful to use when an explicit one is not
          *              specified by the user.
          */
-        resolve: function (archive) {
+        resolve: function (archive, resolve) {
 
             var d = q.defer(),
                 index = archive.indexOf(':'),
@@ -74,6 +77,12 @@ define(function (require) {
                 //file, then a does not include .tar.gz
                 localName = archive.substring(archive.lastIndexOf('/') + 1);
                 localName = localName.replace(fileExtRegExp, '');
+
+                //Resolve relative paths for this particular archive
+                //resolve call.
+                if ((scheme === 'symlink' || scheme === 'local') && resolve) {
+                    archive = resolve(archive);
+                }
 
                 d.resolve({
                     scheme: scheme,

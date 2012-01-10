@@ -6,7 +6,7 @@
 
 'use strict';
 /*jslint plusplus: false */
-/*global define, voloVersion, console */
+/*global define, voloVersion, console, process */
 
 define(function (require) {
     var commands = require('./commands'),
@@ -16,7 +16,18 @@ define(function (require) {
 
     function main(args, callback, errback) {
         var deferred = q.defer(),
-            namedArgs = {},
+            cwd = process.cwd(),
+            namedArgs = {
+                volo: {
+                    resolve: function (relativePath) {
+                        if (relativePath.indexOf('/') !== 0 &&
+                            relativePath.indexOf(':') === -1) {
+                            return path.resolve(cwd, relativePath);
+                        }
+                        return relativePath;
+                    }
+                }
+            },
             aryArgs = [],
             flags = [],
             commandName, combinedArgs;
