@@ -6,6 +6,8 @@ var requirejsVars = {
     define: define
 };
 
+global.requirejsVars = requirejsVars;
+
 //Used by some loader plugins that want to interact with built in node modules.
 requirejs.nodeRequire = require;
 
@@ -13,8 +15,9 @@ requirejs.nodeRequire = require;
 //as the script that is running.
 (function () {
     var path = require('path'),
-        name = path.basename(__filename, '.js'),
-        baseUrl = path.join(__dirname, name);
+        vpath = typeof voloPath === 'undefined' ? process.argv[1] : voloPath,
+        name = path.basename(vpath, '.js'),
+        baseUrl = path.join(path.dirname(vpath), name);
 
     requirejs.config({
         baseUrl: baseUrl

@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 /**
  * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
@@ -5,12 +7,16 @@
  */
 
 /*jslint nomen: false, strict: false evil: true */
-/*global require, requirejs, doh, __dirname, skipDohSetup: true */
+/*global require, requirejs, doh, __dirname, skipDohSetup: true, console */
 //'use strict';
 
 var vm = require('vm'),
     fs = require('fs'),
     path = require('path'),
+    //Set voloPath, used to set up volo/baseUrl and used in volo/config
+    //If this is not set, then the all.js location is used, which is not
+    //desirable.
+    voloPath = path.resolve(path.join('..', 'volo.js')),
     nodeRequire = require,
     //Special global flag used by DOH.
     skipDohSetup = true,
@@ -24,18 +30,7 @@ bootstrap = [
     '../tools/node.js'
 ];
 
-function load(testPath) {
-    var contents = fs.readFileSync(testPath, 'utf8');
-
-    return requirejs.exec(contents, {
-        doh: doh,
-        __filename: testPath,
-        __dirname: path.dirname(testPath),
-        setTimeout: setTimeout
-    });
-}
-
-//Test stuff
+//Load the bootstrap files.
 var contents = bootstrap.map(function (filePath) {
     return fs.readFileSync(filePath, 'utf8');
 });
@@ -46,14 +41,40 @@ requirejs._reset = function () {
     delete requirejs.s.contexts._;
 };
 
-requirejs.config({
-    baseUrl: path.join(__dirname, '..', 'volo')
+//Ask for q first, to set the nocatch before any promises are generated.
+requirejs(['q'], function (q) {
+
+    q.shouldWhenCatch(false);
+
+    //Tests
+    requirejs([
+        'q',
+        '../tests/lib/volo/packageJson/tests',
+        '../tests/lib/volo/version',
+        '../tests/commands/create/tests'
+    ], function (q) {
+
+        //All the tests return a promise. Wait for all of them to
+        //complete before printing out the final summary.
+        var args = [].slice.call(arguments, 1);
+
+        function onError(err) {
+            //An error occurred, dump it out.
+            console.error(err);
+        }
+
+        //For each promise, register an error handler.
+        args = args.map(function (promise) {
+            return q.when(promise, null, onError);
+        });
+
+        //Register a success handler for the q.join operation.
+        args.push(function () {
+            //All promises are done, print out summary.
+            doh.run();
+        });
+
+        q.join.apply(q, args);
+    });
+
 });
-
-//Tests
-load('lib/volo/packageJson/tests.js');
-load('lib/volo/version.js');
-load('commands/create/tests.js');
-
-//Print out test results
-doh.run();

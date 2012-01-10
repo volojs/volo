@@ -104,13 +104,13 @@ define(function (require) {
             var d = qutil.convert(callback, errback);
 
             if (!dir) {
-                callback();
+                d.resolve();
             }
 
             dir = path.resolve(dir);
 
             if (!path.existsSync(dir)) {
-                callback();
+                d.resolve();
             }
 
             if (dir === '/') {
@@ -127,7 +127,7 @@ define(function (require) {
                 }
             );
 
-            return d;
+            return d.promise;
         },
 
         /**

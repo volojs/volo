@@ -80,7 +80,9 @@ define(function (require) {
             //Show usage info.
             commands.list(function (message) {
                 //voloVersion set in tools/wrap.start
-                deferred.resolve(path.basename(config.volo.path) + ' v' + voloVersion +
+                deferred.resolve(path.basename(config.volo.path) +
+                                 (typeof voloVersion !== 'undefined' ?
+                                    ' v' + voloVersion : '') +
                                 ', a JavaScript tool to make ' +
                                 'JavaScript projects. Allowed commands:\n\n' +
                                 message);

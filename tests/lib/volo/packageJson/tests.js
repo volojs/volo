@@ -3,7 +3,9 @@
 /*global require, doh */
 'use strict';
 
-require(['volo/packageJson', 'path'], function (packageJson, path) {
+define(['volo/packageJson', 'path', 'q'], function (packageJson, path, q) {
+
+    var d = q.defer();
 
     doh.register("packageJsonTests",
         [
@@ -31,9 +33,12 @@ require(['volo/packageJson', 'path'], function (packageJson, path) {
                 result = packageJson(path.join(basePath, 'tooManyJs'));
                 t.is(null, result.data);
                 t.is(null, result.file);
+
+                d.resolve();
             }
         ]
     );
     doh.run();
 
+    return d.promise;
 });

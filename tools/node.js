@@ -5,7 +5,7 @@
  */
 
 /*jslint regexp: false, strict: false */
-/*global require, define, requirejsVars, process, console */
+/*global require: false, define: false, requirejsVars: false, process: false */
 
 /**
  * This adapter assumes that x.js has loaded it and set up
@@ -48,8 +48,17 @@
         return ret;
     };
 
+    //Add wrapper around the code so that it gets the requirejs
+    //API instead of the Node API, and it is done lexically so
+    //that it survives later execution.
+    req.makeNodeWrapper = function (contents) {
+        return '(function (require, requirejs, define) { ' +
+                contents +
+                '\n}(requirejsVars.require, requirejsVars.requirejs, requirejsVars.define));';
+    };
+
     req.load = function (context, moduleName, url) {
-        var contents, err, sandbox;
+        var contents, err;
 
         //Indicate a the module is in process of loading.
         context.scriptCount += 1;
@@ -57,16 +66,9 @@
         if (path.existsSync(url)) {
             contents = fs.readFileSync(url, 'utf8');
 
-            sandbox = {
-                require: req,
-                requirejs: req,
-                define: def,
-                process: process,
-                console: console
-            };
-
+            contents = req.makeNodeWrapper(contents);
             try {
-                vm.runInNewContext(contents, sandbox, fs.realpathSync(url));
+                vm.runInThisContext(contents, fs.realpathSync(url));
             } catch (e) {
                 err = new Error('Evaluating ' + url + ' as module "' +
                                 moduleName + '" failed with error: ' + e);
@@ -78,7 +80,7 @@
         } else {
             def(moduleName, function () {
                 try {
-                    return (context.config.nodeRequire || req.nodeRequire || nodeReq)(moduleName);
+                    return (context.config.nodeRequire || req.nodeRequire)(moduleName);
                 } catch (e) {
                     err = new Error('Calling node\'s require("' +
                                         moduleName + '") failed with error: ' + e);
@@ -96,22 +98,9 @@
     };
 
     //Override to provide the function wrapper for define/require.
-    req.exec = function (text, globals) {
-        var sandbox = {
-            require: req,
-            requirejs: req,
-            define: def,
-            process: process,
-            console: console
-        },
-        prop;
-
-        for (prop in globals) {
-            if (globals.hasOwnProperty(prop)) {
-                sandbox[prop] = globals[prop];
-            }
-        }
-
-        return vm.runInNewContext(text, sandbox, 'unknown-req.exec');
+    req.exec = function (text) {
+        /*jslint evil: true */
+        text = req.makeNodeWrapper(text);
+        return eval(text);
     };
 }());

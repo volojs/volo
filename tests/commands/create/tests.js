@@ -1,34 +1,40 @@
 /*jslint nomen: false */
-/*global require, doh, process, __dirname, console */
+/*global define, doh, process, console */
 'use strict';
 
-require(['q', 'volo/main'], function (q, main) {
+define(function (require, exports, module) {
 
-    var d = q.defer(),
+    var q = require('q'),
+        main = require('volo/main'),
+        d = q.defer(),
         fs = require('fs'),
         path = require('path'),
         file = require('volo/file'),
-        cwd = process.cwd,
+        cwd = process.cwd(),
         expected = 1,
         actual = 0,
-        testDir = path.join(__dirname, 'output');
+        dir = path.dirname(module.uri),
+        testDir = path.join(dir, 'output');
 
     //Function used for test cleanup, test if expected number or tests
     //actually ran.
     function done(result) {
         process.chdir(cwd);
 
-        actual += 1;
         doh.register("createExpected",
             [
                 function createExpected(t) {
+
+                    if (!(result instanceof Error)) {
+                        actual += 1;
+                    }
+
                     t.is(expected, actual);
+                    d.resolve(result);
                 }
             ]
         );
         doh.run();
-
-        d.resolve();
     }
 
     //Clean up old test output, create a fresh directory for it.
@@ -39,7 +45,7 @@ require(['q', 'volo/main'], function (q, main) {
         return undefined;
     })
     .then(function () {
-        fs.mkdir(testDir);
+        fs.mkdirSync(testDir);
         process.chdir(testDir);
     })
     .then(function () {
@@ -62,6 +68,6 @@ require(['q', 'volo/main'], function (q, main) {
     */
     .then(done, done);
 
-    return d;
+    return d.promise;
 });
 

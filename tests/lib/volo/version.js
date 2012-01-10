@@ -3,7 +3,9 @@
 /*global require, doh */
 'use strict';
 
-require(['volo/version'], function (version) {
+define(['volo/version', 'q'], function (version, q) {
+
+    var d = q.defer();
 
     function validate(t, expected, actual) {
         var i;
@@ -22,9 +24,11 @@ require(['volo/version'], function (version) {
                     expected1 = ['1.3.1', '1.3.1pre2', '1.3.1pre1', '1.3.1beta1', '1.2.0', '0.3.1', '0.3.0', '0.2.1', '0.2.0'];
 
                 validate(t, expected1, list1.sort(version.compare));
+                d.resolve();
             }
         ]
     );
     doh.run();
 
+    return d.promise;
 });

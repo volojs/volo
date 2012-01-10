@@ -6,7 +6,7 @@
 
 'use strict';
 /*jslint */
-/*global define */
+/*global define, process, voloPath */
 
 define(function (require) {
     var fs = require('fs'),
@@ -21,7 +21,7 @@ define(function (require) {
     config = {
         "volo": {
             //Hold on to the name of the script
-            "path": process.argv[1]
+            "path": typeof voloPath === 'undefined' ? process.argv[1] : voloPath
         },
 
         "registry": "https://registry.npmjs.org/",
