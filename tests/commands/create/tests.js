@@ -27,12 +27,12 @@ define(function (require, exports, module) {
         process.chdir(testDir);
     })
     .then(function () {
-        return main(['create', 'output', '../support/simple'], function (result) {
+        return main(['create', 'simple', '../support/simple'], function (result) {
             console.log(result);
             doh.register("createSimple",
                 [
                     function createSimple(t) {
-                        t.is(true, path.existsSync(path.join('output', 'simple.js')));
+                        t.is(true, path.existsSync(path.join('simple', 'simple.js')));
                     }
                 ]
             );
