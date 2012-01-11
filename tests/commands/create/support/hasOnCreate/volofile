@@ -1,0 +1,27 @@
+'use strict';
+/*jslint */
+/*global define, console, process */
+
+define(function (require) {
+    var fs = require('fs'),
+        voloTemplate = require('volo/template'),
+        templatePath = require.toUrl('./sample.template'),
+        template = require('text!./sample.template');
+
+    return {
+        onCreate: function (deferred, namedArgs) {
+            //Generate templatized output
+debugger;
+            var output = voloTemplate(template, namedArgs);
+
+            //Write out the contents of the generated template
+            fs.writeFileSync(require.toUrl('./output.text'), output, 'utf8');
+
+            //Clean up.
+            fs.unlinkSync(templatePath);
+            fs.unlinkSync(require.toUrl('./volofile.').replace(/\.$/, ''));
+
+            deferred.resolve();
+        }
+    };
+});

@@ -17,6 +17,7 @@
         'volo/main',
         'volo/github',
         'volo/resolve/github',
+        'volo/template',
         'help',
         'acquire',
         'rejuvenate',

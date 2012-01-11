@@ -17,6 +17,7 @@ define(function (require, exports, module) {
         file = require('volo/file'),
         download = require('volo/download'),
         tar = require('volo/tar'),
+        volofile = require('volo/volofile'),
         create;
 
     create = {
@@ -50,7 +51,6 @@ define(function (require, exports, module) {
             //Download and unpack the template.
             .then(function (tempDirName) {
                 var tarFileName = path.join(tempDirName, 'template.tar.gz'),
-                    d = q.defer(),
                     step;
 
                 //Function used to clean up in case of errors.
@@ -60,8 +60,7 @@ define(function (require, exports, module) {
                 }
 
                 //Download
-                step = d.resolve()
-                .then(function () {
+                step = q.call(function () {
                     return download(archiveInfo.url, tarFileName);
                 }, errCleanUp);
 
@@ -83,17 +82,25 @@ define(function (require, exports, module) {
                         //Clean up temp area.
                         file.rmdir(tempDirName);
 
-                        return archiveInfo.url + ' used to create ' + appName;
+                        return undefined;
                     } else {
                         return errCleanUp(new Error('Unexpected tarball configuration'));
                     }
-                }, errCleanUp);
+                }, errCleanUp)
+
+                //If there is a volofile with an onCreate, run it.
+                .then(function () {
+                    return volofile.run(appName, 'onCreate', namedArgs, appName);
+                })
+                .then(function (commandOutput) {
+                    return (commandOutput ? commandOutput : '') +
+                            archiveInfo.url + ' used to create ' + appName;
+                });
 
                 return step;
             }));
         }
     };
-
 
     return require('volo/commands').register(module.id, create);
 });
