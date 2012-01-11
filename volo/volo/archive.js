@@ -55,7 +55,7 @@ define(function (require) {
             //Figure out the scheme. Default is github, unless a local
             //path matches.
             if (index === -1) {
-                if (path.existsSync(archive)) {
+                if (archive.indexOf('.') === 0 || path.existsSync(archive)) {
                     scheme = 'local';
                 } else {
                     scheme = 'github';
@@ -82,6 +82,12 @@ define(function (require) {
                 //resolve call.
                 if ((scheme === 'symlink' || scheme === 'local') && resolve) {
                     archive = resolve(archive);
+
+                    //If the archive source does not exist, bail.
+                    if (!path.existsSync(archive)) {
+                        d.reject(new Error(archive + ' does not exist'));
+                        return d.promise;
+                    }
                 }
 
                 d.resolve({

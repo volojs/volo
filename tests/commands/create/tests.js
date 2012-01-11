@@ -39,11 +39,24 @@ define(function (require, exports, module) {
             doh.run();
         });
     })
-    /*
     .then(function () {
-
+        return main(['create', 'dude', '../support/hasOnCreate', 'name=fred', 'code=blue'],
+            function (result) {
+            console.log(result);
+            doh.register("createHasOnCreate",
+                [
+                    function createHasOnCreate(t) {
+                        var outputPath = path.join('dude', 'output.txt');
+                        t.is(true, path.existsSync(outputPath));
+                        t.is(false, path.existsSync(path.join('dude', 'volofile')));
+                        t.is(false, path.existsSync(path.join('dude', 'sample.template')));
+                        t.is('Hello fred. Your code is blue', fs.readFileSync(outputPath, 'utf8'));
+                    }
+                ]
+            );
+            doh.run();
+        });
     })
-    */
     .then(function (result) {
         process.chdir(cwd);
     });

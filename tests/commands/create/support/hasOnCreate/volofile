@@ -3,25 +3,17 @@
 /*global define, console, process */
 
 define(function (require) {
-    var fs = require('fs'),
-        voloTemplate = require('volo/template'),
-        templatePath = require.toUrl('./sample.template'),
-        template = require('text!./sample.template');
-
     return {
-        onCreate: function (deferred, namedArgs) {
+        onCreate: function (d, v, namedArgs, appName) {
             //Generate templatized output
-debugger;
-            var output = voloTemplate(template, namedArgs);
+            var templatePath = 'sample.template';
 
-            //Write out the contents of the generated template
-            fs.writeFileSync(require.toUrl('./output.text'), output, 'utf8');
+            v.write('output.txt', v.template(v.read(templatePath), namedArgs));
 
-            //Clean up.
-            fs.unlinkSync(templatePath);
-            fs.unlinkSync(require.toUrl('./volofile.').replace(/\.$/, ''));
+            v.rm(templatePath);
+            v.rm('volofile');
 
-            deferred.resolve();
+            d.resolve();
         }
     };
 });

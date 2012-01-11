@@ -6,7 +6,7 @@
 
 'use strict';
 /*jslint */
-/*global define */
+/*global define, process */
 
 /**
  * Reads a volofile from a target directory, and exports the data as a
@@ -15,6 +15,7 @@
 define(function (require) {
     var path = require('path'),
         q = require('q'),
+        v = require('volo/v'),
         qutil = require('volo/qutil');
 
     function volofile(basePath, callback, errback) {
@@ -40,10 +41,15 @@ define(function (require) {
      * commmand output, if any.
      */
     volofile.run = function (basePath, commandName, namedArgs /*other args can be passed*/) {
-        var d = q.defer(),
-            args = [].slice.call(arguments, 2);
+        var args = [].slice.call(arguments, 2),
+            cwd = process.cwd(),
+            venv;
 
-        volofile(basePath).then(function (vfMod) {
+        process.chdir(basePath);
+
+        venv = v('.').env;
+
+        return volofile('.').then(function (vfMod) {
             var command = vfMod && vfMod[commandName];
 
             if (command) {
@@ -54,16 +60,18 @@ define(function (require) {
                         run: command
                     };
                 }
-                d.resolve(volofile.runCommand.apply(volofile, [command].concat(args)));
+                return volofile.runCommand.apply(volofile, [command, venv].concat(args));
             } else {
-                d.resolve(false);
+                return false;
             }
+        })
+        .then(function (result) {
+            process.chdir(cwd);
+            return result;
         });
-
-        return d.promise;
     };
 
-    volofile.runCommand = function (command, namedArgs /*other args can be passed*/) {
+    volofile.runCommand = function (command, venv, namedArgs /*other args can be passed*/) {
         var d = q.defer(),
             args;
 
