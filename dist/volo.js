@@ -1971,6 +1971,8 @@ var requirejsVars = {
     define: define
 };
 
+global.requirejsVars = requirejsVars;
+
 //Used by some loader plugins that want to interact with built in node modules.
 requirejs.nodeRequire = require;
 
@@ -1978,8 +1980,9 @@ requirejs.nodeRequire = require;
 //as the script that is running.
 (function () {
     var path = require('path'),
-        name = path.basename(__filename, '.js'),
-        baseUrl = path.join(__dirname, name);
+        vpath = typeof voloPath === 'undefined' ? process.argv[1] : voloPath,
+        name = path.basename(vpath, '.js'),
+        baseUrl = path.join(path.dirname(vpath), name);
 
     requirejs.config({
         baseUrl: baseUrl
@@ -2008,7 +2011,7 @@ define("../tools/requirejsVars", function(){});
  */
 
 /*jslint regexp: false, strict: false */
-/*global require, define, requirejsVars, process, console */
+/*global require: false, define: false, requirejsVars: false, process: false */
 
 /**
  * This adapter assumes that x.js has loaded it and set up
@@ -2051,8 +2054,17 @@ define("../tools/requirejsVars", function(){});
         return ret;
     };
 
+    //Add wrapper around the code so that it gets the requirejs
+    //API instead of the Node API, and it is done lexically so
+    //that it survives later execution.
+    req.makeNodeWrapper = function (contents) {
+        return '(function (require, requirejs, define) { ' +
+                contents +
+                '\n}(requirejsVars.require, requirejsVars.requirejs, requirejsVars.define));';
+    };
+
     req.load = function (context, moduleName, url) {
-        var contents, err, sandbox;
+        var contents, err;
 
         //Indicate a the module is in process of loading.
         context.scriptCount += 1;
@@ -2060,16 +2072,9 @@ define("../tools/requirejsVars", function(){});
         if (path.existsSync(url)) {
             contents = fs.readFileSync(url, 'utf8');
 
-            sandbox = {
-                require: req,
-                requirejs: req,
-                define: def,
-                process: process,
-                console: console
-            };
-
+            contents = req.makeNodeWrapper(contents);
             try {
-                vm.runInNewContext(contents, sandbox, fs.realpathSync(url));
+                vm.runInThisContext(contents, fs.realpathSync(url));
             } catch (e) {
                 err = new Error('Evaluating ' + url + ' as module "' +
                                 moduleName + '" failed with error: ' + e);
@@ -2081,7 +2086,7 @@ define("../tools/requirejsVars", function(){});
         } else {
             def(moduleName, function () {
                 try {
-                    return (context.config.nodeRequire || req.nodeRequire || nodeReq)(moduleName);
+                    return (context.config.nodeRequire || req.nodeRequire)(moduleName);
                 } catch (e) {
                     err = new Error('Calling node\'s require("' +
                                         moduleName + '") failed with error: ' + e);
@@ -2099,26 +2104,63 @@ define("../tools/requirejsVars", function(){});
     };
 
     //Override to provide the function wrapper for define/require.
-    req.exec = function (text, globals) {
-        var sandbox = {
-            require: req,
-            requirejs: req,
-            define: def,
-            process: process,
-            console: console
-        },
-        prop;
-
-        for (prop in globals) {
-            if (globals.hasOwnProperty(prop)) {
-                sandbox[prop] = globals[prop];
-            }
-        }
-
-        return vm.runInNewContext(text, sandbox, 'unknown-req.exec');
+    req.exec = function (text) {
+        /*jslint evil: true */
+        text = req.makeNodeWrapper(text);
+        return eval(text);
     };
 }());
 define("../tools/node", function(){});
+
+/**
+ * @license Copyright (c) 2010-2011, The Dojo Foundation All Rights Reserved.
+ * Available via the MIT or new BSD license.
+ * see: http://github.com/jrburke/requirejs for details
+ */
+
+/*jslint plusplus: false, strict: false */
+/*global define: false */
+
+define('volo/lang',[],function () {
+    var lang = {
+        backSlashRegExp: /\\/g,
+        ostring: Object.prototype.toString,
+
+        isArray: Array.isArray ? Array.isArray : function (it) {
+            return lang.ostring.call(it) === "[object Array]";
+        },
+
+        /**
+         * Simple function to mix in properties from source into target,
+         * but only if target does not already have a property of the same name.
+         */
+        mixin: function (target, source, override) {
+            //Use an empty object to avoid other bad JS code that modifies
+            //Object.prototype.
+            var empty = {}, prop;
+            for (prop in source) {
+                if (override || !(prop in target)) {
+                    target[prop] = source[prop];
+                }
+            }
+        },
+
+        delegate: (function () {
+            // boodman/crockford delegation w/ cornford optimization
+            function TMP() {}
+            return function (obj, props) {
+                TMP.prototype = obj;
+                var tmp = new TMP();
+                TMP.prototype = null;
+                if (props) {
+                    lang.mixin(tmp, props);
+                }
+                return tmp; // Object
+            };
+        }())
+    };
+    return lang;
+});
 
 /**
  * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
@@ -2187,6 +2229,73 @@ define('volo/commands',['require','./baseUrl','fs','path'],function (require) {
     };
 
     return commands;
+});
+
+/**
+ * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
+ * Available via the MIT or new BSD license.
+ * see: http://github.com/volojs/volo for details
+ */
+
+
+/*jslint */
+/*global define, process, voloPath */
+
+define('volo/config',['require','fs','path','./lang','./baseUrl'],function (require) {
+    var fs = require('fs'),
+        path = require('path'),
+        lang = require('./lang'),
+        //volo/baseUrl is set up in tools/requirejsVars.js
+        baseUrl = require('./baseUrl'),
+        localConfigUrl = path.join(baseUrl, '.config.js'),
+        localConfig, config, contents;
+
+    // The defaults to use.
+    config = {
+        "volo": {
+            //Hold on to the name of the script
+            "path": typeof voloPath === 'undefined' ? process.argv[1] : voloPath
+        },
+
+        "registry": "https://registry.npmjs.org/",
+
+        "github": {
+            "scheme": "https",
+            "host": "github.com",
+            "apiHost": "api.github.com",
+            "rawUrlPattern": "https://raw.github.com/{owner}/{repo}/{version}/{file}",
+            "overrides": {
+                "jquery/jquery": {
+                    "pattern": "http://code.jquery.com/jquery-{version}.js"
+                }
+            }
+        },
+
+        "volo/add": {
+            "discard": {
+                "test": true,
+                "tests": true,
+                "doc": true,
+                "docs": true,
+                "example": true,
+                "examples": true,
+                "demo": true,
+                "demos": true
+            }
+        }
+    };
+
+    //Allow a local config at baseUrl + '.config.js'
+    if (path.existsSync(localConfigUrl)) {
+        contents = (fs.readFileSync(localConfigUrl, 'utf8') || '').trim();
+
+        if (contents) {
+            localConfig = JSON.parse(contents);
+            lang.mixin(config, localConfig, true);
+        }
+    }
+
+    return config;
 });
 
 // vim:ts=4:sts=4:sw=4:
@@ -3009,17 +3118,28 @@ return ref;
 
 
 /*jslint plusplus: false */
-/*global define, process, console */
+/*global define, voloVersion, console, process */
 
-define('volo/main',['require','./commands','q'],function (require) {
+define('volo/main',['require','./commands','./config','path','q'],function (require) {
     var commands = require('./commands'),
+        config = require('./config'),
+        path = require('path'),
         q = require('q');
 
-    function main(callback, errback) {
+    function main(args, callback, errback) {
         var deferred = q.defer(),
-            //First two args are 'node' and 'volo.js'
-            args = process.argv.slice(2),
-            namedArgs = {},
+            cwd = process.cwd(),
+            namedArgs = {
+                volo: {
+                    resolve: function (relativePath) {
+                        if (relativePath.indexOf('/') !== 0 &&
+                            relativePath.indexOf(':') === -1) {
+                            return path.resolve(cwd, relativePath);
+                        }
+                        return relativePath;
+                    }
+                }
+            },
             aryArgs = [],
             flags = [],
             commandName, combinedArgs;
@@ -3083,129 +3203,19 @@ define('volo/main',['require','./commands','q'],function (require) {
             //Show usage info.
             commands.list(function (message) {
                 //voloVersion set in tools/wrap.start
-                deferred.resolve('volo.js v' + voloVersion +
+                deferred.resolve(path.basename(config.volo.path) +
+                                 (typeof voloVersion !== 'undefined' ?
+                                    ' v' + voloVersion : '') +
                                 ', a JavaScript tool to make ' +
                                 'JavaScript projects. Allowed commands:\n\n' +
                                 message);
             });
         }
 
-        q.when(deferred.promise, callback, errback);
+        return q.when(deferred.promise, callback, errback);
     }
 
     return main;
-});
-
-/**
- * @license Copyright (c) 2010-2011, The Dojo Foundation All Rights Reserved.
- * Available via the MIT or new BSD license.
- * see: http://github.com/jrburke/requirejs for details
- */
-
-/*jslint plusplus: false, strict: false */
-/*global define: false */
-
-define('volo/lang',[],function () {
-    var lang = {
-        backSlashRegExp: /\\/g,
-        ostring: Object.prototype.toString,
-
-        isArray: Array.isArray ? Array.isArray : function (it) {
-            return lang.ostring.call(it) === "[object Array]";
-        },
-
-        /**
-         * Simple function to mix in properties from source into target,
-         * but only if target does not already have a property of the same name.
-         */
-        mixin: function (target, source, override) {
-            //Use an empty object to avoid other bad JS code that modifies
-            //Object.prototype.
-            var empty = {}, prop;
-            for (prop in source) {
-                if (override || !(prop in target)) {
-                    target[prop] = source[prop];
-                }
-            }
-        },
-
-        delegate: (function () {
-            // boodman/crockford delegation w/ cornford optimization
-            function TMP() {}
-            return function (obj, props) {
-                TMP.prototype = obj;
-                var tmp = new TMP();
-                TMP.prototype = null;
-                if (props) {
-                    lang.mixin(tmp, props);
-                }
-                return tmp; // Object
-            };
-        }())
-    };
-    return lang;
-});
-
-/**
- * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
- * Available via the MIT or new BSD license.
- * see: http://github.com/volojs/volo for details
- */
-
-
-/*jslint */
-/*global define */
-
-define('volo/config',['require','fs','path','./lang','./baseUrl'],function (require) {
-    var fs = require('fs'),
-        path = require('path'),
-        lang = require('./lang'),
-        //volo/baseUrl is set up in tools/requirejsVars.js
-        baseUrl = require('./baseUrl'),
-        localConfigUrl = path.join(baseUrl, '.config.js'),
-        localConfig, config, contents;
-
-    // The defaults to use.
-    config = {
-        "registry": "https://registry.npmjs.org/",
-
-        "github": {
-            "scheme": "https",
-            "host": "github.com",
-            "apiHost": "api.github.com",
-            "rawUrlPattern": "https://raw.github.com/{owner}/{repo}/{version}/{file}",
-            "overrides": {
-                "jquery/jquery": {
-                    "pattern": "http://code.jquery.com/jquery-{version}.js"
-                }
-            }
-        },
-
-        "volo/add": {
-            "discard": {
-                "test": true,
-                "tests": true,
-                "doc": true,
-                "docs": true,
-                "example": true,
-                "examples": true,
-                "demo": true,
-                "demos": true
-            }
-        }
-    };
-
-    //Allow a local config at baseUrl + '.config.js'
-    if (path.existsSync(localConfigUrl)) {
-        contents = (fs.readFileSync(localConfigUrl, 'utf8') || '').trim();
-
-        if (contents) {
-            localConfig = JSON.parse(contents);
-            lang.mixin(config, localConfig, true);
-        }
-    }
-
-    return config;
 });
 
 /**
@@ -3449,6 +3459,9 @@ define('volo/archive',['require','q','path'],function (require) {
          * @param {String} archive a string that can somehow resolved to
          * an http/https URL to a .tar.gz or individual file.
          *
+         * @param {Function} [resolve] an optional resolve function to use
+         * to resolve relative local file paths.
+         *
          * Returns a promise with the properly resolved value being an
          * object with the following properties:
          *
@@ -3460,7 +3473,7 @@ define('volo/archive',['require','q','path'],function (require) {
          *              value. Useful to use when an explicit one is not
          *              specified by the user.
          */
-        resolve: function (archive) {
+        resolve: function (archive, resolve) {
 
             var d = q.defer(),
                 index = archive.indexOf(':'),
@@ -3471,7 +3484,7 @@ define('volo/archive',['require','q','path'],function (require) {
             //Figure out the scheme. Default is github, unless a local
             //path matches.
             if (index === -1) {
-                if (path.existsSync(archive)) {
+                if (archive.indexOf('.') === 0 || path.existsSync(archive)) {
                     scheme = 'local';
                 } else {
                     scheme = 'github';
@@ -3493,6 +3506,18 @@ define('volo/archive',['require','q','path'],function (require) {
                 //file, then a does not include .tar.gz
                 localName = archive.substring(archive.lastIndexOf('/') + 1);
                 localName = localName.replace(fileExtRegExp, '');
+
+                //Resolve relative paths for this particular archive
+                //resolve call.
+                if ((scheme === 'symlink' || scheme === 'local') && resolve) {
+                    archive = resolve(archive);
+
+                    //If the archive source does not exist, bail.
+                    if (!path.existsSync(archive)) {
+                        d.reject(new Error(archive + ' does not exist'));
+                        return d.promise;
+                    }
+                }
 
                 d.resolve({
                     scheme: scheme,
@@ -3608,6 +3633,39 @@ define('volo/resolve/github',['require','path','../config','../archive','../gith
 
 
 /*jslint */
+/*global define */
+
+/**
+ * Reads a volofile from a target directory, and exports the data as a
+ * set of modules.
+ */
+define('volo/template',['require'],function (require) {
+    var tokenRegExp = /\{(\w+)\}/g;
+
+    function template(contents, data) {
+        return contents.replace(tokenRegExp, function (match, token) {
+            var result = data[token];
+
+            //Just use empty string for null or undefined
+            if (result === null || result === undefined) {
+                result = '';
+            }
+
+            return result;
+        });
+    }
+
+    return template;
+});
+
+/**
+ * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
+ * Available via the MIT or new BSD license.
+ * see: http://github.com/volojs/volo for details
+ */
+
+
+/*jslint */
 /*global define, console, process */
 
 define('help',['require','exports','module','volo/commands','volo/commands'],function (require, exports, module) {
@@ -3684,11 +3742,12 @@ define('volo/qutil',['require','q'],function (require) {
 /*jslint plusplus: false */
 /*global define */
 
-define('volo/fileUtil',['require','fs','path','child_process'],function (require) {
+define('volo/file',['require','fs','path','child_process','./qutil'],function (require) {
     var fs = require('fs'),
         path = require('path'),
         exec = require('child_process').exec,
-        fileUtil;
+        qutil = require('./qutil'),
+        file;
 
     function frontSlash(path) {
         return path.replace(/\\/g, '/');
@@ -3720,7 +3779,7 @@ define('volo/fileUtil',['require','fs','path','child_process'],function (require
         }
     }
 
-    fileUtil = {
+    file = {
         /**
          * Recurses startDir and finds matches to the files that match
          * regExpFilters.include and do not match regExpFilters.exclude.
@@ -3782,31 +3841,33 @@ define('volo/fileUtil',['require','fs','path','child_process'],function (require
          * Does an rm -rf on a directory. Like a boss.
          */
         rmdir: function (dir, callback, errback) {
+            var d = qutil.convert(callback, errback);
+
             if (!dir) {
-                callback();
+                d.resolve();
             }
 
             dir = path.resolve(dir);
 
             if (!path.existsSync(dir)) {
-                callback();
+                d.resolve();
             }
 
             if (dir === '/') {
-                if (errback) {
-                    errback(new Error('fileUtil.rmdir cannot handle /'));
-                }
+                d.reject(new Error('file.rmdir cannot handle /'));
             }
 
             exec('rm -rf ' + dir,
                 function (error, stdout, stderr) {
-                    if (error && errback) {
-                        errback(error);
-                    } else if (callback) {
-                        callback();
+                    if (error) {
+                        d.reject(error);
+                    } else {
+                        d.resolve();
                     }
                 }
             );
+
+            return d.promise;
         },
 
         /**
@@ -3839,14 +3900,14 @@ define('volo/fileUtil',['require','fs','path','child_process'],function (require
             srcDir = frontSlash(path.normalize(srcDir));
             destDir = frontSlash(path.normalize(destDir));
 
-            var fileNames = fileUtil.getFilteredFileList(srcDir, regExpFilter, true),
+            var fileNames = file.getFilteredFileList(srcDir, regExpFilter, true),
             copiedFiles = [], i, srcFileName, destFileName;
 
             for (i = 0; i < fileNames.length; i++) {
                 srcFileName = fileNames[i];
                 destFileName = srcFileName.replace(srcDir, destDir);
 
-                if (fileUtil.copyFile(srcFileName, destFileName, onlyCopyNew)) {
+                if (file.copyFile(srcFileName, destFileName, onlyCopyNew)) {
                     copiedFiles.push(destFileName);
                 }
             }
@@ -3874,7 +3935,7 @@ define('volo/fileUtil',['require','fs','path','child_process'],function (require
             //Make sure destination dir exists.
             parentDir = path.dirname(destFileName);
             if (!path.existsSync(parentDir)) {
-                fileUtil.mkdirs(parentDir);
+                file.mkdirs(parentDir);
             }
 
             fs.writeFileSync(destFileName, fs.readFileSync(srcFileName, 'binary'), 'binary');
@@ -3883,7 +3944,7 @@ define('volo/fileUtil',['require','fs','path','child_process'],function (require
         }
     };
 
-    return fileUtil;
+    return file;
 });
 
 /**
@@ -3896,10 +3957,10 @@ define('volo/fileUtil',['require','fs','path','child_process'],function (require
 /*jslint */
 /*global define, console, process */
 
-define('volo/tempDir',['require','path','fs','./fileUtil','./qutil'],function (require) {
+define('volo/tempDir',['require','path','fs','./file','./qutil'],function (require) {
     var path = require('path'),
         fs = require('fs'),
-        fileUtil = require('./fileUtil'),
+        file = require('./file'),
         qutil = require('./qutil'),
         counter = 0,
         tempDir;
@@ -3911,7 +3972,7 @@ define('volo/tempDir',['require','path','fs','./fileUtil','./qutil'],function (r
                 d = qutil.convert(callback, errback);
 
             if (path.existsSync(temp)) {
-                fileUtil.rmdir(temp, function () {
+                file.rmdir(temp, function () {
                     fs.mkdirSync(temp);
                     d.resolve(temp);
                 }, d.reject);
@@ -3942,13 +4003,13 @@ define('volo/tempDir',['require','path','fs','./fileUtil','./qutil'],function (r
 /*jslint plusplus: false */
 /*global define, console */
 
-define('volo/download',['require','https','http','fs','url','volo/qutil','volo/fileUtil'],function (require) {
+define('volo/download',['require','https','http','fs','url','volo/qutil','volo/file'],function (require) {
     var https = require('https'),
         http = require('http'),
         fs = require('fs'),
         urlLib = require('url'),
         qutil = require('volo/qutil'),
-        fileUtil = require('volo/fileUtil'),
+        file = require('volo/file'),
         localRegExp = /^local\:/;
 
     function download(url, path, callback, errback) {
@@ -3959,7 +4020,7 @@ define('volo/download',['require','https','http','fs','url','volo/qutil','volo/f
             //Handle local URLs
             if (localRegExp.test(url)) {
                 url = url.substring(url.indexOf(':') + 1);
-                fileUtil.copyDir(url, path);
+                file.copyDir(url, path);
                 d.resolve(path);
             } else {
 
@@ -4059,6 +4120,194 @@ define('volo/tar',['require','child_process','path','volo/qutil'],function (requ
 
     return tar;
 });
+/**
+ * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
+ * Available via the MIT or new BSD license.
+ * see: http://github.com/volojs/volo for details
+ */
+
+
+/*jslint plusplus: false */
+/*global define, console */
+
+define('volo/v',['require','path','fs','volo/file','volo/template'],function (require) {
+    var path = require('path'),
+        fs = require('fs'),
+        file = require('volo/file'),
+        template = require('volo/template'),
+        defaultEncoding = 'utf8';
+
+    /**
+    * Creates a v instance that is bound to the dirName path, all paths are
+    * resolved relative to that path.
+    */
+    function v(dirName) {
+
+        function resolve(relativePath) {
+            return path.resolve(dirName, relativePath);
+        }
+
+        return {
+            env: {
+                path: path.resolve(dirName),
+                read: function (filePath, encoding) {
+                    return fs.readFileSync(resolve(filePath),
+                                          (encoding || defaultEncoding));
+                },
+                template: function (text, data) {
+                    debugger;
+                    return template(text, data);
+                },
+                write: function (filePath, contents, encoding) {
+                    return fs.writeFileSync(filePath, contents,
+                                            (encoding || defaultEncoding));
+                },
+                rm: function (dirOrFile) {
+                    dirOrFile = resolve(dirOrFile);
+                    var stat = fs.statSync(dirOrFile);
+                    if (stat.isFile()) {
+                        fs.unlinkSync(dirOrFile);
+                    } else if (stat.isDirectory()) {
+                        //TODO: need to make rmdir synchronous
+                        file.rmdir(dirOrFile);
+                    }
+                },
+                mkdir: function (dir) {
+                    return file.mkdirs(dir);
+                },
+                getFilteredFileList: function (startDir, regExpInclude, regExpExclude, dirRegExpExclude) {
+                    return file.getFilteredFileList(resolve(startDir), regExpInclude, regExpExclude, dirRegExpExclude);
+                },
+                copyDir: function (srcDir, destDir, regExpFilter, onlyCopyNew) {
+                    return file.copyDir(resolve(srcDir), resolve(destDir), regExpFilter, onlyCopyNew);
+                },
+                copyFile: function (srcFileName, destFileName, onlyCopyNew) {
+                    return file.copyFile(resolve(srcFileName), resolve(destFileName), onlyCopyNew);
+                }
+            }
+        };
+    }
+
+    return v;
+});
+
+/**
+ * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
+ * Available via the MIT or new BSD license.
+ * see: http://github.com/volojs/volo for details
+ */
+
+
+/*jslint */
+/*global define, process */
+
+/**
+ * Reads a volofile from a target directory, and exports the data as a
+ * set of modules.
+ */
+define('volo/volofile',['require','path','q','volo/v','volo/qutil'],function (require) {
+    var path = require('path'),
+        q = require('q'),
+        v = require('volo/v'),
+        qutil = require('volo/qutil');
+
+    function volofile(basePath, callback, errback) {
+        var d = qutil.convert(callback, errback),
+            volofilePath = path.resolve(path.join(basePath, 'volofile'));
+
+        if (path.existsSync(volofilePath)) {
+            require([volofilePath], function (value) {
+                d.resolve(value);
+            });
+        } else {
+            d.resolve();
+        }
+
+        return d.promise;
+    }
+
+    /**
+     * Loads the volofile inside basePath, and if there, and if it
+     * supports the command, then runs it, running dependencies for
+     * the command if specified.
+     * @returns {Promise} that resolves to false exactly, otherwise it has the
+     * commmand output, if any.
+     */
+    volofile.run = function (basePath, commandName, namedArgs /*other args can be passed*/) {
+        var args = [].slice.call(arguments, 2),
+            cwd = process.cwd(),
+            venv;
+
+        process.chdir(basePath);
+
+        venv = v('.').env;
+
+        return volofile('.').then(function (vfMod) {
+            var command = vfMod && vfMod[commandName];
+
+            if (command) {
+                if (typeof command === 'function') {
+                    //Just normalize to advanced structure.
+                    command = {
+                        before: [],
+                        run: command
+                    };
+                }
+                return volofile.runCommand.apply(volofile, [command, venv].concat(args));
+            } else {
+                return false;
+            }
+        })
+        .then(function (result) {
+            process.chdir(cwd);
+            return result;
+        });
+    };
+
+    volofile.runCommand = function (command, venv, namedArgs /*other args can be passed*/) {
+        var d = q.defer(),
+            args;
+
+        if (!command) {
+            d.resolve();
+        } else {
+            args = [].slice.call(arguments, 1);
+
+            q.call(function () {
+                if (command.before.length) {
+                    return command.before.reduce(function (done, command) {
+                        return q.wait(done,
+                                      volofile.runCommand.apply(volofile,
+                                                    [command].concat(args)));
+                    });
+                }
+                return undefined;
+            })
+            .then(function () {
+                var commandDeferred = q.defer(),
+                    err;
+
+                //Call validate if it is on the command.
+                if (command.validate) {
+                    err = command.validate(args);
+                    if (err) {
+                        commandDeferred.reject(err);
+                        return commandDeferred.promise;
+                    }
+                }
+
+                command.run.apply(command, [commandDeferred].concat(args));
+                return commandDeferred.promise;
+            })
+            .then(d.resolve, d.reject);
+        }
+
+        return d.promise;
+    };
+
+    return volofile;
+});
+
 /**
  * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
@@ -4414,7 +4663,7 @@ define('volo/packageJson',['require','path','fs'],function (require) {
     });
 }());
 
-define('text!acquire/doc.md',[],function () { return '## Usage\n\n    volo.js acquire [flags] archive [localName]\n\nwhere the allowed flags, archive value and localName values are all the same\nas the **add** command.\n\nThis command just delegates to **add** but installs the code in a **volo**\ndirectory that is the sibling of the volo.js file used to run the command.\n\n## Notes\n\nThe user running this command needs to have write access to the directory that\ncontains volo.js so the volo directory can be created and have file installed\ninto it.\n\nIf a symlink: archive value is used, if a relative path is used, it must be\nrelative to the volo directory that will house the symlink. It is best to\njust use an absolute path until this bug is fixed:\n\nhttps://github.com/volojs/volo/issues/11\n';});
+define('text!acquire/doc.md',[],function () { return '## Usage\n\n    volo.js acquire [flags] archive [localName]\n\nwhere the allowed flags, archive value and localName values are all the same\nas the **add** command.\n\nThis command just delegates to **add** but installs the code in a **volo**\ndirectory that is the sibling of the volo.js file used to run the command.\n\n## Notes\n\nThe user running this command needs to have write access to the directory that\ncontains volo.js so the volo directory can be created and have file installed\ninto it.\n';});
 
 define('text!rejuvenate/doc.md',[],function () { return '## Usage\n\n    volo.js rejuvenate [flags] [archive#path/to/volo.js]\n\nIt will replace volo.js with the most recent version tag of volo.js.\n\nBy default it uses **volojs/volo#dist/volo.js** for the archive, but you\ncan use any archive value that is supported by the **add** command. Just\nbe sure to list the path to volo.js in the archive.\n\nrejuvenate accepts the same flags as the **add** command. It explicitly forces\nthe install via the add commands -f flag.\n\nI you want to live on the edge, then you could use the following command:\n\n    volo.js rejuvenate volojs/volo/master#dist/volo.js\n\n## Notes\n\nThe user running this command needs to have write access to the directory that\ncontains volo.js so the volo directory can be created and have file installed\ninto it.\n';});
 
@@ -4430,15 +4679,16 @@ define('text!create/doc.md',[],function () { return '## Usage\n\n    volo.js cre
 /*jslint */
 /*global define, console, process */
 
-define('create',['require','exports','module','fs','path','q','volo/tempDir','volo/archive','volo/fileUtil','volo/download','volo/tar','text!./create/doc.md','volo/commands'],function (require, exports, module) {
+define('create',['require','exports','module','fs','path','q','volo/tempDir','volo/archive','volo/file','volo/download','volo/tar','volo/volofile','text!./create/doc.md','volo/commands'],function (require, exports, module) {
     var fs = require('fs'),
         path = require('path'),
         q = require('q'),
         tempDir = require('volo/tempDir'),
         archive = require('volo/archive'),
-        fileUtil = require('volo/fileUtil'),
+        file = require('volo/file'),
         download = require('volo/download'),
         tar = require('volo/tar'),
+        volofile = require('volo/volofile'),
         create;
 
     create = {
@@ -4458,31 +4708,30 @@ define('create',['require','exports','module','fs','path','q','volo/tempDir','vo
         run: function (deferred, namedArgs, appName, template) {
             template = template || 'volojs/create-template';
 
-            var d = q.defer(),
-                archiveInfo;
+            var archiveInfo;
 
-            d.resolve()
-            .then(function () {
-                return archive.resolve(template);
+            //Find out how to get the template
+            deferred.resolve(q.call(function () {
+                return archive.resolve(template, namedArgs.volo.resolve);
             })
+            //Create a tempdir to store the archive.
             .then(function (info) {
                 archiveInfo = info;
                 return tempDir.create(template);
             })
+            //Download and unpack the template.
             .then(function (tempDirName) {
                 var tarFileName = path.join(tempDirName, 'template.tar.gz'),
-                    d = q.defer(),
                     step;
 
                 //Function used to clean up in case of errors.
                 function errCleanUp(err) {
-                    fileUtil.rmdir(tempDirName);
+                    file.rmdir(tempDirName);
                     return err;
                 }
 
                 //Download
-                step = d.resolve()
-                .then(function () {
+                step = q.call(function () {
                     return download(archiveInfo.url, tarFileName);
                 }, errCleanUp);
 
@@ -4496,26 +4745,33 @@ define('create',['require','exports','module','fs','path','q','volo/tempDir','vo
                 //Move the contents to the final destination.
                 step = step.then(function () {
                     //Move the untarred directory to the final location.
-                    var dirName = fileUtil.firstDir(tempDirName);
+                    var dirName = file.firstDir(tempDirName);
                     if (dirName) {
                         //Move the unpacked template to appName
                         fs.renameSync(dirName, appName);
 
                         //Clean up temp area.
-                        fileUtil.rmdir(tempDirName);
+                        file.rmdir(tempDirName);
 
-                        return archiveInfo.url + ' used to create ' + appName;
+                        return undefined;
                     } else {
                         return errCleanUp(new Error('Unexpected tarball configuration'));
                     }
-                }, errCleanUp);
+                }, errCleanUp)
+
+                //If there is a volofile with an onCreate, run it.
+                .then(function () {
+                    return volofile.run(appName, 'onCreate', namedArgs, appName);
+                })
+                .then(function (commandOutput) {
+                    return (commandOutput ? commandOutput : '') +
+                            archiveInfo.url + ' used to create ' + appName;
+                });
 
                 return step;
-            })
-            .then(deferred.resolve, deferred.reject);
+            }));
         }
     };
-
 
     return require('volo/commands').register(module.id, create);
 });
@@ -4532,7 +4788,7 @@ define('text!add/doc.md',[],function () { return '## Usage\n\n    volo.js add [f
 /*jslint */
 /*global define, console, process */
 
-define('add',['require','exports','module','fs','path','q','volo/config','volo/archive','volo/download','volo/packageJson','volo/tar','volo/fileUtil','volo/tempDir','text!./add/doc.md','volo/commands'],function (require, exports, module) {
+define('add',['require','exports','module','fs','path','q','volo/config','volo/archive','volo/download','volo/packageJson','volo/tar','volo/file','volo/tempDir','text!./add/doc.md','volo/commands'],function (require, exports, module) {
     var fs = require('fs'),
         path = require('path'),
         q = require('q'),
@@ -4542,7 +4798,7 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
         download = require('volo/download'),
         packageJson = require('volo/packageJson'),
         tar = require('volo/tar'),
-        fileUtil = require('volo/fileUtil'),
+        file = require('volo/file'),
         tempDir = require('volo/tempDir'),
         add;
 
@@ -4582,7 +4838,7 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
         },
         run: function (deferred, namedArgs, archiveName, specificLocalName) {
 
-            q.when(archive.resolve(archiveName), function (archiveInfo) {
+            q.when(archive.resolve(archiveName, namedArgs.volo.resolve), function (archiveInfo) {
 
                 var pkg = packageJson('.'),
                     isAmdProject = namedArgs.amd || (pkg.data && pkg.data.amd),
@@ -4646,7 +4902,7 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
 
                 //Function used to clean up in case of errors.
                 function errCleanUp(err) {
-                    fileUtil.rmdir(tempDirName);
+                    file.rmdir(tempDirName);
                     deferred.reject(err);
                 }
 
@@ -4655,7 +4911,7 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
                 function moveFromTemp() {
                     try {
                         //Find the directory that was unpacked in tempDirName
-                        var dirName = fileUtil.firstDir(tempDirName),
+                        var dirName = file.firstDir(tempDirName),
                             info, sourceName, targetName, completeMessage,
                             listing, defaultName;
 
@@ -4719,14 +4975,14 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
 
                                 //If directory, remove common directories not
                                 //needed for install. This is a bit goofy,
-                                //fileUtil.rmdir is actually callback based,
+                                //file.rmdir is actually callback based,
                                 //but cheating here a bit
                                 //TODO: make this Q-based at some point.
                                 if (myConfig.discard) {
                                     fs.readdirSync(targetName).forEach(
                                         function (name) {
                                         if (myConfig.discard[name]) {
-                                            fileUtil.rmdir(path.join(targetName,
+                                            file.rmdir(path.join(targetName,
                                                                      name));
                                         }
                                     });
@@ -4745,7 +5001,7 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
                             //TODO
 
                             //All done.
-                            fileUtil.rmdir(tempDirName);
+                            file.rmdir(tempDirName);
                             completeMessage = 'Installed ' +
                                 archiveInfo.url +
                                 (archiveInfo.fragment ? '#' +
@@ -4764,7 +5020,7 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
 
                 try {
                     //If the baseUrl does not exist, create it.
-                    fileUtil.mkdirs(baseUrl);
+                    file.mkdirs(baseUrl);
 
                     //Get the package JSON data for dependency, if it is
                     //already on disk.
@@ -4857,7 +5113,7 @@ define('acquire',['require','exports','module','fs','q','path','add','text!./acq
         flags: add.flags,
 
         validate: function (namedArgs, appName) {
-            add.validate.apply(add, arguments);
+            return add.validate.apply(add, arguments);
         },
 
         run: function (deferred, namedArgs, packageName, localName) {
@@ -4895,13 +5151,6 @@ define('acquire',['require','exports','module','fs','q','path','add','text!./acq
                 deferred.resolve(result + '\nNew volo command aquired!');
             }, function (err) {
                 finish();
-                var message = '';
-                if (packageName.indexOf('symlink:') === 0) {
-                    message = '\nIf using a relative path for the symlink, ' +
-                              'there is a bug with using relative paths with ' +
-                              'acquire, see this issue:\n' +
-                              'https://github.com/volojs/volo/issues/11';
-                }
                 deferred.reject(err + message);
             });
         }
@@ -4971,9 +5220,11 @@ define('rejuvenate',['require','exports','module','q','path','add','text!./rejuv
     return require('volo/commands').register(module.id, rejuvenate);
 });
 
-define('text!amdify/template.js',[],function () { return '\n//File modified by volo amdify\n//Wrapped in an outer function to preserve global this\n\n(function (root) {\n  define([/*DEPENDENCIES*/], function () {\n    (function () {\n\n/*CONTENTS*/\n\n    }.call(root));\n  });\n}(this));\n';});
+define('text!amdify/template.js',[],function () { return '\n//File modified by volo amdify\n//Wrapped in an outer function to preserve global this\n\n(function (root) {\n  define([/*DEPENDENCIES*/], function () {\n    (function () {\n\n/*CONTENTS*/\n\n    }.call(root));\n\n    /*EXPORTS*/\n  });\n}(this));\n';});
 
-define('text!amdify/doc.md',[],function () { return '## Usage\n\n    volo.js amdify path/to/file.js dependencies\n\nwhere dependencies is a comma-separated list of dependencies, with no spaces.\n\n## Details\n\nThe file.js will be modified to include a define() wrapper with the given\ndependency names.\n\nThis example:\n\n    volo.js amdify www/js/aplugin.jquery.js jquery\n\nWill result in modifying the www/js/aplugin.jquery.js contents to have a\nfunction wrapping that includes:\n\n    define([\'jquery\'], function () {});\n\namdify should only be used on files that use browser globals but just need\nto wait to execute the body of the script until its dependencies are loaded.\n\nIdeally the target file would optionally call define() itself, and use\nthe local script references instead of browser globals. However, for\nbootstrapping existing projects to use an AMD loader, amdify can be useful to\nget started.\n\n';});
+define('text!amdify/exportsTemplate.js',[],function () { return '    var amdifyExport = /*EXPORTS*/;\n    if (amdifyExport.noConflict) {\n        amdifyExport.noConflic(true);\n    }\n    return amdifyExport;\n';});
+
+define('text!amdify/doc.md',[],function () { return '## Usage\n\n    volo.js amdify path/to/file.js [depend=] [export=]\n\nwhere depend is a comma-separated list of dependencies, with no spaces, and\nexport is the global value created by the file that should be treated as the\nmodule\'s export value.\n\n## Details\n\nThe file.js will be modified to include a define() wrapper with the given\ndependency names.\n\nThis example:\n\n    volo.js amdify www/js/aplugin.jquery.js depend=jquery\n\nWill result in modifying the www/js/aplugin.jquery.js contents to have a\nfunction wrapping that includes:\n\n    define([\'jquery\'], function () {\n        //original contents in here.\n    });\n\nThis example sets dependencies, but then also specifies the export value to\nbe used. If the export object has a \'noConflict\' method on it, then it will\nbe called as part of exporting the module value:\n\n    volo.js amdify www/js/lib.js depend=jquery export=lib\n\nresults in a transform that looks roughly like:\n\n    define([\'jquery\'], function () {\n\n        //original contents in here.\n\n        var amdExport = lib;\n        if (amdExport.noConflict)) {\n            amdExport.noConflict();\n        }\n        return amdExport;\n    });\n\namdify will set the "this" value for the original contents to be the global\nobject.\n\nIdeally the target file would optionally call define() itself, and use\nthe local dependency references instead of browser globals. However, for\nbootstrapping existing projects to use an AMD loader, amdify can be useful to\nget started.\n\nUsing amdify will produce code that is uglier than doing a proper code change\nto add optional an optional define() call. For better code examples, see:\nhttps://github.com/umdjs/umd\n';});
 
 /**
  * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
@@ -4985,12 +5236,14 @@ define('text!amdify/doc.md',[],function () { return '## Usage\n\n    volo.js amd
 /*jslint */
 /*global define */
 
-define('amdify',['require','exports','module','fs','path','text!./amdify/template.js','text!./amdify/doc.md','volo/commands'],function (require, exports, module) {
+define('amdify',['require','exports','module','fs','path','text!./amdify/template.js','text!./amdify/exportsTemplate.js','text!./amdify/doc.md','volo/commands'],function (require, exports, module) {
     var fs = require('fs'),
         path = require('path'),
         template = require('text!./amdify/template.js'),
-        depsRegExp = /\/\*DEPENDENCIES\*\//,
+        exportsTemplate = require('text!./amdify/exportsTemplate.js'),
+        dependRegExp = /\/\*DEPENDENCIES\*\//,
         contentsRegExp = /\/\*CONTENTS\*\//,
+        exportsRegExp = /\/\*EXPORTS\*\//,
         amdifyRegExp = /volo amdify/,
         main;
 
@@ -5002,15 +5255,9 @@ define('amdify',['require','exports','module','fs','path','text!./amdify/templat
         doc: require('text!./amdify/doc.md'),
 
         //Validate any arguments here.
-        validate: function (namedArgs, target, deps) {
+        validate: function (namedArgs, target) {
             if (!target) {
                 return new Error('A target file needs to be specified');
-            }
-
-            if (!deps) {
-                return new Error('Please pass dependencies. Scripts that do ' +
-                                 'not need dependencies do not need to be ' +
-                                 'converted by amdify.');
             }
 
             if (!path.existsSync(target)) {
@@ -5020,22 +5267,37 @@ define('amdify',['require','exports','module','fs','path','text!./amdify/templat
             return undefined;
         },
 
-        run: function (deferred, namedArgs, target, deps) {
-            deps = deps.split(',').map(function (value) {
-                return "'" + value + "'";
-            });
+        run: function (deferred, namedArgs, target) {
+            var depend = namedArgs.depend,
+                exports = namedArgs.exports || '',
+                contents = fs.readFileSync(target, 'utf8');
 
-            //Convert the deps to a string.
-            deps = deps.join(',');
+            if (depend) {
+                depend = depend.split(',').map(function (value) {
+                    return "'" + value + "'";
+                });
+            } else {
+                depend = [];
+            }
 
-            var contents = fs.readFileSync(target, 'utf8');
+            //Convert the depend to a string.
+            depend = depend.join(',');
 
             if (amdifyRegExp.test(contents)) {
                 return deferred.reject('Looks like amdify has already been ' +
                                        'applied to ' + target);
             } else {
+                //Get the export boilerplate ready.
+                if (exports) {
+                    exports = exportsTemplate.replace(exportsRegExp, exports);
+                }
+
+                //Create the main wrapping. Do depend and exports replacement
+                //before inserting the main contents, to avoid problems with
+                //a possibly undesirable regexp replacement.
                 contents = template
-                            .replace(depsRegExp, deps)
+                            .replace(dependRegExp, depend)
+                            .replace(exportsRegExp, exports)
                             .replace(contentsRegExp, contents);
 
                 fs.writeFileSync(target, contents, 'utf8');
@@ -5056,7 +5318,10 @@ requirejs(['volo/main']);
 //the commands that are built into volo.js may not have
 //been registered yet.
 requirejs(['volo/main'], function (main) {
-    main(function (message) {
+    //First two args are 'node' and 'volo.js'
+    var args = process.argv.slice(2);
+
+    main(args, function (message) {
         if (message) {
             console.log(message);
         }
