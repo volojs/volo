@@ -57,7 +57,7 @@ it is understanding **user/repo** for archive names. See the
 [add doc](https://github.com/volojs/volo/blob/master/volo/add/doc.md) for more
 info on the types of archive names to use.
 
-Set up an AMD/RequireJS-based project called **fast** that uses AMD versions of
+To set up an AMD/RequireJS-based project called **fast** that uses AMD versions of
 Backbone, jQuery and underscore:
 
     > volo.js create fast
@@ -89,7 +89,7 @@ click the **Watch** button for the amdjs forks of [underscore](https://github.co
 and [backbone](https://github.com/amdjs/backbone), so we can help give the
 documentcloud group real data on how many people find would find it useful.
 
-Set up an HTML5 Boilerplate project that does not use AMD/RequireJS, but does
+To set up an HTML5 Boilerplate project that does not use AMD/RequireJS, but does
 use Backbone and underscore (the Boilerplate already has jQuery):
 
     > volo.js create html5fast h5bp/html5-boilerplate
