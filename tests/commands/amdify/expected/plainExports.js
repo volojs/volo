@@ -14,7 +14,7 @@ window.baz = 'bam';
 
     var amdifyExport = baz;
     if (amdifyExport.noConflict) {
-        amdifyExport.noConflic(true);
+        amdifyExport.noConflict(true);
     }
     return amdifyExport;
 

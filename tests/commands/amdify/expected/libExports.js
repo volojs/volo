@@ -15,7 +15,7 @@
 
     var amdifyExport = window.libExports;
     if (amdifyExport.noConflict) {
-        amdifyExport.noConflic(true);
+        amdifyExport.noConflict(true);
     }
     return amdifyExport;
 

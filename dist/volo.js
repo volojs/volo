@@ -5220,9 +5220,9 @@ define('rejuvenate',['require','exports','module','q','path','add','text!./rejuv
     return require('volo/commands').register(module.id, rejuvenate);
 });
 
-define('text!amdify/template.js',[],function () { return '\n//File modified by volo amdify\n//Wrapped in an outer function to preserve global this\n\n(function (root) {\n  define([/*DEPENDENCIES*/], function () {\n    (function () {\n\n/*CONTENTS*/\n\n    }.call(root));\n\n    /*EXPORTS*/\n  });\n}(this));\n';});
+define('text!amdify/template.js',[],function () { return '\n//File modified by volo amdify\n//Wrapped in an outer function to preserve global this\n\n(function (root) {\n  define([/*DEPENDENCIES*/], function () {\n    (function () {\n\n/*CONTENTS*/\n\n    }.call(root));\n\n/*EXPORTS*/\n\n  });\n}(this));\n';});
 
-define('text!amdify/exportsTemplate.js',[],function () { return '    var amdifyExport = /*EXPORTS*/;\n    if (amdifyExport.noConflict) {\n        amdifyExport.noConflic(true);\n    }\n    return amdifyExport;\n';});
+define('text!amdify/exportsTemplate.js',[],function () { return '    var amdifyExport = /*EXPORTS*/;\n    if (amdifyExport.noConflict) {\n        amdifyExport.noConflict(true);\n    }\n    return amdifyExport;\n';});
 
 define('text!amdify/doc.md',[],function () { return '## Usage\n\n    volo.js amdify path/to/file.js [depend=] [export=]\n\nwhere depend is a comma-separated list of dependencies, with no spaces, and\nexport is the global value created by the file that should be treated as the\nmodule\'s export value.\n\n## Details\n\nThe file.js will be modified to include a define() wrapper with the given\ndependency names.\n\nThis example:\n\n    volo.js amdify www/js/aplugin.jquery.js depend=jquery\n\nWill result in modifying the www/js/aplugin.jquery.js contents to have a\nfunction wrapping that includes:\n\n    define([\'jquery\'], function () {\n        //original contents in here.\n    });\n\nThis example sets dependencies, but then also specifies the export value to\nbe used. If the export object has a \'noConflict\' method on it, then it will\nbe called as part of exporting the module value:\n\n    volo.js amdify www/js/lib.js depend=jquery export=lib\n\nresults in a transform that looks roughly like:\n\n    define([\'jquery\'], function () {\n\n        //original contents in here.\n\n        var amdExport = lib;\n        if (amdExport.noConflict)) {\n            amdExport.noConflict();\n        }\n        return amdExport;\n    });\n\namdify will set the "this" value for the original contents to be the global\nobject.\n\nIdeally the target file would optionally call define() itself, and use\nthe local dependency references instead of browser globals. However, for\nbootstrapping existing projects to use an AMD loader, amdify can be useful to\nget started.\n\nUsing amdify will produce code that is uglier than doing a proper code change\nto add optional an optional define() call. For better code examples, see:\nhttps://github.com/umdjs/umd\n';});
 
@@ -5242,7 +5242,7 @@ define('amdify',['require','exports','module','fs','path','text!./amdify/templat
         template = require('text!./amdify/template.js'),
         exportsTemplate = require('text!./amdify/exportsTemplate.js'),
         dependRegExp = /\/\*DEPENDENCIES\*\//,
-        contentsRegExp = /\/\*CONTENTS\*\//,
+        contentsComment = '/*CONTENTS*/',
         exportsRegExp = /\/\*EXPORTS\*\//,
         amdifyRegExp = /volo amdify/,
         main;
@@ -5270,7 +5270,8 @@ define('amdify',['require','exports','module','fs','path','text!./amdify/templat
         run: function (deferred, namedArgs, target) {
             var depend = namedArgs.depend,
                 exports = namedArgs.exports || '',
-                contents = fs.readFileSync(target, 'utf8');
+                contents = fs.readFileSync(target, 'utf8'),
+                temp, commentIndex;
 
             if (depend) {
                 depend = depend.split(',').map(function (value) {
@@ -5295,10 +5296,17 @@ define('amdify',['require','exports','module','fs','path','text!./amdify/templat
                 //Create the main wrapping. Do depend and exports replacement
                 //before inserting the main contents, to avoid problems with
                 //a possibly undesirable regexp replacement.
-                contents = template
-                            .replace(dependRegExp, depend)
-                            .replace(exportsRegExp, exports)
-                            .replace(contentsRegExp, contents);
+                temp = template
+                        .replace(dependRegExp, depend)
+                        .replace(exportsRegExp, exports);
+
+                //Cannot use a regexp replacement for comment, because if
+                //the contents contain funky regexp associated markers, like
+                //a `$`, then get double content insertion.
+                commentIndex = temp.indexOf(contentsComment);
+                contents = temp.substring(0, commentIndex) +
+                           contents +
+                           temp.substring(commentIndex + contentsComment.length, temp.length);
 
                 fs.writeFileSync(target, contents, 'utf8');
 

@@ -1,5 +1,5 @@
     var amdifyExport = /*EXPORTS*/;
     if (amdifyExport.noConflict) {
-        amdifyExport.noConflic(true);
+        amdifyExport.noConflict(true);
     }
     return amdifyExport;
