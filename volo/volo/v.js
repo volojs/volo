@@ -28,6 +28,9 @@ define(function (require) {
         return {
             env: {
                 path: path.resolve(dirName),
+                exists: function (filePath) {
+                    return path.existsSync(filePath);
+                },
                 read: function (filePath, encoding) {
                     return fs.readFileSync(resolve(filePath),
                                           (encoding || defaultEncoding));
@@ -49,6 +52,9 @@ define(function (require) {
                         //TODO: need to make rmdir synchronous
                         file.rmdir(dirOrFile);
                     }
+                },
+                mv: function (start, end) {
+                    return fs.renameSync(start, end);
                 },
                 mkdir: function (dir) {
                     return file.mkdirs(dir);
