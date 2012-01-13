@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
 /**
- * @license volo 0.0.2 Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
+ * @license volo 0.0.3 Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
  * see: http://github.com/volojs/volo for details
  */
 
-var voloVersion = '0.0.2';
+var voloVersion = '0.0.3';
 
 /** vim: et:ts=4:sw=4:sts=4
  * @license RequireJS 1.0.2 Copyright (c) 2010-2011, The Dojo Foundation All Rights Reserved.
@@ -4150,6 +4150,9 @@ define('volo/v',['require','path','fs','volo/file','volo/template'],function (re
         return {
             env: {
                 path: path.resolve(dirName),
+                exists: function (filePath) {
+                    return path.existsSync(filePath);
+                },
                 read: function (filePath, encoding) {
                     return fs.readFileSync(resolve(filePath),
                                           (encoding || defaultEncoding));
@@ -4171,6 +4174,9 @@ define('volo/v',['require','path','fs','volo/file','volo/template'],function (re
                         //TODO: need to make rmdir synchronous
                         file.rmdir(dirOrFile);
                     }
+                },
+                mv: function (start, end) {
+                    return fs.renameSync(start, end);
                 },
                 mkdir: function (dir) {
                     return file.mkdirs(dir);
@@ -4776,7 +4782,114 @@ define('create',['require','exports','module','fs','path','q','volo/tempDir','vo
     return require('volo/commands').register(module.id, create);
 });
 
-define('text!add/doc.md',[],function () { return '## Usage\n\n    volo.js add [flags] archive [localName]\n\nwhere the allowed flags are:\n\n* -f: Forces the add even if the code has already been added to the project.\n* -amd: Indicates the project is an AMD project. If the project has a\n  package.json entry for "amd": {} then this flag is not needed.\n\n**archive** is in one of the following formats:\n\n* user/repo: Download the tar.gz from GitHub for the user/repo, using the latest\n  version tag, or "master" if no version tags.\n* user/repo/tag: Download the tar.gz from GitHub for the user/repo, using the\n  specific tag/branch name listed.\n* user/repo/tag#specific/file.js: Download the tar.gz from GitHub for the user/\n  repo, using the specific tag/branch name listed, then extracting only\n  the specific/file.js from that archive and installing it.\n* http://some.domain.com/path/to/archive.tar.gz: Downloads the tar.gz file and\n  installs it.\n* http://some.domain.com/path/to/archive.tar.gz#specific/file.js: Download\n  the tar.gz file and only install specific/file.js.\n* symlink:path/to/directory/or/file.js: Creates a symlink to the specific\n  location in the project. If it is a directory and the project using the\n  directory is an AMD project, an adapter module will also be created.\n\nIf **localName** is specified then that name is used for the installed name.\nIf the installed item is a directory, the directory will have this name. If\na specific file from the the archive, the file will have this name.\n\nIf **localName** is not specified, the installed directory name will be the\nname of the .tar.gz file without the tar.gz extension, or if a GitHub\nreference, the repo name. If it is a specific file from within a .tar.gz file,\nthen that file\'s name will be used.\n\n## Installation Details\n\nFor the directory in which add is run, it will look for the following to know\nwhere to install:\n\n* Looks for a package.json file and if there is an amd.baseUrl defined in it.\n* Looks for a **js** directory\n* Looks for a **scripts** directory\n\nIf none of those result in a subdirectory for installation, then the current\nworking directory is used.\n\nIf the archive has a top level .js file in it and it is the same name\nas the repo\'s/tar.gz file name, then only that .js file will be installed.\n\nOr, if there is only one top level .js file in the repo and it has a\n/*package.json */ comment with JSON inside that comment, it will be used.\n';});
+define('text!add/doc.md',[],function () { return '## Usage\n\n    volo.js add [flags] archive [localName]\n\nwhere the allowed flags are:\n\n* -f: Forces the add even if the code has already been added to the project.\n* -amd: Indicates the project is an AMD project. If the project has a\n  package.json entry for "amd": {} then this flag is not needed.\n\n**archive** is in one of the following formats:\n\n* user/repo: Download the tar.gz from GitHub for the user/repo, using the latest\n  version tag, or "master" if no version tags.\n* user/repo/tag: Download the tar.gz from GitHub for the user/repo, using the\n  specific tag/branch name listed.\n* user/repo/tag#specific/file.js: Download the tar.gz from GitHub for the user/\n  repo, using the specific tag/branch name listed, then extracting only\n  the specific/file.js from that archive and installing it.\n* http://some.domain.com/path/to/archive.tar.gz: Downloads the tar.gz file and\n  installs it.\n* http://some.domain.com/path/to/archive.tar.gz#specific/file.js: Download\n  the tar.gz file and only install specific/file.js.\n* symlink:path/to/directory/or/file.js: Creates a symlink to the specific\n  location in the project. If it is a directory and the project using the\n  directory is an AMD project, an adapter module will also be created.\n* local:paht/to/directory: Copies the local directory. A local directory is\n  also checked when the "some/thing" archive name is used -- if there is no\n  local file match, it is assumed to be a GitHub URL.\n\nIf **localName** is specified then that name is used for the installed name.\nIf the installed item is a directory, the directory will have this name. If\na specific file from the the archive, the file will have this name.\n\nIf **localName** is not specified, the installed directory name will be the\nname of the .tar.gz file without the tar.gz extension, or if a GitHub\nreference, the repo name. If it is a specific file from within a .tar.gz file,\nthen that file\'s name will be used.\n\n## Examples\n\nThis one fetches Underscore and converts it to have an AMD wrapper. Underscore\nstill registers a global export, but AMD code can get a local reference\nthrough the module ID:\n\n    volo.js add -amd documentcloud/underscore exports=_\n\nWhen the -amd flag is used, the the **amdify** command is used to convert\nthe file downloaded by the **add** command, so the named arguments supported\nby **amdify** can als be used with **add**.\n\nHere is a command that fetches Backbone and wraps in it in an AMD define() call,\nspecifying \'jquery\' and \'underscore\' as dependencies:\n\n    volo.js add -amd documentcloud/backbone depend=underscore,jquery exports=Backbone\n\n\n## Installation Details\n\nFor the directory in which add is run, it will look for the following to know\nwhere to install:\n\n* Looks for a package.json file and if there is an amd.baseUrl defined in it.\n* Looks for a **js** directory\n* Looks for a **scripts** directory\n\nIf none of those result in a subdirectory for installation, then the current\nworking directory is used.\n\nIf the archive has a top level .js file in it and it is the same name\nas the repo\'s/tar.gz file name, then only that .js file will be installed.\n\nOr, if there is only one top level .js file in the repo and it has a\n/*package.json */ comment with JSON inside that comment, it will be used.\n';});
+
+define('text!amdify/template.js',[],function () { return '\n//File modified by volo amdify\n//Wrapped in an outer function to preserve global this\n\n(function (root) { define([/*DEPENDENCIES*/], function () { (function () {\n\n/*CONTENTS*/\n\n}.call(root));\n\n/*EXPORTS*/\n}); }(this));\n';});
+
+define('text!amdify/exportsTemplate.js',[],function () { return 'return /*EXPORTS*/;\n';});
+
+define('text!amdify/exportsNoConflictTemplate.js',[],function () { return 'if (/*EXPORTS*/.noConflict) {\n    /*EXPORTS*/.noConflict(true);\n}\nreturn /*EXPORTS*/;\n';});
+
+define('text!amdify/doc.md',[],function () { return '## Usage\n\n    volo.js amdify [-noConflict] path/to/file.js [depend=] [exports=]\n\nwhere:\n\n* depend is a comma-separated list of dependencies, with no spaces\n* exports is the global value created by the file that should be treated as the\n  module\'s exported value.\n* -noConflict indicates that code shoud be included to call the exports\n  value\'s noConflict method if it exists.\n\n## Details\n\nThe file.js will be modified to include a define() wrapper with the given\ndependency names.\n\nThis example:\n\n    volo.js amdify www/js/aplugin.jquery.js depend=jquery\n\nWill result in modifying the www/js/aplugin.jquery.js contents to have a\nfunction wrapping that includes:\n\n    define([\'jquery\'], function () {\n        //original contents in here.\n    });\n\nThis example sets dependencies, but then also specifies the export value to\nbe used. If the export object has a \'noConflict\' method on it, then it will\nbe called as part of exporting the module value:\n\n    volo.js amdify www/js/lib.js depend=jquery exports=lib\n\nresults in a transform that looks roughly like:\n\n    define([\'jquery\'], function () {\n\n        //original contents in here.\n\n        return lib;\n    });\n\nIf you want "-noConflict" called on the exports value:\n\n    volo.js amdify -noConflict www/js/lib.js depend=jquery exports=lib\n\nresults in a transform that looks roughly like:\n\n    define([\'jquery\'], function () {\n\n        //original contents in here.\n\n        if (lib.noConflict)) {\n            lib.noConflict(true);\n        }\n        return lib;\n    });\n\n**Be careful with -noConflict**. You most likely do not want to use it if\nyou have other code that has been amdify\'d that depends on this amdify\'d code.\nFor instance, using amdify on underscore.js with -noConflict is bad since\nbackbone.js depends on underscore, and it looks for a global _ value.\n\namdify will set the "this" value for the original contents to be the global\nobject.\n\nIdeally the target file would optionally call define() itself, and use\nthe local dependency references instead of browser globals. However, for\nbootstrapping existing projects to use an AMD loader, amdify can be useful to\nget started.\n\nUsing amdify will produce code that is uglier than doing a proper code change\nto add optional an optional define() call. For better code examples, see:\nhttps://github.com/umdjs/umd\n';});
+
+/**
+ * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
+ * Available via the MIT or new BSD license.
+ * see: http://github.com/volojs/volo for details
+ */
+
+
+/*jslint */
+/*global define */
+
+define('amdify',['require','exports','module','fs','path','text!./amdify/template.js','text!./amdify/exportsTemplate.js','text!./amdify/exportsNoConflictTemplate.js','text!./amdify/doc.md','volo/commands'],function (require, exports, module) {
+    var fs = require('fs'),
+        path = require('path'),
+        template = require('text!./amdify/template.js'),
+        exportsTemplate = require('text!./amdify/exportsTemplate.js'),
+        exportsNoConflictTemplate = require('text!./amdify/exportsNoConflictTemplate.js'),
+        dependRegExp = /\/\*DEPENDENCIES\*\//g,
+        contentsComment = '/*CONTENTS*/',
+        exportsRegExp = /\/\*EXPORTS\*\//g,
+        amdifyRegExp = /volo amdify/,
+        main;
+
+    main = {
+        //Text summary used when listing commands.
+        summary: 'Does a simple AMD wrapping for JS libraries that use ' +
+                 'browser globals',
+
+        doc: require('text!./amdify/doc.md'),
+
+        flags: {
+            'noConflict': 'noConflict'
+        },
+
+        //Validate any arguments here.
+        validate: function (namedArgs, target) {
+            if (!target) {
+                return new Error('A target file needs to be specified');
+            }
+
+            if (!path.existsSync(target)) {
+                return new Error(target + ' does not exist!');
+            }
+
+            return undefined;
+        },
+
+        run: function (deferred, namedArgs, target) {
+            var depend = namedArgs.depend,
+                exports = namedArgs.exports || '',
+                contents = fs.readFileSync(target, 'utf8'),
+                temp, commentIndex;
+
+            if (depend) {
+                depend = depend.split(',').map(function (value) {
+                    return "'" + value + "'";
+                });
+            } else {
+                depend = [];
+            }
+
+            //Convert the depend to a string.
+            depend = depend.join(',');
+
+            if (amdifyRegExp.test(contents)) {
+                return deferred.reject('Looks like amdify has already been ' +
+                                       'applied to ' + target);
+            } else {
+                //Get the export boilerplate ready.
+                if (exports) {
+                    exports = namedArgs.noConflict ?
+                                exportsNoConflictTemplate.replace(exportsRegExp, exports) :
+                                exportsTemplate.replace(exportsRegExp, exports);
+                }
+
+                //Create the main wrapping. Do depend and exports replacement
+                //before inserting the main contents, to avoid problems with
+                //a possibly undesirable regexp replacement.
+                temp = template
+                        .replace(dependRegExp, depend)
+                        .replace(exportsRegExp, exports);
+
+                //Cannot use a regexp replacement for comment, because if
+                //the contents contain funky regexp associated markers, like
+                //a `$`, then get double content insertion.
+                commentIndex = temp.indexOf(contentsComment);
+                contents = temp.substring(0, commentIndex) +
+                           contents +
+                           temp.substring(commentIndex + contentsComment.length, temp.length);
+
+                fs.writeFileSync(target, contents, 'utf8');
+
+                return deferred.resolve('amdify has modified ' + target);
+            }
+        }
+    };
+
+    return require('volo/commands').register(module.id, main);
+});
 
 /**
  * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
@@ -4788,7 +4901,7 @@ define('text!add/doc.md',[],function () { return '## Usage\n\n    volo.js add [f
 /*jslint */
 /*global define, console, process */
 
-define('add',['require','exports','module','fs','path','q','volo/config','volo/archive','volo/download','volo/packageJson','volo/tar','volo/file','volo/tempDir','text!./add/doc.md','volo/commands'],function (require, exports, module) {
+define('add',['require','exports','module','fs','path','q','volo/config','volo/archive','volo/download','volo/packageJson','volo/tar','volo/file','volo/tempDir','amdify','text!./add/doc.md','volo/commands'],function (require, exports, module) {
     var fs = require('fs'),
         path = require('path'),
         q = require('q'),
@@ -4800,6 +4913,7 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
         tar = require('volo/tar'),
         file = require('volo/file'),
         tempDir = require('volo/tempDir'),
+        amdify = require('amdify'),
         add;
 
     function makeMainAmdAdapter(mainValue, localName, targetFileName) {
@@ -4896,8 +5010,10 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
                     }
 
                     deferred.resolve(linkTarget + ' points to ' + linkPath +
-                                     '\nIf using AMD, \'' + archiveInfo.finalLocalName +
-                                     '\' is the dependency name');
+                                         (isAmdProject ?
+                                          '\nThe AMD dependency name: \'' +
+                                          archiveInfo.finalLocalName :
+                                          ''));
                 }
 
                 //Function used to clean up in case of errors.
@@ -4920,7 +5036,7 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
                             //If the directory only contains one file, then
                             //that is the install target.
                             listing = fs.readdirSync(dirName);
-                            if (dirName.length === 1) {
+                            if (listing.length === 1) {
                                 sourceName = path.join(dirName, listing[0]);
                                 defaultName = listing[0];
                             } else {
@@ -5000,16 +5116,30 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
                             //Trace nested dependencies in the package.json
                             //TODO
 
-                            //All done.
-                            file.rmdir(tempDirName);
-                            completeMessage = 'Installed ' +
-                                archiveInfo.url +
-                                (archiveInfo.fragment ? '#' +
-                                 archiveInfo.fragment : '') +
-                                ' at ' + targetName + '\nFor AMD-based ' +
-                                'projects use \'' + archiveInfo.finalLocalName +
-                                '\' as the ' + 'dependency name.';
-                            deferred.resolve(completeMessage);
+                            q.call(function () {
+                                if (isAmdProject &&
+                                    (namedArgs.exports || namedArgs.depend)) {
+                                    var damd = q.defer();
+                                    amdify.run.apply(amdify, [damd, namedArgs, targetName]);
+                                    return damd;
+                                }
+                                return undefined;
+                            }).then(function () {
+                                //All done.
+                                file.rmdir(tempDirName);
+                                completeMessage = 'Installed ' +
+                                    archiveInfo.url +
+                                    (archiveInfo.fragment ? '#' +
+                                     archiveInfo.fragment : '') +
+                                    ' at ' + targetName;
+
+                                if (isAmdProject) {
+                                    completeMessage += '\nAMD dependency name: ' +
+                                                        archiveInfo.finalLocalName;
+                                }
+
+                                deferred.resolve(completeMessage);
+                            }, deferred.reject);
                         } else {
                             errCleanUp('Unexpected tarball configuration');
                         }
@@ -5049,14 +5179,20 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
 
                     var url = archiveInfo.url,
                         localName = archiveInfo.finalLocalName,
-                        ext = archiveInfo.isArchive ? '.tar.gz' :
-                              url.substring(url.lastIndexOf('.') + 1,
-                                            url.length),
-                        urlDir, tarName;
+                        lastDotIndex = url.lastIndexOf('.'),
+                        ext, urlDir, tarName, downloadTarget, downloadPath;
 
                     if (archiveInfo.isArchive) {
-                        download(url, path.join(tempDirName,
-                                 localName + '.tar.gz'), function (filePath) {
+                        ext = '.tar.gz';
+                    } else if (lastDotIndex !== -1) {
+                        ext = url.substring(lastDotIndex, url.length);
+                    }
+
+                    downloadTarget = localName + (ext || '');
+
+                    if (archiveInfo.isArchive) {
+                        download(url, path.join(tempDirName, downloadTarget),
+                            function (filePath) {
 
                             //Unpack the zip file.
                             tarName = path.join(tempDirName, localName +
@@ -5066,12 +5202,20 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
                             }, errCleanUp);
                         }, errCleanUp);
                     } else {
-                        //Create a directory inside tempDirName to receive the
-                        //file, since the tarball path has a similar setup.
-                        urlDir = path.join(tempDirName, 'download');
-                        fs.mkdirSync(urlDir);
+                        if (ext) {
+                            //Single file install.
+                            //Create a directory inside tempDirName to receive the
+                            //file, since the tarball path has a similar setup.
+                            urlDir = path.join(tempDirName, 'download');
+                            fs.mkdirSync(urlDir);
+                            downloadPath = path.join(urlDir, downloadTarget);
+                        } else {
+                            //a local directory install, it already has
+                            //a directory structure.
+                            downloadPath = path.join(tempDirName, downloadTarget);
+                        }
 
-                        download(url, path.join(urlDir, localName + '.' + ext),
+                        download(url, downloadPath,
                             function (filePath) {
                                 moveFromTemp();
                             },
@@ -5218,113 +5362,6 @@ define('rejuvenate',['require','exports','module','q','path','add','text!./rejuv
     };
 
     return require('volo/commands').register(module.id, rejuvenate);
-});
-
-define('text!amdify/template.js',[],function () { return '\n//File modified by volo amdify\n//Wrapped in an outer function to preserve global this\n\n(function (root) { define([/*DEPENDENCIES*/], function () { (function () {\n\n/*CONTENTS*/\n\n}.call(root));\n\n/*EXPORTS*/\n}); }(this));\n';});
-
-define('text!amdify/exportsTemplate.js',[],function () { return 'return /*EXPORTS*/;\n';});
-
-define('text!amdify/exportsNoConflictTemplate.js',[],function () { return 'if (/*EXPORTS*/.noConflict) {\n    /*EXPORTS*/.noConflict(true);\n}\nreturn /*EXPORTS*/;\n';});
-
-define('text!amdify/doc.md',[],function () { return '## Usage\n\n    volo.js amdify [-noConflict] path/to/file.js [depend=] [exports=]\n\nwhere:\n\n* depend is a comma-separated list of dependencies, with no spaces\n* exports is the global value created by the file that should be treated as the\n  module\'s exported value.\n* -noConflict indicates that code shoud be included to call the exports\n  value\'s noConflict method if it exists.\n\n## Details\n\nThe file.js will be modified to include a define() wrapper with the given\ndependency names.\n\nThis example:\n\n    volo.js amdify www/js/aplugin.jquery.js depend=jquery\n\nWill result in modifying the www/js/aplugin.jquery.js contents to have a\nfunction wrapping that includes:\n\n    define([\'jquery\'], function () {\n        //original contents in here.\n    });\n\nThis example sets dependencies, but then also specifies the export value to\nbe used. If the export object has a \'noConflict\' method on it, then it will\nbe called as part of exporting the module value:\n\n    volo.js amdify www/js/lib.js depend=jquery exports=lib\n\nresults in a transform that looks roughly like:\n\n    define([\'jquery\'], function () {\n\n        //original contents in here.\n\n        return lib;\n    });\n\nIf you want "-noConflict" called on the exports value:\n\n    volo.js amdify -noConflict www/js/lib.js depend=jquery exports=lib\n\nresults in a transform that looks roughly like:\n\n    define([\'jquery\'], function () {\n\n        //original contents in here.\n\n        if (lib.noConflict)) {\n            lib.noConflict(true);\n        }\n        return lib;\n    });\n\n**Be careful with -noConflict**. You most likely do not want to use it if\nyou have other code that has been amdify\'d that depends on this amdify\'d code.\nFor instance, using amdify on underscore.js with -noConflict is bad since\nbackbone.js depends on underscore, and it looks for a global _ value.\n\namdify will set the "this" value for the original contents to be the global\nobject.\n\nIdeally the target file would optionally call define() itself, and use\nthe local dependency references instead of browser globals. However, for\nbootstrapping existing projects to use an AMD loader, amdify can be useful to\nget started.\n\nUsing amdify will produce code that is uglier than doing a proper code change\nto add optional an optional define() call. For better code examples, see:\nhttps://github.com/umdjs/umd\n';});
-
-/**
- * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
- * Available via the MIT or new BSD license.
- * see: http://github.com/volojs/volo for details
- */
-
-
-/*jslint */
-/*global define */
-
-define('amdify',['require','exports','module','fs','path','text!./amdify/template.js','text!./amdify/exportsTemplate.js','text!./amdify/exportsNoConflictTemplate.js','text!./amdify/doc.md','volo/commands'],function (require, exports, module) {
-    var fs = require('fs'),
-        path = require('path'),
-        template = require('text!./amdify/template.js'),
-        exportsTemplate = require('text!./amdify/exportsTemplate.js'),
-        exportsNoConflictTemplate = require('text!./amdify/exportsNoConflictTemplate.js'),
-        dependRegExp = /\/\*DEPENDENCIES\*\//g,
-        contentsComment = '/*CONTENTS*/',
-        exportsRegExp = /\/\*EXPORTS\*\//g,
-        amdifyRegExp = /volo amdify/,
-        main;
-
-    main = {
-        //Text summary used when listing commands.
-        summary: 'Does a simple AMD wrapping for JS libraries that use ' +
-                 'browser globals',
-
-        doc: require('text!./amdify/doc.md'),
-
-        flags: {
-            'noConflict': 'noConflict'
-        },
-
-        //Validate any arguments here.
-        validate: function (namedArgs, target) {
-            if (!target) {
-                return new Error('A target file needs to be specified');
-            }
-
-            if (!path.existsSync(target)) {
-                return new Error(target + ' does not exist!');
-            }
-
-            return undefined;
-        },
-
-        run: function (deferred, namedArgs, target) {
-            var depend = namedArgs.depend,
-                exports = namedArgs.exports || '',
-                contents = fs.readFileSync(target, 'utf8'),
-                temp, commentIndex;
-
-            if (depend) {
-                depend = depend.split(',').map(function (value) {
-                    return "'" + value + "'";
-                });
-            } else {
-                depend = [];
-            }
-
-            //Convert the depend to a string.
-            depend = depend.join(',');
-
-            if (amdifyRegExp.test(contents)) {
-                return deferred.reject('Looks like amdify has already been ' +
-                                       'applied to ' + target);
-            } else {
-                //Get the export boilerplate ready.
-                if (exports) {
-                    exports = namedArgs.noConflict ?
-                                exportsNoConflictTemplate.replace(exportsRegExp, exports) :
-                                exportsTemplate.replace(exportsRegExp, exports);
-                }
-
-                //Create the main wrapping. Do depend and exports replacement
-                //before inserting the main contents, to avoid problems with
-                //a possibly undesirable regexp replacement.
-                temp = template
-                        .replace(dependRegExp, depend)
-                        .replace(exportsRegExp, exports);
-
-                //Cannot use a regexp replacement for comment, because if
-                //the contents contain funky regexp associated markers, like
-                //a `$`, then get double content insertion.
-                commentIndex = temp.indexOf(contentsComment);
-                contents = temp.substring(0, commentIndex) +
-                           contents +
-                           temp.substring(commentIndex + contentsComment.length, temp.length);
-
-                fs.writeFileSync(target, contents, 'utf8');
-
-                return deferred.resolve('amdify has modified ' + target);
-            }
-        }
-    };
-
-    return require('volo/commands').register(module.id, main);
 });
 
 //Trigger processing of all defined modules.
