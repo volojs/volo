@@ -14,7 +14,7 @@ define(function (require, exports, module) {
         template = require('text!./amdify/template.js'),
         exportsTemplate = require('text!./amdify/exportsTemplate.js'),
         dependRegExp = /\/\*DEPENDENCIES\*\//,
-        contentsRegExp = /\/\*CONTENTS\*\//,
+        contentsComment = '/*CONTENTS*/',
         exportsRegExp = /\/\*EXPORTS\*\//,
         amdifyRegExp = /volo amdify/,
         main;
@@ -42,7 +42,8 @@ define(function (require, exports, module) {
         run: function (deferred, namedArgs, target) {
             var depend = namedArgs.depend,
                 exports = namedArgs.exports || '',
-                contents = fs.readFileSync(target, 'utf8');
+                contents = fs.readFileSync(target, 'utf8'),
+                temp, commentIndex;
 
             if (depend) {
                 depend = depend.split(',').map(function (value) {
@@ -67,10 +68,17 @@ define(function (require, exports, module) {
                 //Create the main wrapping. Do depend and exports replacement
                 //before inserting the main contents, to avoid problems with
                 //a possibly undesirable regexp replacement.
-                contents = template
-                            .replace(dependRegExp, depend)
-                            .replace(exportsRegExp, exports)
-                            .replace(contentsRegExp, contents);
+                temp = template
+                        .replace(dependRegExp, depend)
+                        .replace(exportsRegExp, exports);
+
+                //Cannot use a regexp replacement for comment, because if
+                //the contents contain funky regexp associated markers, like
+                //a `$`, then get double content insertion.
+                commentIndex = temp.indexOf(contentsComment);
+                contents = temp.substring(0, commentIndex) +
+                           contents +
+                           temp.substring(commentIndex + contentsComment.length, temp.length);
 
                 fs.writeFileSync(target, contents, 'utf8');
 

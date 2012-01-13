@@ -36,7 +36,7 @@ define(function (require, exports, module) {
                         var output = fs.readFileSync('plain.js', 'utf8'),
                             expected = fs.readFileSync('../expected/plain.js', 'utf8');
 
-                        t.is(output, expected);
+                        t.is(expected, output);
                     }
                 ]
             );
@@ -52,7 +52,7 @@ define(function (require, exports, module) {
                         var output = fs.readFileSync('plainExports.js', 'utf8'),
                             expected = fs.readFileSync('../expected/plainExports.js', 'utf8');
 
-                        t.is(output, expected);
+                        t.is(expected, output);
                     }
                 ]
             );
@@ -68,7 +68,7 @@ define(function (require, exports, module) {
                         var output = fs.readFileSync('lib.js', 'utf8'),
                             expected = fs.readFileSync('../expected/lib.js', 'utf8');
 
-                        t.is(output, expected);
+                        t.is(expected, output);
                     }
                 ]
             );
@@ -84,7 +84,7 @@ define(function (require, exports, module) {
                         var output = fs.readFileSync('libExports.js', 'utf8'),
                             expected = fs.readFileSync('../expected/libExports.js', 'utf8');
 
-                        t.is(output, expected);
+                        t.is(expected, output);
                     }
                 ]
             );
