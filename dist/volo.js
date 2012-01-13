@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
 /**
- * @license volo 0.0.1+ Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
+ * @license volo 0.0.2 Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
  * see: http://github.com/volojs/volo for details
  */
 
-var voloVersion = '0.0.1+';
+var voloVersion = '0.0.2';
 
 /** vim: et:ts=4:sw=4:sts=4
  * @license RequireJS 1.0.2 Copyright (c) 2010-2011, The Dojo Foundation All Rights Reserved.
@@ -5220,11 +5220,13 @@ define('rejuvenate',['require','exports','module','q','path','add','text!./rejuv
     return require('volo/commands').register(module.id, rejuvenate);
 });
 
-define('text!amdify/template.js',[],function () { return '\n//File modified by volo amdify\n//Wrapped in an outer function to preserve global this\n\n(function (root) {\n  define([/*DEPENDENCIES*/], function () {\n    (function () {\n\n/*CONTENTS*/\n\n    }.call(root));\n\n/*EXPORTS*/\n\n  });\n}(this));\n';});
+define('text!amdify/template.js',[],function () { return '\n//File modified by volo amdify\n//Wrapped in an outer function to preserve global this\n\n(function (root) { define([/*DEPENDENCIES*/], function () { (function () {\n\n/*CONTENTS*/\n\n}.call(root));\n\n/*EXPORTS*/\n}); }(this));\n';});
 
-define('text!amdify/exportsTemplate.js',[],function () { return '    var amdifyExport = /*EXPORTS*/;\n    if (amdifyExport.noConflict) {\n        amdifyExport.noConflict(true);\n    }\n    return amdifyExport;\n';});
+define('text!amdify/exportsTemplate.js',[],function () { return 'return /*EXPORTS*/;\n';});
 
-define('text!amdify/doc.md',[],function () { return '## Usage\n\n    volo.js amdify path/to/file.js [depend=] [export=]\n\nwhere depend is a comma-separated list of dependencies, with no spaces, and\nexport is the global value created by the file that should be treated as the\nmodule\'s export value.\n\n## Details\n\nThe file.js will be modified to include a define() wrapper with the given\ndependency names.\n\nThis example:\n\n    volo.js amdify www/js/aplugin.jquery.js depend=jquery\n\nWill result in modifying the www/js/aplugin.jquery.js contents to have a\nfunction wrapping that includes:\n\n    define([\'jquery\'], function () {\n        //original contents in here.\n    });\n\nThis example sets dependencies, but then also specifies the export value to\nbe used. If the export object has a \'noConflict\' method on it, then it will\nbe called as part of exporting the module value:\n\n    volo.js amdify www/js/lib.js depend=jquery export=lib\n\nresults in a transform that looks roughly like:\n\n    define([\'jquery\'], function () {\n\n        //original contents in here.\n\n        var amdExport = lib;\n        if (amdExport.noConflict)) {\n            amdExport.noConflict();\n        }\n        return amdExport;\n    });\n\namdify will set the "this" value for the original contents to be the global\nobject.\n\nIdeally the target file would optionally call define() itself, and use\nthe local dependency references instead of browser globals. However, for\nbootstrapping existing projects to use an AMD loader, amdify can be useful to\nget started.\n\nUsing amdify will produce code that is uglier than doing a proper code change\nto add optional an optional define() call. For better code examples, see:\nhttps://github.com/umdjs/umd\n';});
+define('text!amdify/exportsNoConflictTemplate.js',[],function () { return 'if (/*EXPORTS*/.noConflict) {\n    /*EXPORTS*/.noConflict(true);\n}\nreturn /*EXPORTS*/;\n';});
+
+define('text!amdify/doc.md',[],function () { return '## Usage\n\n    volo.js amdify [-noConflict] path/to/file.js [depend=] [exports=]\n\nwhere:\n\n* depend is a comma-separated list of dependencies, with no spaces\n* exports is the global value created by the file that should be treated as the\n  module\'s exported value.\n* -noConflict indicates that code shoud be included to call the exports\n  value\'s noConflict method if it exists.\n\n## Details\n\nThe file.js will be modified to include a define() wrapper with the given\ndependency names.\n\nThis example:\n\n    volo.js amdify www/js/aplugin.jquery.js depend=jquery\n\nWill result in modifying the www/js/aplugin.jquery.js contents to have a\nfunction wrapping that includes:\n\n    define([\'jquery\'], function () {\n        //original contents in here.\n    });\n\nThis example sets dependencies, but then also specifies the export value to\nbe used. If the export object has a \'noConflict\' method on it, then it will\nbe called as part of exporting the module value:\n\n    volo.js amdify www/js/lib.js depend=jquery exports=lib\n\nresults in a transform that looks roughly like:\n\n    define([\'jquery\'], function () {\n\n        //original contents in here.\n\n        return lib;\n    });\n\nIf you want "-noConflict" called on the exports value:\n\n    volo.js amdify -noConflict www/js/lib.js depend=jquery exports=lib\n\nresults in a transform that looks roughly like:\n\n    define([\'jquery\'], function () {\n\n        //original contents in here.\n\n        if (lib.noConflict)) {\n            lib.noConflict(true);\n        }\n        return lib;\n    });\n\n**Be careful with -noConflict**. You most likely do not want to use it if\nyou have other code that has been amdify\'d that depends on this amdify\'d code.\nFor instance, using amdify on underscore.js with -noConflict is bad since\nbackbone.js depends on underscore, and it looks for a global _ value.\n\namdify will set the "this" value for the original contents to be the global\nobject.\n\nIdeally the target file would optionally call define() itself, and use\nthe local dependency references instead of browser globals. However, for\nbootstrapping existing projects to use an AMD loader, amdify can be useful to\nget started.\n\nUsing amdify will produce code that is uglier than doing a proper code change\nto add optional an optional define() call. For better code examples, see:\nhttps://github.com/umdjs/umd\n';});
 
 /**
  * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
@@ -5236,14 +5238,15 @@ define('text!amdify/doc.md',[],function () { return '## Usage\n\n    volo.js amd
 /*jslint */
 /*global define */
 
-define('amdify',['require','exports','module','fs','path','text!./amdify/template.js','text!./amdify/exportsTemplate.js','text!./amdify/doc.md','volo/commands'],function (require, exports, module) {
+define('amdify',['require','exports','module','fs','path','text!./amdify/template.js','text!./amdify/exportsTemplate.js','text!./amdify/exportsNoConflictTemplate.js','text!./amdify/doc.md','volo/commands'],function (require, exports, module) {
     var fs = require('fs'),
         path = require('path'),
         template = require('text!./amdify/template.js'),
         exportsTemplate = require('text!./amdify/exportsTemplate.js'),
-        dependRegExp = /\/\*DEPENDENCIES\*\//,
+        exportsNoConflictTemplate = require('text!./amdify/exportsNoConflictTemplate.js'),
+        dependRegExp = /\/\*DEPENDENCIES\*\//g,
         contentsComment = '/*CONTENTS*/',
-        exportsRegExp = /\/\*EXPORTS\*\//,
+        exportsRegExp = /\/\*EXPORTS\*\//g,
         amdifyRegExp = /volo amdify/,
         main;
 
@@ -5253,6 +5256,10 @@ define('amdify',['require','exports','module','fs','path','text!./amdify/templat
                  'browser globals',
 
         doc: require('text!./amdify/doc.md'),
+
+        flags: {
+            'noConflict': 'noConflict'
+        },
 
         //Validate any arguments here.
         validate: function (namedArgs, target) {
@@ -5290,7 +5297,9 @@ define('amdify',['require','exports','module','fs','path','text!./amdify/templat
             } else {
                 //Get the export boilerplate ready.
                 if (exports) {
-                    exports = exportsTemplate.replace(exportsRegExp, exports);
+                    exports = namedArgs.noConflict ?
+                                exportsNoConflictTemplate.replace(exportsRegExp, exports) :
+                                exportsTemplate.replace(exportsRegExp, exports);
                 }
 
                 //Create the main wrapping. Do depend and exports replacement
