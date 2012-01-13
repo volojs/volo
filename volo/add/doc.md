@@ -24,6 +24,9 @@ where the allowed flags are:
 * symlink:path/to/directory/or/file.js: Creates a symlink to the specific
   location in the project. If it is a directory and the project using the
   directory is an AMD project, an adapter module will also be created.
+* local:paht/to/directory: Copies the local directory. A local directory is
+  also checked when the "some/thing" archive name is used -- if there is no
+  local file match, it is assumed to be a GitHub URL.
 
 If **localName** is specified then that name is used for the installed name.
 If the installed item is a directory, the directory will have this name. If
@@ -33,6 +36,24 @@ If **localName** is not specified, the installed directory name will be the
 name of the .tar.gz file without the tar.gz extension, or if a GitHub
 reference, the repo name. If it is a specific file from within a .tar.gz file,
 then that file's name will be used.
+
+## Examples
+
+This one fetches Underscore and converts it to have an AMD wrapper. Underscore
+still registers a global export, but AMD code can get a local reference
+through the module ID:
+
+    volo.js add -amd documentcloud/underscore exports=_
+
+When the -amd flag is used, the the **amdify** command is used to convert
+the file downloaded by the **add** command, so the named arguments supported
+by **amdify** can als be used with **add**.
+
+Here is a command that fetches Backbone and wraps in it in an AMD define() call,
+specifying 'jquery' and 'underscore' as dependencies:
+
+    volo.js add -amd documentcloud/backbone depend=underscore,jquery exports=Backbone
+
 
 ## Installation Details
 

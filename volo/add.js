@@ -20,6 +20,7 @@ define(function (require, exports, module) {
         tar = require('volo/tar'),
         file = require('volo/file'),
         tempDir = require('volo/tempDir'),
+        amdify = require('amdify'),
         add;
 
     function makeMainAmdAdapter(mainValue, localName, targetFileName) {
@@ -116,8 +117,10 @@ define(function (require, exports, module) {
                     }
 
                     deferred.resolve(linkTarget + ' points to ' + linkPath +
-                                     '\nIf using AMD, \'' + archiveInfo.finalLocalName +
-                                     '\' is the dependency name');
+                                         (isAmdProject ?
+                                          '\nThe AMD dependency name: \'' +
+                                          archiveInfo.finalLocalName :
+                                          ''));
                 }
 
                 //Function used to clean up in case of errors.
@@ -140,7 +143,7 @@ define(function (require, exports, module) {
                             //If the directory only contains one file, then
                             //that is the install target.
                             listing = fs.readdirSync(dirName);
-                            if (dirName.length === 1) {
+                            if (listing.length === 1) {
                                 sourceName = path.join(dirName, listing[0]);
                                 defaultName = listing[0];
                             } else {
@@ -220,16 +223,30 @@ define(function (require, exports, module) {
                             //Trace nested dependencies in the package.json
                             //TODO
 
-                            //All done.
-                            file.rmdir(tempDirName);
-                            completeMessage = 'Installed ' +
-                                archiveInfo.url +
-                                (archiveInfo.fragment ? '#' +
-                                 archiveInfo.fragment : '') +
-                                ' at ' + targetName + '\nFor AMD-based ' +
-                                'projects use \'' + archiveInfo.finalLocalName +
-                                '\' as the ' + 'dependency name.';
-                            deferred.resolve(completeMessage);
+                            q.call(function () {
+                                if (isAmdProject &&
+                                    (namedArgs.exports || namedArgs.depend)) {
+                                    var damd = q.defer();
+                                    amdify.run.apply(amdify, [damd, namedArgs, targetName]);
+                                    return damd;
+                                }
+                                return undefined;
+                            }).then(function () {
+                                //All done.
+                                file.rmdir(tempDirName);
+                                completeMessage = 'Installed ' +
+                                    archiveInfo.url +
+                                    (archiveInfo.fragment ? '#' +
+                                     archiveInfo.fragment : '') +
+                                    ' at ' + targetName;
+
+                                if (isAmdProject) {
+                                    completeMessage += '\nAMD dependency name: ' +
+                                                        archiveInfo.finalLocalName;
+                                }
+
+                                deferred.resolve(completeMessage);
+                            }, deferred.reject);
                         } else {
                             errCleanUp('Unexpected tarball configuration');
                         }
@@ -269,14 +286,20 @@ define(function (require, exports, module) {
 
                     var url = archiveInfo.url,
                         localName = archiveInfo.finalLocalName,
-                        ext = archiveInfo.isArchive ? '.tar.gz' :
-                              url.substring(url.lastIndexOf('.') + 1,
-                                            url.length),
-                        urlDir, tarName;
+                        lastDotIndex = url.lastIndexOf('.'),
+                        ext, urlDir, tarName, downloadTarget, downloadPath;
 
                     if (archiveInfo.isArchive) {
-                        download(url, path.join(tempDirName,
-                                 localName + '.tar.gz'), function (filePath) {
+                        ext = '.tar.gz';
+                    } else if (lastDotIndex !== -1) {
+                        ext = url.substring(lastDotIndex, url.length);
+                    }
+
+                    downloadTarget = localName + (ext || '');
+
+                    if (archiveInfo.isArchive) {
+                        download(url, path.join(tempDirName, downloadTarget),
+                            function (filePath) {
 
                             //Unpack the zip file.
                             tarName = path.join(tempDirName, localName +
@@ -286,12 +309,20 @@ define(function (require, exports, module) {
                             }, errCleanUp);
                         }, errCleanUp);
                     } else {
-                        //Create a directory inside tempDirName to receive the
-                        //file, since the tarball path has a similar setup.
-                        urlDir = path.join(tempDirName, 'download');
-                        fs.mkdirSync(urlDir);
+                        if (ext) {
+                            //Single file install.
+                            //Create a directory inside tempDirName to receive the
+                            //file, since the tarball path has a similar setup.
+                            urlDir = path.join(tempDirName, 'download');
+                            fs.mkdirSync(urlDir);
+                            downloadPath = path.join(urlDir, downloadTarget);
+                        } else {
+                            //a local directory install, it already has
+                            //a directory structure.
+                            downloadPath = path.join(tempDirName, downloadTarget);
+                        }
 
-                        download(url, path.join(urlDir, localName + '.' + ext),
+                        download(url, downloadPath,
                             function (filePath) {
                                 moveFromTemp();
                             },
