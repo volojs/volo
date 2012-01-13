@@ -26,7 +26,10 @@ Windows? Help out with [issue #1](https://github.com/volojs/volo/issues/1).
 
 ## Install
 
-    > curl https://raw.github.com/volojs/volo/v0.0.1/dist/volo.js > volo.js
+The latest release is 0.0.2, but you can use the **latest** tag to always get
+the latest release:
+
+    > curl https://raw.github.com/volojs/volo/latest/dist/volo.js > volo.js
     > chmod +x volo.js
 
 If you like to live dangerously on the edge, use the master version:
@@ -39,7 +42,7 @@ Suggested path so that it is always available:
 
     > mkdir ~/scripts
     > cd ~/scripts
-    > curl https://raw.github.com/volojs/volo/v0.0.1/dist/volo.js > volo.js
+    > curl https://raw.github.com/volojs/volo/latest/dist/volo.js > volo.js
     > chmod +x volo.js
 
 Then add **~/scripts** to your PATH in your .profile.
@@ -60,8 +63,31 @@ Backbone, jQuery and underscore:
     > volo.js create fast
     > cd fast
     > volo.js add jquery/jquery
+    > volo.js add amdjs/underscore/master
+    > volo.js add amdjs/backbone/master
+
+Then modify www/js/app.js to require the modules you need and add your app logic.
+
+If you prefer to use underscore and backbone from their sources, instead of
+using the amdjs forks that include nice AMD registration, you can use amdify
+to convert the files fetched from the documentcloud repos:
+
+    > volo.js create fast2
+    > cd fast2
+    > volo.js add jquery/jquery
     > volo.js add documentcloud/underscore
-    > volo.js add jrburke/backbone/optamd3
+    > volo.js amdify www/js/underscore.js exports=_
+    > volo.js add documentcloud/backbone
+    > volo.js amdify www/js/backbone.js depend=underscore,jquery exports=Backbone
+
+The amdify conversions are not as pretty as the amdjs handmade ones. However,
+it can be useful to use the documentcloud sources particularly if you want to
+use older releases of underscore and backbone.
+
+If you would prefer to have the documentcloud repos include native AMD registration,
+click the **Watch** button for the amdjs forks of [underscore](https://github.com/amdjs/underscore)
+and [backbone](https://github.com/amdjs/backbone), so we can help give the
+documentcloud group real data on how many people find would find it useful.
 
 Set up an HTML5 Boilerplate project that does not use AMD/RequireJS, but does
 use Backbone and underscore (the Boilerplate already has jQuery):

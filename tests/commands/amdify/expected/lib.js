@@ -2,9 +2,7 @@
 //File modified by volo amdify
 //Wrapped in an outer function to preserve global this
 
-(function (root) {
-  define(['alpha','beta'], function () {
-    (function () {
+(function (root) { define(['alpha','beta'], function () { (function () {
 
 
 (function () {
@@ -15,9 +13,7 @@
 }).call(this);
 
 
-    }.call(root));
+}.call(root));
 
 
-
-  });
-}(this));
+}); }(this));

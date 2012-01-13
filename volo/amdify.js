@@ -13,9 +13,10 @@ define(function (require, exports, module) {
         path = require('path'),
         template = require('text!./amdify/template.js'),
         exportsTemplate = require('text!./amdify/exportsTemplate.js'),
-        dependRegExp = /\/\*DEPENDENCIES\*\//,
+        exportsNoConflictTemplate = require('text!./amdify/exportsNoConflictTemplate.js'),
+        dependRegExp = /\/\*DEPENDENCIES\*\//g,
         contentsComment = '/*CONTENTS*/',
-        exportsRegExp = /\/\*EXPORTS\*\//,
+        exportsRegExp = /\/\*EXPORTS\*\//g,
         amdifyRegExp = /volo amdify/,
         main;
 
@@ -25,6 +26,10 @@ define(function (require, exports, module) {
                  'browser globals',
 
         doc: require('text!./amdify/doc.md'),
+
+        flags: {
+            'noConflict': 'noConflict'
+        },
 
         //Validate any arguments here.
         validate: function (namedArgs, target) {
@@ -62,7 +67,9 @@ define(function (require, exports, module) {
             } else {
                 //Get the export boilerplate ready.
                 if (exports) {
-                    exports = exportsTemplate.replace(exportsRegExp, exports);
+                    exports = namedArgs.noConflict ?
+                                exportsNoConflictTemplate.replace(exportsRegExp, exports) :
+                                exportsTemplate.replace(exportsRegExp, exports);
                 }
 
                 //Create the main wrapping. Do depend and exports replacement
