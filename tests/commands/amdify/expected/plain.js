@@ -3,14 +3,16 @@
 //Wrapped in an outer function to preserve global this
 
 (function (root) {
-  define([/*DEPENDENCIES*/], function () {
+  define([], function () {
     (function () {
 
-/*CONTENTS*/
+
+window.foo = 'bar';
+
 
     }.call(root));
 
-/*EXPORTS*/
+
 
   });
 }(this));

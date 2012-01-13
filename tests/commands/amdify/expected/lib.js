@@ -3,14 +3,18 @@
 //Wrapped in an outer function to preserve global this
 
 (function (root) {
-  define([/*DEPENDENCIES*/], function () {
+  define(['alpha','beta'], function () {
     (function () {
 
-/*CONTENTS*/
+
+(function () {
+    this.lib = alpha.doIt() + beta.id;
+}).call(this);
+
 
     }.call(root));
 
-/*EXPORTS*/
+
 
   });
 }(this));
