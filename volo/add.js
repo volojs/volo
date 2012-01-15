@@ -17,10 +17,12 @@ define(function (require, exports, module) {
         archive = require('volo/archive'),
         download = require('volo/download'),
         packageJson = require('volo/packageJson'),
+        parse = require('volo/parse'),
         tar = require('volo/tar'),
         file = require('volo/file'),
         tempDir = require('volo/tempDir'),
         amdify = require('amdify'),
+        jsRegExp = /\.js$/,
         add;
 
     function makeMainAmdAdapter(mainValue, localName, targetFileName) {
@@ -136,33 +138,50 @@ define(function (require, exports, module) {
                         //Find the directory that was unpacked in tempDirName
                         var dirName = file.firstDir(tempDirName),
                             info, sourceName, targetName, completeMessage,
-                            listing, defaultName;
+                            listing, defaultName, mainFile, deps;
 
                         if (dirName) {
                             info = packageJson(dirName);
-                            //If the directory only contains one file, then
-                            //that is the install target.
-                            listing = fs.readdirSync(dirName);
-                            if (listing.length === 1) {
-                                sourceName = path.join(dirName, listing[0]);
-                                defaultName = listing[0];
-                            } else {
-                                //packagJson will look for one top level .js
-                                //file, and if so, and has package data via
-                                //a package.json comment, only install that
-                                //file.
-                                if (info.singleFile && info.data) {
-                                    sourceName = info.singleFile;
-                                    defaultName = path.basename(info.file);
+
+                            //If a main setting, read the main file. If it
+                            //calls define() and any of the dependencies
+                            //are relative, then keep the whole directory.
+                            mainFile = info.data && info.data.main;
+                            if (mainFile) {
+                                mainFile += jsRegExp.test(mainFile) ? '' : '.js';
+                                mainFile = path.join(dirName, mainFile);
+                                deps = parse.findDependencies(mainFile,
+                                       fs.readFileSync(mainFile, 'utf8'));
+                                if (deps && deps.some(function (dep) {
+                                    return dep.indexOf('.') === 0;
+                                })) {
+                                    sourceName = null;
                                 } else {
-                                    //Also, look for a single .js file that
-                                    //matches the localName of the archive,
-                                    //and if there is a match, only install
-                                    //that file.
-                                    defaultName = archiveInfo.finalLocalName + '.js';
-                                    sourceName = path.join(dirName, defaultName);
-                                    if (!path.existsSync(sourceName)) {
-                                        sourceName = null;
+                                    sourceName = mainFile;
+                                    defaultName = path.basename(mainFile);
+                                }
+                            } else {
+                                //If the directory only contains one file, then
+                                //that is the install target.
+                                listing = fs.readdirSync(dirName);
+                                if (listing.length === 1) {
+                                    sourceName = path.join(dirName, listing[0]);
+                                    defaultName = listing[0];
+                                } else {
+                                    //packagJson will look for one top level .js
+                                    //file, and if so, and has package data via
+                                    //a package.json comment, only install that
+                                    //file.
+                                    if (info.singleFile && info.data) {
+                                        sourceName = info.singleFile;
+                                        defaultName = path.basename(info.file);
+                                    } else {
+                                        defaultName = archiveInfo.finalLocalName + '.js';
+
+                                        sourceName = path.join(dirName, defaultName);
+                                        if (!path.existsSync(sourceName)) {
+                                            sourceName = null;
+                                        }
                                     }
                                 }
                             }
