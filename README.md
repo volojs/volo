@@ -63,10 +63,17 @@ Backbone, jQuery and underscore:
     > volo.js create fast
     > cd fast
     > volo.js add jquery/jquery
-    > volo.js add amdjs/underscore/master
+    > volo.js add amdjs/underscore  (fetches most recent version tag with AMD)
     > volo.js add amdjs/backbone/master
 
 Then modify www/js/app.js to require the modules you need and add your app logic.
+
+If you want to indicate your desire to see the AMD changes integrated directly
+into underscore or backbone, please watch the
+[amdjs/underscore](https://github.com/amdjs/underscore) and
+[amdjs/backbone](https://github.com/amdjs/backbone)
+repositories. By doing so, it will hopefully give the library authors an
+indication of how many people would benefit from the code integration.
 
 If you prefer to use underscore and backbone from their sources, instead of
 using the amdjs forks that include nice AMD registration, you can use amdify
