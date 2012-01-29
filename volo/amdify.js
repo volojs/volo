@@ -44,7 +44,7 @@ define(function (require, exports, module) {
             return undefined;
         },
 
-        run: function (deferred, namedArgs, target) {
+        run: function (deferred, v, namedArgs, target) {
             var depend = namedArgs.depend,
                 exports = namedArgs.exports || '',
                 contents = fs.readFileSync(target, 'utf8'),

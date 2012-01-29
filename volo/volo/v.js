@@ -6,13 +6,15 @@
 
 'use strict';
 /*jslint plusplus: false */
-/*global define, console */
+/*global define, console, process */
 
 define(function (require) {
     var path = require('path'),
         fs = require('fs'),
         file = require('volo/file'),
         template = require('volo/template'),
+        qutil = require('volo/qutil'),
+        readline = require('readline'),
         defaultEncoding = 'utf8';
 
     /**
@@ -36,7 +38,6 @@ define(function (require) {
                                           (encoding || defaultEncoding));
                 },
                 template: function (text, data) {
-                    debugger;
                     return template(text, data);
                 },
                 write: function (filePath, contents, encoding) {
@@ -67,6 +68,21 @@ define(function (require) {
                 },
                 copyFile: function (srcFileName, destFileName, onlyCopyNew) {
                     return file.copyFile(resolve(srcFileName), resolve(destFileName), onlyCopyNew);
+                },
+                prompt: function (message, callback) {
+                    var i = readline.createInterface(process.stdin,
+                                                     process.stdout),
+                        d = qutil.convert(callback);
+
+                    i.question(message + ' ', function (response) {
+                        //Clean up prompt
+                        i.close();
+                        process.stdin.destroy();
+
+                        d.resolve(response);
+                    });
+
+                    return d.promise;
                 }
             }
         };

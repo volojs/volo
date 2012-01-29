@@ -29,7 +29,7 @@ define(function (require, exports, module) {
             return undefined;
         },
 
-        run: function (deferred, namedArgs, commandName) {
+        run: function (deferred, v, namedArgs, commandName) {
 
             require([commandName], function (command) {
                 var doc = command.doc || command.summary ||

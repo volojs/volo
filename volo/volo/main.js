@@ -11,6 +11,7 @@
 define(function (require) {
     var commands = require('./commands'),
         config = require('./config'),
+        volofile = require('./volofile'),
         path = require('path'),
         q = require('q');
 
@@ -30,7 +31,7 @@ define(function (require) {
             },
             aryArgs = [],
             flags = [],
-            commandName, combinedArgs;
+            commandName, combinedArgs, commandOverride, firstArg;
 
         //Cycle through args, pulling off name=value pairs into an object.
         args.forEach(function (arg) {
@@ -51,42 +52,63 @@ define(function (require) {
 
         //The commandName will be the first arg.
         if (aryArgs.length) {
-            commandName = aryArgs.shift();
+            //If first arg is a -flag or a name=value command skip it,
+            //means a default volofile action should be run.
+            firstArg = aryArgs[0];
+            if (firstArg.indexOf('-') !== 0 && firstArg.indexOf('=') === -1) {
+                commandName = aryArgs.shift();
+
+                //If this is a specific override to bypase a volofile,
+                //the next arg is the real command.
+                if (commandName === 'command') {
+                    commandOverride = true;
+                    commandName = aryArgs.shift();
+                }
+            }
         }
 
-        if (commands.have(commandName)) {
-            combinedArgs = [namedArgs].concat(aryArgs);
+        combinedArgs = [namedArgs].concat(aryArgs);
 
-            require([commandName], function (command) {
+        //Function to run after the command object has been loaded, either
+        //by a volofile or by installed volo actions.
+        function runCommand(command) {
+            //Really have the command. Now convert the flags into
+            //named arguments.
+            var hasFlagError = false;
 
-                //Really have the command. Now convert the flags into
-                //named arguments.
-                var hasFlagError = false,
-                    validationError;
-
-                flags.some(function (flag) {
-                    if (command.flags && command.flags[flag]) {
-                        namedArgs[command.flags[flag]] = true;
-                    } else {
-                        hasFlagError = true;
-                        deferred.reject('Invalid flag for ' + commandName + ': -' + flag);
-                    }
-
-                    return hasFlagError;
-                });
-
-                if (!hasFlagError) {
-                    if (command.validate) {
-                        validationError = command.validate.apply(command, combinedArgs);
-                    }
-                    if (validationError) {
-                        //Any result from a validate is considered an error result.
-                        deferred.reject(validationError);
-                    } else {
-                        command.run.apply(command, [deferred].concat(combinedArgs));
-                    }
+            flags.some(function (flag) {
+                if (command.flags && command.flags[flag]) {
+                    namedArgs[command.flags[flag]] = true;
+                } else {
+                    hasFlagError = true;
+                    deferred.reject('Invalid flag for ' + commandName + ': -' + flag);
                 }
+
+                return hasFlagError;
             });
+
+            if (!hasFlagError) {
+                commands.run.apply(commands, [command, null].concat(combinedArgs))
+                    .then(deferred.resolve, deferred.reject);
+            }
+        }
+
+        if (!commandOverride && path.existsSync(path.resolve(cwd, 'volofile'))) {
+            volofile(cwd).then(function (voloMod) {
+                //Set up default command name if none specified.
+                commandName = commandName || 'run';
+
+                if (voloMod.hasOwnProperty(commandName)) {
+                    runCommand(voloMod[commandName]);
+                } else {
+                    deferred.reject('volofile does not have command "' +
+                                    commandName + '".');
+                }
+            })
+            .fail(deferred.reject);
+        } else if (commands.have(commandName)) {
+            //a volo command is available, run it.
+            require([commandName], runCommand);
         } else {
             //Show usage info.
             commands.list(function (message) {

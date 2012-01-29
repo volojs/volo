@@ -23,7 +23,7 @@ define(function (require, exports, module) {
 
         validate: function (namedArgs) {},
 
-        run: function (deferred, namedArgs, from) {
+        run: function (deferred, v, namedArgs, from) {
             //Create a 'volo' directory as a sibling to the volo.js file
             var execName = process.argv[1],
                 dirName = path.dirname(execName),

@@ -34,7 +34,7 @@ define(function (require, exports, module) {
             return undefined;
         },
 
-        run: function (deferred, namedArgs, appName, template) {
+        run: function (deferred, v, namedArgs, appName, template) {
             template = template || 'volojs/create-template';
 
             var archiveInfo;

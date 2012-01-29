@@ -14,8 +14,7 @@
  */
 define(function (require) {
     var path = require('path'),
-        q = require('q'),
-        v = require('volo/v'),
+        commands = require('volo/commands'),
         qutil = require('volo/qutil');
 
     function volofile(basePath, callback, errback) {
@@ -42,74 +41,18 @@ define(function (require) {
      */
     volofile.run = function (basePath, commandName, namedArgs /*other args can be passed*/) {
         var args = [].slice.call(arguments, 2),
-            cwd = process.cwd(),
-            venv;
+            cwd = process.cwd();
 
         process.chdir(basePath);
 
-        venv = v('.').env;
-
         return volofile('.').then(function (vfMod) {
             var command = vfMod && vfMod[commandName];
-
-            if (command) {
-                if (typeof command === 'function') {
-                    //Just normalize to advanced structure.
-                    command = {
-                        before: [],
-                        run: command
-                    };
-                }
-                return volofile.runCommand.apply(volofile, [command, venv].concat(args));
-            } else {
-                return false;
-            }
+            return commands.run.apply(commands, [command, null].concat(args));
         })
         .then(function (result) {
             process.chdir(cwd);
             return result;
         });
-    };
-
-    volofile.runCommand = function (command, venv, namedArgs /*other args can be passed*/) {
-        var d = q.defer(),
-            args;
-
-        if (!command) {
-            d.resolve();
-        } else {
-            args = [].slice.call(arguments, 1);
-
-            q.call(function () {
-                if (command.before.length) {
-                    return command.before.reduce(function (done, command) {
-                        return q.wait(done,
-                                      volofile.runCommand.apply(volofile,
-                                                    [command].concat(args)));
-                    });
-                }
-                return undefined;
-            })
-            .then(function () {
-                var commandDeferred = q.defer(),
-                    err;
-
-                //Call validate if it is on the command.
-                if (command.validate) {
-                    err = command.validate(args);
-                    if (err) {
-                        commandDeferred.reject(err);
-                        return commandDeferred.promise;
-                    }
-                }
-
-                command.run.apply(command, [commandDeferred].concat(args));
-                return commandDeferred.promise;
-            })
-            .then(d.resolve, d.reject);
-        }
-
-        return d.promise;
     };
 
     return volofile;

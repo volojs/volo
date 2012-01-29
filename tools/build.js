@@ -6,7 +6,8 @@
         'url': 'empty:',
         'http': 'empty:',
         'https': 'empty:',
-        'child_process': 'empty:'
+        'child_process': 'empty:',
+        'readline': 'empty:'
     },
     name: '../tools/require',
     optimize: 'none',

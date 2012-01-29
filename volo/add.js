@@ -59,7 +59,7 @@ define(function (require, exports, module) {
 
             return undefined;
         },
-        run: function (deferred, namedArgs, archiveName, specificLocalName) {
+        run: function (deferred, v, namedArgs, archiveName, specificLocalName) {
 
             q.when(archive.resolve(archiveName, namedArgs.volo.resolve), function (archiveInfo) {
 
@@ -246,7 +246,7 @@ define(function (require, exports, module) {
                                 if (isAmdProject &&
                                     (namedArgs.exports || namedArgs.depend)) {
                                     var damd = q.defer();
-                                    amdify.run.apply(amdify, [damd, namedArgs, targetName]);
+                                    amdify.run.apply(amdify, [damd, v, namedArgs, targetName]);
                                     return damd;
                                 }
                                 return undefined;

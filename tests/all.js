@@ -51,8 +51,8 @@ requirejs(['q'], function (q) {
         '../tests/lib/volo/version',
         '../tests/commands/add/tests',
         '../tests/commands/amdify/tests',
-        '../tests/commands/create/tests' /*,
-        '../tests/commands/volofile/tests' */
+        '../tests/commands/create/tests',
+        '../tests/commands/volofile/tests'
     ], function (q) {
 
         //All the tests return a an object with the following properties:
