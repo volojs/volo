@@ -14,7 +14,7 @@ define(function (require) {
         file = require('volo/file'),
         template = require('volo/template'),
         qutil = require('volo/qutil'),
-        readline = require('readline'),
+        stdin = process.stdin,
         defaultEncoding = 'utf8';
 
     /**
@@ -70,17 +70,18 @@ define(function (require) {
                     return file.copyFile(resolve(srcFileName), resolve(destFileName), onlyCopyNew);
                 },
                 prompt: function (message, callback) {
-                    var i = readline.createInterface(process.stdin,
-                                                     process.stdout),
-                        d = qutil.convert(callback);
+                    var d = qutil.convert(callback);
 
-                    i.question(message + ' ', function (response) {
-                        //Clean up prompt
-                        i.close();
-                        process.stdin.destroy();
+                    function onData(data) {
+                        data = (data || '').toString().trim();
+                        stdin.pause();
+                        d.resolve(data);
+                    }
 
-                        d.resolve(response);
-                    });
+                    stdin.once('data', onData);
+                    stdin.resume();
+
+                    process.stdout.write(message + ' ', 'utf8');
 
                     return d.promise;
                 }
