@@ -9,19 +9,17 @@
 var voloVersion = '0.0.3';
 
 /** vim: et:ts=4:sw=4:sts=4
- * @license RequireJS 1.0.2 Copyright (c) 2010-2011, The Dojo Foundation All Rights Reserved.
+ * @license RequireJS 1.0.5 Copyright (c) 2010-2012, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
  * see: http://github.com/jrburke/requirejs for details
  */
 /*jslint strict: false, plusplus: false, sub: true */
-/*global window: false, navigator: false, document: false, importScripts: false,
-  jQuery: false, clearInterval: false, setInterval: false, self: false,
-  setTimeout: false, opera: false */
+/*global window, navigator, document, importScripts, jQuery, setTimeout, opera */
 
 var requirejs, require, define;
 (function () {
     //Change this version number for each release.
-    var version = "1.0.2",
+    var version = "1.0.5",
         commentRegExp = /(\/\*([\s\S]*?)\*\/|([^:]|^)\/\/(.*)$)/mg,
         cjsRequireRegExp = /require\(\s*["']([^'"\s]+)["']\s*\)/g,
         currDirRegExp = /^\.\//,
@@ -47,8 +45,13 @@ var requirejs, require, define;
         interactiveScript = null,
         checkLoadedDepth = 0,
         useInteractive = false,
+        reservedDependencies = {
+            require: true,
+            module: true,
+            exports: true
+        },
         req, cfg = {}, currentlyAddingScript, s, head, baseElement, scripts, script,
-        src, subPath, mainScript, dataMain, i, ctx, jQueryCheck, checkLoadedTimeoutId;
+        src, subPath, mainScript, dataMain, globalI, ctx, jQueryCheck, checkLoadedTimeoutId;
 
     function isFunction(it) {
         return ostring.call(it) === "[object Function]";
@@ -333,7 +336,15 @@ var requirejs, require, define;
                     url = urlMap[normalizedName];
                     if (!url) {
                         //Calculate url for the module, if it has a name.
-                        url = context.nameToUrl(normalizedName, null, parentModuleMap);
+                        //Use name here since nameToUrl also calls normalize,
+                        //and for relative names that are outside the baseUrl
+                        //this causes havoc. Was thinking of just removing
+                        //parentModuleMap to avoid extra normalization, but
+                        //normalize() still does a dot removal because of
+                        //issue #142, so just pass in name here and redo
+                        //the normalization. Paths outside baseUrl are just
+                        //messy to support.
+                        url = context.nameToUrl(name, null, parentModuleMap);
 
                         //Store the URL mapping for later.
                         urlMap[normalizedName] = url;
@@ -393,8 +404,8 @@ var requirejs, require, define;
          * per module because of the implication of path mappings that may
          * need to be relative to the module name.
          */
-        function makeRequire(relModuleMap, enableBuildCallback) {
-            var modRequire = makeContextModuleFunc(context.require, relModuleMap, enableBuildCallback);
+        function makeRequire(relModuleMap, enableBuildCallback, altRequire) {
+            var modRequire = makeContextModuleFunc(altRequire || context.require, relModuleMap, enableBuildCallback);
 
             mixin(modRequire, {
                 nameToUrl: makeContextModuleFunc(context.nameToUrl, relModuleMap),
@@ -609,7 +620,22 @@ var requirejs, require, define;
                 //Use parentName here since the plugin's name is not reliable,
                 //could be some weird string with no path that actually wants to
                 //reference the parentName's path.
-                plugin.load(name, makeRequire(map.parentMap, true), load, config);
+                plugin.load(name, makeRequire(map.parentMap, true, function (deps, cb) {
+                    var moduleDeps = [],
+                        i, dep, depMap;
+                    //Convert deps to full names and hold on to them
+                    //for reference later, when figuring out if they
+                    //are blocked by a circular dependency.
+                    for (i = 0; (dep = deps[i]); i++) {
+                        depMap = makeModuleMap(dep, map.parentMap);
+                        deps[i] = depMap.fullName;
+                        if (!depMap.prefix) {
+                            moduleDeps.push(deps[i]);
+                        }
+                    }
+                    depManager.moduleDeps = (depManager.moduleDeps || []).concat(moduleDeps);
+                    return context.require(deps, cb);
+                }), load, config);
             }
         }
 
@@ -638,7 +664,7 @@ var requirejs, require, define;
                 prefix = map.prefix,
                 plugin = prefix ? plugins[prefix] ||
                                 (plugins[prefix] = defined[prefix]) : null,
-                manager, created, pluginManager;
+                manager, created, pluginManager, prefixMap;
 
             if (fullName) {
                 manager = managerCallbacks[fullName];
@@ -676,7 +702,18 @@ var requirejs, require, define;
             //If there is a plugin needed, but it is not loaded,
             //first load the plugin, then continue on.
             if (prefix && !plugin) {
-                pluginManager = getManager(makeModuleMap(prefix), true);
+                prefixMap = makeModuleMap(prefix);
+
+                //Clear out defined and urlFetched if the plugin was previously
+                //loaded/defined, but not as full module (as in a build
+                //situation). However, only do this work if the plugin is in
+                //defined but does not have a module export value.
+                if (prefix in defined && !defined[prefix]) {
+                    delete defined[prefix];
+                    delete urlFetched[prefixMap.url];
+                }
+
+                pluginManager = getManager(prefixMap, true);
                 pluginManager.add(function (plugin) {
                     //Create a new manager for the normalized
                     //resource ID and have it call this manager when
@@ -865,14 +902,61 @@ var requirejs, require, define;
             }
         };
 
-        function forceExec(manager, traced) {
-            if (manager.isDone) {
-                return undefined;
+        function findCycle(manager, traced) {
+            var fullName = manager.map.fullName,
+                depArray = manager.depArray,
+                fullyLoaded = true,
+                i, depName, depManager, result;
+
+            if (manager.isDone || !fullName || !loaded[fullName]) {
+                return result;
             }
 
+            //Found the cycle.
+            if (traced[fullName]) {
+                return manager;
+            }
+
+            traced[fullName] = true;
+
+            //Trace through the dependencies.
+            if (depArray) {
+                for (i = 0; i < depArray.length; i++) {
+                    //Some array members may be null, like if a trailing comma
+                    //IE, so do the explicit [i] access and check if it has a value.
+                    depName = depArray[i];
+                    if (!loaded[depName] && !reservedDependencies[depName]) {
+                        fullyLoaded = false;
+                        break;
+                    }
+                    depManager = waiting[depName];
+                    if (depManager && !depManager.isDone && loaded[depName]) {
+                        result = findCycle(depManager, traced);
+                        if (result) {
+                            break;
+                        }
+                    }
+                }
+                if (!fullyLoaded) {
+                    //Discard the cycle that was found, since it cannot
+                    //be forced yet. Also clear this module from traced.
+                    result = undefined;
+                    delete traced[fullName];
+                }
+            }
+
+            return result;
+        }
+
+        function forceExec(manager, traced) {
             var fullName = manager.map.fullName,
                 depArray = manager.depArray,
                 i, depName, depManager, prefix, prefixManager, value;
+
+
+            if (manager.isDone || !fullName || !loaded[fullName]) {
+                return undefined;
+            }
 
             if (fullName) {
                 if (traced[fullName]) {
@@ -904,7 +988,7 @@ var requirejs, require, define;
                 }
             }
 
-            return fullName ? defined[fullName] : undefined;
+            return defined[fullName];
         }
 
         /**
@@ -917,8 +1001,9 @@ var requirejs, require, define;
             var waitInterval = config.waitSeconds * 1000,
                 //It is possible to disable the wait interval by using waitSeconds of 0.
                 expired = waitInterval && (context.startTime + waitInterval) < new Date().getTime(),
-                noLoads = "", hasLoadedProp = false, stillLoading = false, prop,
-                err, manager;
+                noLoads = "", hasLoadedProp = false, stillLoading = false,
+                cycleDeps = [],
+                i, prop, err, manager, cycleManager, moduleDeps;
 
             //If there are items still in the paused queue processing wait.
             //This is particularly important in the sync case where each paused
@@ -948,7 +1033,20 @@ var requirejs, require, define;
                             noLoads += prop + " ";
                         } else {
                             stillLoading = true;
-                            break;
+                            if (prop.indexOf('!') === -1) {
+                                //No reason to keep looking for unfinished
+                                //loading. If the only stillLoading is a
+                                //plugin resource though, keep going,
+                                //because it may be that a plugin resource
+                                //is waiting on a non-plugin cycle.
+                                cycleDeps = [];
+                                break;
+                            } else {
+                                moduleDeps = managerCallbacks[prop] && managerCallbacks[prop].moduleDeps;
+                                if (moduleDeps) {
+                                    cycleDeps.push.apply(cycleDeps, moduleDeps);
+                                }
+                            }
                         }
                     }
                 }
@@ -967,7 +1065,23 @@ var requirejs, require, define;
                 err.requireModules = noLoads;
                 return req.onError(err);
             }
-            if (stillLoading || context.scriptCount) {
+
+            //If still loading but a plugin is waiting on a regular module cycle
+            //break the cycle.
+            if (stillLoading && cycleDeps.length) {
+                for (i = 0; (manager = waiting[cycleDeps[i]]); i++) {
+                    if ((cycleManager = findCycle(manager, {}))) {
+                        forceExec(cycleManager, {});
+                        break;
+                    }
+                }
+
+            }
+
+            //If still waiting on loads, and the waiting load is something
+            //other than a plugin resource, or there are still outstanding
+            //scripts, then just try back later.
+            if (!expired && (stillLoading || context.scriptCount)) {
                 //Something is still waiting to load. Wait for it, but only
                 //if a timeout is not already in effect.
                 if ((isBrowser || isWebWorker) && !checkLoadedTimeoutId) {
@@ -1024,6 +1138,9 @@ var requirejs, require, define;
          */
         resume = function () {
             var manager, map, url, i, p, args, fullName;
+
+            //Any defined modules in the global queue, intake them now.
+            context.takeGlobalQueue();
 
             resumeDepth += 1;
 
@@ -1188,8 +1305,7 @@ var requirejs, require, define;
                     context.requireWait = false;
                     //But first, call resume to register any defined modules that may
                     //be in a data-main built file before the priority config
-                    //call. Also grab any waiting define calls for this context.
-                    context.takeGlobalQueue();
+                    //call.
                     resume();
 
                     context.require(cfg.priority);
@@ -1266,10 +1382,6 @@ var requirejs, require, define;
                 //then resume the dependency processing.
                 if (!context.requireWait) {
                     while (!context.scriptCount && context.paused.length) {
-                        //For built layers, there can be some defined
-                        //modules waiting for intake into the context,
-                        //in particular module plugins. Take them.
-                        context.takeGlobalQueue();
                         resume();
                     }
                 }
@@ -1330,11 +1442,6 @@ var requirejs, require, define;
                                     return jQuery;
                                 } : null]);
                 }
-
-                //If a global jQuery is defined, check for it. Need to do it here
-                //instead of main() since stock jQuery does not register as
-                //a module via define.
-                jQueryCheck();
 
                 //Doing this scriptCount decrement branching because sync envs
                 //need to decrement after resume, otherwise it looks like
@@ -1752,7 +1859,8 @@ var requirejs, require, define;
             node = context && context.config && context.config.xhtml ?
                     document.createElementNS("http://www.w3.org/1999/xhtml", "html:script") :
                     document.createElement("script");
-            node.type = type || "text/javascript";
+            node.type = type || (context && context.config.scriptType) ||
+                        "text/javascript";
             node.charset = "utf-8";
             //Use async so Gecko does not block on executing the script if something
             //like a long-polling comet tag is being run first. Gecko likes
@@ -1837,7 +1945,7 @@ var requirejs, require, define;
         //Figure out baseUrl. Get it from the script tag with require.js in it.
         scripts = document.getElementsByTagName("script");
 
-        for (i = scripts.length - 1; i > -1 && (script = scripts[i]); i--) {
+        for (globalI = scripts.length - 1; globalI > -1 && (script = scripts[globalI]); globalI--) {
             //Set the "head" where we can append children by
             //using the script's parent.
             if (!head) {
@@ -1944,14 +2052,6 @@ var requirejs, require, define;
         ctx.requireWait = true;
         setTimeout(function () {
             ctx.requireWait = false;
-
-            //Any modules included with the require.js file will be in the
-            //global queue, assign them to this context.
-            ctx.takeGlobalQueue();
-
-            //Allow for jQuery to be loaded/already in the page, and if jQuery 1.4.3,
-            //make sure to hold onto it for readyWait triggering.
-            ctx.jQueryCheck();
 
             if (!ctx.scriptCount) {
                 ctx.resume();
@@ -2160,75 +2260,6 @@ define('volo/lang',[],function () {
         }())
     };
     return lang;
-});
-
-/**
- * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
- * Available via the MIT or new BSD license.
- * see: http://github.com/volojs/volo for details
- */
-
-
-/*jslint plusplus: false */
-/*global define */
-
-define('volo/commands',['require','./baseUrl','fs','path'],function (require) {
-    var baseUrl = require('./baseUrl'),
-        fs = require('fs'),
-        path = require('path'),
-        jsExtRegExp = /\.js$/,
-        registry = {},
-        commands;
-
-    commands = {
-        register: function (id, value) {
-            //Only take the first part of the ID
-            id = id.split('/')[0];
-
-            registry[id] = value;
-            return value;
-        },
-
-        have: function (name) {
-            var hasCommand = name && registry.hasOwnProperty(name);
-            if (!hasCommand) {
-                //See if it is available on disk
-                hasCommand = path.existsSync(path.join(baseUrl, name + '.js'));
-            }
-
-            return hasCommand;
-        },
-
-        list: function (callback) {
-            var ids = [];
-
-            if (path.existsSync(baseUrl)) {
-                ids = fs.readdirSync(baseUrl);
-                ids = ids.filter(function (filePath) {
-                    return filePath.charAt(0) !== '.' && jsExtRegExp.test(filePath);
-                }).map(function (filePath) {
-                    return filePath.substring(0, filePath.length - 3);
-                });
-            }
-
-            require(ids, function () {
-                //All commands are loaded, list them out.
-                var message = '',
-                    ids, i;
-
-                ids = Object.keys(registry);
-                ids.sort();
-
-                for (i = 0; i < ids.length; i++) {
-                    message += ids[i] + ': ' + require(ids[i]).summary + '\n';
-                }
-
-                callback(message);
-            });
-        }
-    };
-
-    return commands;
 });
 
 /**
@@ -3117,105 +3148,241 @@ return ref;
  */
 
 
-/*jslint plusplus: false */
-/*global define, voloVersion, console, process */
+/*jslint */
+/*global define */
 
-define('volo/main',['require','./commands','./config','path','q'],function (require) {
-    var commands = require('./commands'),
-        config = require('./config'),
-        path = require('path'),
-        q = require('q');
+define('volo/qutil',['require','q'],function (require) {
+    var q = require('q');
 
-    function main(args, callback, errback) {
-        var deferred = q.defer(),
-            cwd = process.cwd(),
-            namedArgs = {
-                volo: {
-                    resolve: function (relativePath) {
-                        if (relativePath.indexOf('/') !== 0 &&
-                            relativePath.indexOf(':') === -1) {
-                            return path.resolve(cwd, relativePath);
-                        }
-                        return relativePath;
-                    }
-                }
-            },
-            aryArgs = [],
-            flags = [],
-            commandName, combinedArgs;
+    return {
+        convert: function (callback, errback) {
+            var d = q.defer();
+            q.when(d.promise, callback, errback);
+            return d;
+        },
 
-        //Cycle through args, pulling off name=value pairs into an object.
-        args.forEach(function (arg) {
-            if (arg.indexOf('=') === -1) {
-                //If passed a flag like -f, convert to named
-                //argument based on the command's configuration.
-                if (arg.indexOf('-') === 0) {
-                    flags.push(arg.substring(1));
-                } else {
-                    //Regular array arg.
-                    aryArgs.push(arg);
-                }
-            } else {
-                var pair = arg.split('=');
-                namedArgs[pair[0]] = pair[1];
+        add: function (array, promise) {
+            var prevPromise = array[array.length - 1];
+            if (prevPromise) {
+
+                deferred.resolve(prevPromise);
             }
-        });
+            array.push(deferred.promise);
 
-        //The commandName will be the first arg.
-        if (aryArgs.length) {
-            commandName = aryArgs.shift();
+            return array;
         }
-
-        if (commands.have(commandName)) {
-            combinedArgs = [namedArgs].concat(aryArgs);
-
-            require([commandName], function (command) {
-
-                //Really have the command. Now convert the flags into
-                //named arguments.
-                var hasFlagError = false,
-                    validationError;
-
-                flags.some(function (flag) {
-                    if (command.flags && command.flags[flag]) {
-                        namedArgs[command.flags[flag]] = true;
-                    } else {
-                        hasFlagError = true;
-                        deferred.reject('Invalid flag for ' + commandName + ': -' + flag);
-                    }
-
-                    return hasFlagError;
-                });
-
-                if (!hasFlagError) {
-                    if (command.validate) {
-                        validationError = command.validate.apply(command, combinedArgs);
-                    }
-                    if (validationError) {
-                        //Any result from a validate is considered an error result.
-                        deferred.reject(validationError);
-                    } else {
-                        command.run.apply(command, [deferred].concat(combinedArgs));
-                    }
-                }
-            });
-        } else {
-            //Show usage info.
-            commands.list(function (message) {
-                //voloVersion set in tools/wrap.start
-                deferred.resolve(path.basename(config.volo.path) +
-                                 (typeof voloVersion !== 'undefined' ?
-                                    ' v' + voloVersion : '') +
-                                ', a JavaScript tool to make ' +
-                                'JavaScript projects. Allowed commands:\n\n' +
-                                message);
-            });
-        }
-
-        return q.when(deferred.promise, callback, errback);
     }
 
-    return main;
+    return callDefer;
+});
+
+
+/*jslint plusplus: false */
+/*global define */
+
+define('volo/file',['require','fs','path','child_process','./qutil'],function (require) {
+    var fs = require('fs'),
+        path = require('path'),
+        exec = require('child_process').exec,
+        qutil = require('./qutil'),
+        file;
+
+    function frontSlash(path) {
+        return path.replace(/\\/g, '/');
+    }
+
+    function findMatches(matches, dir, regExpInclude, regExpExclude, dirRegExpExclude) {
+        if (path.existsSync(dir) && fs.statSync(dir).isDirectory()) {
+            var files = fs.readdirSync(dir);
+            files.forEach(function (filePath) {
+                filePath = path.join(dir, filePath);
+                var stat = fs.statSync(filePath),
+                    ok = false;
+                if (stat.isFile()) {
+                    ok = true;
+                    if (regExpInclude) {
+                        ok = filePath.match(regExpInclude);
+                    }
+                    if (ok && regExpExclude) {
+                        ok = !filePath.match(regExpExclude);
+                    }
+
+                    if (ok) {
+                        matches.push(filePath);
+                    }
+                } else if (stat.isDirectory() && !dirRegExpExclude.test(filePath)) {
+                    findMatches(matches, filePath, regExpInclude, regExpExclude, dirRegExpExclude);
+                }
+            });
+        }
+    }
+
+    file = {
+        /**
+         * Recurses startDir and finds matches to the files that match
+         * regExpFilters.include and do not match regExpFilters.exclude.
+         * Or just one regexp can be passed in for regExpFilters,
+         * and it will be treated as the "include" case.
+         *
+         * @param {String} startDir the directory to start the search
+         * @param {RegExp} regExpInclude regexp to match files to include
+         * @param {RegExp} [regExpExclude] regexp to exclude files.
+         * @param {RegExp} [dirRegExpExclude] regexp to exclude directories. By default
+         * ignores .git, .hg, .svn and CVS directories.
+         *
+         * @returns {Array} List of file paths. Could be zero length if no matches.
+         */
+        getFilteredFileList: function (startDir, regExpInclude, regExpExclude, dirRegExpExclude) {
+            var files = [];
+
+            //By default avoid source control directories
+            if (!dirRegExpExclude) {
+                dirRegExpExclude = /\.git|\.hg|\.svn|CVS/;
+            }
+
+            findMatches(files, startDir, regExpInclude, regExpExclude, dirRegExpExclude);
+
+            return files;
+        },
+
+        /**
+         * Reads a file, synchronously.
+         * @param {String} path the path to the file.
+         */
+        readFile: function (path) {
+            return fs.readFileSync(path, 'utf8');
+        },
+
+        /**
+         * Recursively creates directories in dir string.
+         * @param {String} dir the directory to create.
+         */
+        mkdirs: function (dir) {
+            var parts = dir.split('/'),
+                currDir = '',
+                first = true;
+
+            parts.forEach(function (part) {
+                //First part may be empty string if path starts with a slash.
+                currDir += part + '/';
+                first = false;
+
+                if (part) {
+                    if (!path.existsSync(currDir)) {
+                        fs.mkdirSync(currDir, 511);
+                    }
+                }
+            });
+        },
+
+        /**
+         * Does an rm -rf on a directory. Like a boss.
+         */
+        rmdir: function (dir, callback, errback) {
+            var d = qutil.convert(callback, errback);
+
+            if (!dir) {
+                d.resolve();
+            }
+
+            dir = path.resolve(dir);
+
+            if (!path.existsSync(dir)) {
+                d.resolve();
+            }
+
+            if (dir === '/') {
+                d.reject(new Error('file.rmdir cannot handle /'));
+            }
+
+            exec('rm -rf ' + dir,
+                function (error, stdout, stderr) {
+                    if (error) {
+                        d.reject(error);
+                    } else {
+                        d.resolve();
+                    }
+                }
+            );
+
+            return d.promise;
+        },
+
+        /**
+         * Returns the first directory found inside a directory.
+         * The return results is dir + firstDir name.
+         */
+        firstDir: function (dir) {
+            var firstDir = null;
+
+            fs.readdirSync(dir).some(function (file) {
+                firstDir = path.join(dir, file);
+                if (fs.statSync(firstDir).isDirectory()) {
+                    return true;
+                } else {
+                    firstDir = null;
+                    return false;
+                }
+            });
+
+            return firstDir;
+        },
+
+        copyDir: function (/*String*/srcDir, /*String*/destDir, /*RegExp?*/regExpFilter, /*boolean?*/onlyCopyNew) {
+            //summary: copies files from srcDir to destDir using the regExpFilter to determine if the
+            //file should be copied. Returns a list file name strings of the destinations that were copied.
+            regExpFilter = regExpFilter || /\w/;
+
+            //Normalize th directory names, but keep front slashes.
+            //path module on windows now returns backslashed paths.
+            srcDir = frontSlash(path.normalize(srcDir));
+            destDir = frontSlash(path.normalize(destDir));
+
+            var fileNames = file.getFilteredFileList(srcDir, regExpFilter, true),
+            copiedFiles = [], i, srcFileName, destFileName;
+
+            for (i = 0; i < fileNames.length; i++) {
+                srcFileName = fileNames[i];
+                destFileName = srcFileName.replace(srcDir, destDir);
+
+                if (file.copyFile(srcFileName, destFileName, onlyCopyNew)) {
+                    copiedFiles.push(destFileName);
+                }
+            }
+
+            return copiedFiles.length ? copiedFiles : null; //Array or null
+        },
+
+
+        copyFile: function (/*String*/srcFileName, /*String*/destFileName, /*boolean?*/onlyCopyNew) {
+            //summary: copies srcFileName to destFileName. If onlyCopyNew is set, it only copies the file if
+            //srcFileName is newer than destFileName. Returns a boolean indicating if the copy occurred.
+            var parentDir;
+
+            //logger.trace("Src filename: " + srcFileName);
+            //logger.trace("Dest filename: " + destFileName);
+
+            //If onlyCopyNew is true, then compare dates and only copy if the src is newer
+            //than dest.
+            if (onlyCopyNew) {
+                if (path.existsSync(destFileName) && fs.statSync(destFileName).mtime.getTime() >= fs.statSync(srcFileName).mtime.getTime()) {
+                    return false; //Boolean
+                }
+            }
+
+            //Make sure destination dir exists.
+            parentDir = path.dirname(destFileName);
+            if (!path.existsSync(parentDir)) {
+                file.mkdirs(parentDir);
+            }
+
+            fs.writeFileSync(destFileName, fs.readFileSync(srcFileName, 'binary'), 'binary');
+
+            return true; //Boolean
+        }
+    };
+
+    return file;
 });
 
 /**
@@ -3665,6 +3832,412 @@ define('volo/template',['require'],function (require) {
  */
 
 
+/*jslint plusplus: false */
+/*global define, console, process */
+
+define('volo/v',['require','path','fs','volo/file','volo/template','volo/qutil'],function (require) {
+    var path = require('path'),
+        fs = require('fs'),
+        file = require('volo/file'),
+        template = require('volo/template'),
+        qutil = require('volo/qutil'),
+        defaultEncoding = 'utf8';
+
+    /**
+    * Creates a v instance that is bound to the dirName path, all paths are
+    * resolved relative to that path.
+    */
+    function v(dirName) {
+
+        function resolve(relativePath) {
+            return path.resolve(dirName, relativePath);
+        }
+
+        return {
+            env: {
+                path: path.resolve(dirName),
+                exists: function (filePath) {
+                    return path.existsSync(filePath);
+                },
+                read: function (filePath, encoding) {
+                    return fs.readFileSync(resolve(filePath),
+                                          (encoding || defaultEncoding));
+                },
+                template: function (text, data) {
+                    return template(text, data);
+                },
+                write: function (filePath, contents, encoding) {
+                    return fs.writeFileSync(filePath, contents,
+                                            (encoding || defaultEncoding));
+                },
+                rm: function (dirOrFile) {
+                    dirOrFile = resolve(dirOrFile);
+                    var stat = fs.statSync(dirOrFile);
+                    if (stat.isFile()) {
+                        fs.unlinkSync(dirOrFile);
+                    } else if (stat.isDirectory()) {
+                        //TODO: need to make rmdir synchronous
+                        file.rmdir(dirOrFile);
+                    }
+                },
+                mv: function (start, end) {
+                    return fs.renameSync(start, end);
+                },
+                mkdir: function (dir) {
+                    return file.mkdirs(dir);
+                },
+                getFilteredFileList: function (startDir, regExpInclude, regExpExclude, dirRegExpExclude) {
+                    return file.getFilteredFileList(resolve(startDir), regExpInclude, regExpExclude, dirRegExpExclude);
+                },
+                copyDir: function (srcDir, destDir, regExpFilter, onlyCopyNew) {
+                    return file.copyDir(resolve(srcDir), resolve(destDir), regExpFilter, onlyCopyNew);
+                },
+                copyFile: function (srcFileName, destFileName, onlyCopyNew) {
+                    return file.copyFile(resolve(srcFileName), resolve(destFileName), onlyCopyNew);
+                },
+                prompt: function (message, callback) {
+                    var d = qutil.convert(callback);
+
+                    function onData(data) {
+                        data = (data || '').toString().trim();
+                        process.stdin.pause();
+                        d.resolve(data);
+                    }
+
+                    process.stdin.once('data', onData);
+                    process.stdin.resume();
+
+                    process.stdout.write(message + ' ', 'utf8');
+
+                    return d.promise;
+                }
+            }
+        };
+    }
+
+    return v;
+});
+
+/**
+ * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
+ * Available via the MIT or new BSD license.
+ * see: http://github.com/volojs/volo for details
+ */
+
+
+/*jslint plusplus: false */
+/*global define */
+
+define('volo/commands',['require','./baseUrl','fs','path','q','volo/v'],function (require) {
+    var baseUrl = require('./baseUrl'),
+        fs = require('fs'),
+        path = require('path'),
+        q = require('q'),
+        v = require('volo/v'),
+        jsExtRegExp = /\.js$/,
+        registry = {},
+        commands;
+
+    commands = {
+        register: function (id, value) {
+            //Only take the first part of the ID
+            id = id.split('/')[0];
+
+            registry[id] = value;
+            return value;
+        },
+
+        have: function (name) {
+            var hasCommand = name && registry.hasOwnProperty(name);
+            if (!hasCommand) {
+                //See if it is available on disk
+                hasCommand = path.existsSync(path.join(baseUrl, name + '.js'));
+            }
+
+            return hasCommand;
+        },
+
+        list: function (callback) {
+            var ids = [];
+
+            if (path.existsSync(baseUrl)) {
+                ids = fs.readdirSync(baseUrl);
+                ids = ids.filter(function (filePath) {
+                    return filePath.charAt(0) !== '.' && jsExtRegExp.test(filePath);
+                }).map(function (filePath) {
+                    return filePath.substring(0, filePath.length - 3);
+                });
+            }
+
+            require(ids, function () {
+                //All commands are loaded, list them out.
+                var message = '',
+                    ids, i;
+
+                ids = Object.keys(registry);
+                ids.sort();
+
+                for (i = 0; i < ids.length; i++) {
+                    message += ids[i] + ': ' + require(ids[i]).summary + '\n';
+                }
+
+                callback(message);
+            });
+        },
+
+        run: function (command, venv, namedArgs /*other args can be passed*/) {
+            var d = q.defer(),
+                args;
+
+            if (!venv) {
+                venv = v('.').env;
+            }
+
+            if (!command) {
+                d.resolve();
+            } else {
+                if (typeof command === 'function') {
+                    //Just normalize to advanced structure.
+                    command = {
+                        run: command
+                    };
+                }
+
+                args = [].slice.call(arguments, 2);
+
+                q.call(function () {
+                    if (command.depends && command.depends.length) {
+                        return command.depends.reduce(function (done, command) {
+                            return q.wait(done,
+                                          commands.run.apply(commands,
+                                                        [command, venv].concat(args)));
+                        });
+                    }
+                    return undefined;
+                })
+                .then(function () {
+                    var commandDeferred = q.defer(),
+                        err;
+
+                    //Call validate if it is on the command.
+                    if (command.validate) {
+                        err = command.validate.apply(command, args);
+                        if (err) {
+                            commandDeferred.reject(err);
+                            return commandDeferred.promise;
+                        }
+                    }
+
+                    command.run.apply(command, [commandDeferred, venv].concat(args));
+                    return commandDeferred.promise;
+                })
+                .then(d.resolve, d.reject);
+            }
+
+            return d.promise;
+        }
+    };
+
+    return commands;
+});
+
+/**
+ * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
+ * Available via the MIT or new BSD license.
+ * see: http://github.com/volojs/volo for details
+ */
+
+
+/*jslint */
+/*global define, process */
+
+/**
+ * Reads a volofile from a target directory, and exports the data as a
+ * set of modules.
+ */
+define('volo/volofile',['require','path','volo/commands','volo/qutil'],function (require) {
+    var path = require('path'),
+        commands = require('volo/commands'),
+        qutil = require('volo/qutil');
+
+    function volofile(basePath, callback, errback) {
+        var d = qutil.convert(callback, errback),
+            volofilePath = path.resolve(path.join(basePath, 'volofile'));
+
+        if (path.existsSync(volofilePath)) {
+            require([volofilePath], function (value) {
+                d.resolve(value);
+            });
+        } else {
+            d.resolve();
+        }
+
+        return d.promise;
+    }
+
+    /**
+     * Loads the volofile inside basePath, and if there, and if it
+     * supports the command, then runs it, running dependencies for
+     * the command if specified.
+     * @returns {Promise} that resolves to false exactly, otherwise it has the
+     * commmand output, if any.
+     */
+    volofile.run = function (basePath, commandName, namedArgs /*other args can be passed*/) {
+        var args = [].slice.call(arguments, 2),
+            cwd = process.cwd();
+
+        process.chdir(basePath);
+
+        return volofile('.').then(function (vfMod) {
+            var command = vfMod && vfMod[commandName];
+            return commands.run.apply(commands, [command, null].concat(args));
+        })
+        .then(function (result) {
+            process.chdir(cwd);
+            return result;
+        });
+    };
+
+    return volofile;
+});
+
+/**
+ * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
+ * Available via the MIT or new BSD license.
+ * see: http://github.com/volojs/volo for details
+ */
+
+
+/*jslint plusplus: false */
+/*global define, voloVersion, console, process */
+
+define('volo/main',['require','./commands','./config','./volofile','path','q'],function (require) {
+    var commands = require('./commands'),
+        config = require('./config'),
+        volofile = require('./volofile'),
+        path = require('path'),
+        q = require('q');
+
+    function main(args, callback, errback) {
+        var deferred = q.defer(),
+            cwd = process.cwd(),
+            namedArgs = {
+                volo: {
+                    resolve: function (relativePath) {
+                        if (relativePath.indexOf('/') !== 0 &&
+                            relativePath.indexOf(':') === -1) {
+                            return path.resolve(cwd, relativePath);
+                        }
+                        return relativePath;
+                    }
+                }
+            },
+            aryArgs = [],
+            flags = [],
+            commandName, combinedArgs, commandOverride, firstArg;
+
+        //Cycle through args, pulling off name=value pairs into an object.
+        args.forEach(function (arg) {
+            if (arg.indexOf('=') === -1) {
+                //If passed a flag like -f, convert to named
+                //argument based on the command's configuration.
+                if (arg.indexOf('-') === 0) {
+                    flags.push(arg.substring(1));
+                } else {
+                    //Regular array arg.
+                    aryArgs.push(arg);
+                }
+            } else {
+                var pair = arg.split('=');
+                namedArgs[pair[0]] = pair[1];
+            }
+        });
+
+        //The commandName will be the first arg.
+        if (aryArgs.length) {
+            //If first arg is a -flag or a name=value command skip it,
+            //means a default volofile action should be run.
+            firstArg = aryArgs[0];
+            if (firstArg.indexOf('-') !== 0 && firstArg.indexOf('=') === -1) {
+                commandName = aryArgs.shift();
+
+                //If this is a specific override to bypase a volofile,
+                //the next arg is the real command.
+                if (commandName === 'command') {
+                    commandOverride = true;
+                    commandName = aryArgs.shift();
+                }
+            }
+        }
+
+        combinedArgs = [namedArgs].concat(aryArgs);
+
+        //Function to run after the command object has been loaded, either
+        //by a volofile or by installed volo actions.
+        function runCommand(command) {
+            //Really have the command. Now convert the flags into
+            //named arguments.
+            var hasFlagError = false;
+
+            flags.some(function (flag) {
+                if (command.flags && command.flags[flag]) {
+                    namedArgs[command.flags[flag]] = true;
+                } else {
+                    hasFlagError = true;
+                    deferred.reject('Invalid flag for ' + commandName + ': -' + flag);
+                }
+
+                return hasFlagError;
+            });
+
+            if (!hasFlagError) {
+                commands.run.apply(commands, [command, null].concat(combinedArgs))
+                    .then(deferred.resolve, deferred.reject);
+            }
+        }
+
+        if (!commandOverride && path.existsSync(path.resolve(cwd, 'volofile'))) {
+            volofile(cwd).then(function (voloMod) {
+                //Set up default command name if none specified.
+                commandName = commandName || 'run';
+
+                if (voloMod.hasOwnProperty(commandName)) {
+                    runCommand(voloMod[commandName]);
+                } else {
+                    deferred.reject('volofile does not have command "' +
+                                    commandName + '".');
+                }
+            })
+            .fail(deferred.reject);
+        } else if (commands.have(commandName)) {
+            //a volo command is available, run it.
+            require([commandName], runCommand);
+        } else {
+            //Show usage info.
+            commands.list(function (message) {
+                //voloVersion set in tools/wrap.start
+                deferred.resolve(path.basename(config.volo.path) +
+                                 (typeof voloVersion !== 'undefined' ?
+                                    ' v' + voloVersion : '') +
+                                ', a JavaScript tool to make ' +
+                                'JavaScript projects. Allowed commands:\n\n' +
+                                message);
+            });
+        }
+
+        return q.when(deferred.promise, callback, errback);
+    }
+
+    return main;
+});
+
+/**
+ * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
+ * Available via the MIT or new BSD license.
+ * see: http://github.com/volojs/volo for details
+ */
+
+
 /*jslint */
 /*global define, console, process */
 
@@ -3689,7 +4262,7 @@ define('help',['require','exports','module','volo/commands','volo/commands'],fun
             return undefined;
         },
 
-        run: function (deferred, namedArgs, commandName) {
+        run: function (deferred, v, namedArgs, commandName) {
 
             require([commandName], function (command) {
                 var doc = command.doc || command.summary ||
@@ -3701,250 +4274,6 @@ define('help',['require','exports','module','volo/commands','volo/commands'],fun
     };
 
     return require('volo/commands').register(module.id, help);
-});
-
-/**
- * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
- * Available via the MIT or new BSD license.
- * see: http://github.com/volojs/volo for details
- */
-
-
-/*jslint */
-/*global define */
-
-define('volo/qutil',['require','q'],function (require) {
-    var q = require('q');
-
-    return {
-        convert: function (callback, errback) {
-            var d = q.defer();
-            q.when(d.promise, callback, errback);
-            return d;
-        },
-
-        add: function (array, promise) {
-            var prevPromise = array[array.length - 1];
-            if (prevPromise) {
-
-                deferred.resolve(prevPromise);
-            }
-            array.push(deferred.promise);
-
-            return array;
-        }
-    }
-
-    return callDefer;
-});
-
-
-/*jslint plusplus: false */
-/*global define */
-
-define('volo/file',['require','fs','path','child_process','./qutil'],function (require) {
-    var fs = require('fs'),
-        path = require('path'),
-        exec = require('child_process').exec,
-        qutil = require('./qutil'),
-        file;
-
-    function frontSlash(path) {
-        return path.replace(/\\/g, '/');
-    }
-
-    function findMatches(matches, dir, regExpInclude, regExpExclude, dirRegExpExclude) {
-        if (path.existsSync(dir) && fs.statSync(dir).isDirectory()) {
-            var files = fs.readdirSync(dir);
-            files.forEach(function (filePath) {
-                filePath = path.join(dir, filePath);
-                var stat = fs.statSync(filePath),
-                    ok = false;
-                if (stat.isFile()) {
-                    ok = true;
-                    if (regExpInclude) {
-                        ok = filePath.match(regExpInclude);
-                    }
-                    if (ok && regExpExclude) {
-                        ok = !filePath.match(regExpExclude);
-                    }
-
-                    if (ok) {
-                        matches.push(filePath);
-                    }
-                } else if (stat.isDirectory() && !dirRegExpExclude.test(filePath)) {
-                    findMatches(matches, filePath, regExpInclude, regExpExclude, dirRegExpExclude);
-                }
-            });
-        }
-    }
-
-    file = {
-        /**
-         * Recurses startDir and finds matches to the files that match
-         * regExpFilters.include and do not match regExpFilters.exclude.
-         * Or just one regexp can be passed in for regExpFilters,
-         * and it will be treated as the "include" case.
-         *
-         * @param {String} startDir the directory to start the search
-         * @param {RegExp} regExpInclude regexp to match files to include
-         * @param {RegExp} [regExpExclude] regexp to exclude files.
-         * @param {RegExp} [dirRegExpExclude] regexp to exclude directories. By default
-         * ignores .git, .hg, .svn and CVS directories.
-         *
-         * @returns {Array} List of file paths. Could be zero length if no matches.
-         */
-        getFilteredFileList: function (startDir, regExpInclude, regExpExclude, dirRegExpExclude) {
-            var files = [];
-
-            //By default avoid source control directories
-            if (!dirRegExpExclude) {
-                dirRegExpExclude = /\.git|\.hg|\.svn|CVS/;
-            }
-
-            findMatches(files, startDir, regExpInclude, regExpExclude, dirRegExpExclude);
-
-            return files;
-        },
-
-        /**
-         * Reads a file, synchronously.
-         * @param {String} path the path to the file.
-         */
-        readFile: function (path) {
-            return fs.readFileSync(path, 'utf8');
-        },
-
-        /**
-         * Recursively creates directories in dir string.
-         * @param {String} dir the directory to create.
-         */
-        mkdirs: function (dir) {
-            var parts = dir.split('/'),
-                currDir = '',
-                first = true;
-
-            parts.forEach(function (part) {
-                //First part may be empty string if path starts with a slash.
-                currDir += part + '/';
-                first = false;
-
-                if (part) {
-                    if (!path.existsSync(currDir)) {
-                        fs.mkdirSync(currDir, 511);
-                    }
-                }
-            });
-        },
-
-        /**
-         * Does an rm -rf on a directory. Like a boss.
-         */
-        rmdir: function (dir, callback, errback) {
-            var d = qutil.convert(callback, errback);
-
-            if (!dir) {
-                d.resolve();
-            }
-
-            dir = path.resolve(dir);
-
-            if (!path.existsSync(dir)) {
-                d.resolve();
-            }
-
-            if (dir === '/') {
-                d.reject(new Error('file.rmdir cannot handle /'));
-            }
-
-            exec('rm -rf ' + dir,
-                function (error, stdout, stderr) {
-                    if (error) {
-                        d.reject(error);
-                    } else {
-                        d.resolve();
-                    }
-                }
-            );
-
-            return d.promise;
-        },
-
-        /**
-         * Returns the first directory found inside a directory.
-         * The return results is dir + firstDir name.
-         */
-        firstDir: function (dir) {
-            var firstDir = null;
-
-            fs.readdirSync(dir).some(function (file) {
-                firstDir = path.join(dir, file);
-                if (fs.statSync(firstDir).isDirectory()) {
-                    return true;
-                } else {
-                    firstDir = null;
-                    return false;
-                }
-            });
-
-            return firstDir;
-        },
-
-        copyDir: function (/*String*/srcDir, /*String*/destDir, /*RegExp?*/regExpFilter, /*boolean?*/onlyCopyNew) {
-            //summary: copies files from srcDir to destDir using the regExpFilter to determine if the
-            //file should be copied. Returns a list file name strings of the destinations that were copied.
-            regExpFilter = regExpFilter || /\w/;
-
-            //Normalize th directory names, but keep front slashes.
-            //path module on windows now returns backslashed paths.
-            srcDir = frontSlash(path.normalize(srcDir));
-            destDir = frontSlash(path.normalize(destDir));
-
-            var fileNames = file.getFilteredFileList(srcDir, regExpFilter, true),
-            copiedFiles = [], i, srcFileName, destFileName;
-
-            for (i = 0; i < fileNames.length; i++) {
-                srcFileName = fileNames[i];
-                destFileName = srcFileName.replace(srcDir, destDir);
-
-                if (file.copyFile(srcFileName, destFileName, onlyCopyNew)) {
-                    copiedFiles.push(destFileName);
-                }
-            }
-
-            return copiedFiles.length ? copiedFiles : null; //Array or null
-        },
-
-
-        copyFile: function (/*String*/srcFileName, /*String*/destFileName, /*boolean?*/onlyCopyNew) {
-            //summary: copies srcFileName to destFileName. If onlyCopyNew is set, it only copies the file if
-            //srcFileName is newer than destFileName. Returns a boolean indicating if the copy occurred.
-            var parentDir;
-
-            //logger.trace("Src filename: " + srcFileName);
-            //logger.trace("Dest filename: " + destFileName);
-
-            //If onlyCopyNew is true, then compare dates and only copy if the src is newer
-            //than dest.
-            if (onlyCopyNew) {
-                if (path.existsSync(destFileName) && fs.statSync(destFileName).mtime.getTime() >= fs.statSync(srcFileName).mtime.getTime()) {
-                    return false; //Boolean
-                }
-            }
-
-            //Make sure destination dir exists.
-            parentDir = path.dirname(destFileName);
-            if (!path.existsSync(parentDir)) {
-                file.mkdirs(parentDir);
-            }
-
-            fs.writeFileSync(destFileName, fs.readFileSync(srcFileName, 'binary'), 'binary');
-
-            return true; //Boolean
-        }
-    };
-
-    return file;
 });
 
 /**
@@ -4120,200 +4449,6 @@ define('volo/tar',['require','child_process','path','volo/qutil'],function (requ
 
     return tar;
 });
-/**
- * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
- * Available via the MIT or new BSD license.
- * see: http://github.com/volojs/volo for details
- */
-
-
-/*jslint plusplus: false */
-/*global define, console */
-
-define('volo/v',['require','path','fs','volo/file','volo/template'],function (require) {
-    var path = require('path'),
-        fs = require('fs'),
-        file = require('volo/file'),
-        template = require('volo/template'),
-        defaultEncoding = 'utf8';
-
-    /**
-    * Creates a v instance that is bound to the dirName path, all paths are
-    * resolved relative to that path.
-    */
-    function v(dirName) {
-
-        function resolve(relativePath) {
-            return path.resolve(dirName, relativePath);
-        }
-
-        return {
-            env: {
-                path: path.resolve(dirName),
-                exists: function (filePath) {
-                    return path.existsSync(filePath);
-                },
-                read: function (filePath, encoding) {
-                    return fs.readFileSync(resolve(filePath),
-                                          (encoding || defaultEncoding));
-                },
-                template: function (text, data) {
-                    debugger;
-                    return template(text, data);
-                },
-                write: function (filePath, contents, encoding) {
-                    return fs.writeFileSync(filePath, contents,
-                                            (encoding || defaultEncoding));
-                },
-                rm: function (dirOrFile) {
-                    dirOrFile = resolve(dirOrFile);
-                    var stat = fs.statSync(dirOrFile);
-                    if (stat.isFile()) {
-                        fs.unlinkSync(dirOrFile);
-                    } else if (stat.isDirectory()) {
-                        //TODO: need to make rmdir synchronous
-                        file.rmdir(dirOrFile);
-                    }
-                },
-                mv: function (start, end) {
-                    return fs.renameSync(start, end);
-                },
-                mkdir: function (dir) {
-                    return file.mkdirs(dir);
-                },
-                getFilteredFileList: function (startDir, regExpInclude, regExpExclude, dirRegExpExclude) {
-                    return file.getFilteredFileList(resolve(startDir), regExpInclude, regExpExclude, dirRegExpExclude);
-                },
-                copyDir: function (srcDir, destDir, regExpFilter, onlyCopyNew) {
-                    return file.copyDir(resolve(srcDir), resolve(destDir), regExpFilter, onlyCopyNew);
-                },
-                copyFile: function (srcFileName, destFileName, onlyCopyNew) {
-                    return file.copyFile(resolve(srcFileName), resolve(destFileName), onlyCopyNew);
-                }
-            }
-        };
-    }
-
-    return v;
-});
-
-/**
- * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
- * Available via the MIT or new BSD license.
- * see: http://github.com/volojs/volo for details
- */
-
-
-/*jslint */
-/*global define, process */
-
-/**
- * Reads a volofile from a target directory, and exports the data as a
- * set of modules.
- */
-define('volo/volofile',['require','path','q','volo/v','volo/qutil'],function (require) {
-    var path = require('path'),
-        q = require('q'),
-        v = require('volo/v'),
-        qutil = require('volo/qutil');
-
-    function volofile(basePath, callback, errback) {
-        var d = qutil.convert(callback, errback),
-            volofilePath = path.resolve(path.join(basePath, 'volofile'));
-
-        if (path.existsSync(volofilePath)) {
-            require([volofilePath], function (value) {
-                d.resolve(value);
-            });
-        } else {
-            d.resolve();
-        }
-
-        return d.promise;
-    }
-
-    /**
-     * Loads the volofile inside basePath, and if there, and if it
-     * supports the command, then runs it, running dependencies for
-     * the command if specified.
-     * @returns {Promise} that resolves to false exactly, otherwise it has the
-     * commmand output, if any.
-     */
-    volofile.run = function (basePath, commandName, namedArgs /*other args can be passed*/) {
-        var args = [].slice.call(arguments, 2),
-            cwd = process.cwd(),
-            venv;
-
-        process.chdir(basePath);
-
-        venv = v('.').env;
-
-        return volofile('.').then(function (vfMod) {
-            var command = vfMod && vfMod[commandName];
-
-            if (command) {
-                if (typeof command === 'function') {
-                    //Just normalize to advanced structure.
-                    command = {
-                        before: [],
-                        run: command
-                    };
-                }
-                return volofile.runCommand.apply(volofile, [command, venv].concat(args));
-            } else {
-                return false;
-            }
-        })
-        .then(function (result) {
-            process.chdir(cwd);
-            return result;
-        });
-    };
-
-    volofile.runCommand = function (command, venv, namedArgs /*other args can be passed*/) {
-        var d = q.defer(),
-            args;
-
-        if (!command) {
-            d.resolve();
-        } else {
-            args = [].slice.call(arguments, 1);
-
-            q.call(function () {
-                if (command.before.length) {
-                    return command.before.reduce(function (done, command) {
-                        return q.wait(done,
-                                      volofile.runCommand.apply(volofile,
-                                                    [command].concat(args)));
-                    });
-                }
-                return undefined;
-            })
-            .then(function () {
-                var commandDeferred = q.defer(),
-                    err;
-
-                //Call validate if it is on the command.
-                if (command.validate) {
-                    err = command.validate(args);
-                    if (err) {
-                        commandDeferred.reject(err);
-                        return commandDeferred.promise;
-                    }
-                }
-
-                command.run.apply(command, [commandDeferred].concat(args));
-                return commandDeferred.promise;
-            })
-            .then(d.resolve, d.reject);
-        }
-
-        return d.promise;
-    };
-
-    return volofile;
-});
-
 /**
  * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
@@ -6054,7 +6189,7 @@ define('create',['require','exports','module','fs','path','q','volo/tempDir','vo
             return undefined;
         },
 
-        run: function (deferred, namedArgs, appName, template) {
+        run: function (deferred, v, namedArgs, appName, template) {
             template = template || 'volojs/create-template';
 
             var archiveInfo;
@@ -6134,105 +6269,6 @@ define('text!amdify/exportsTemplate.js',[],function () { return 'return /*EXPORT
 define('text!amdify/exportsNoConflictTemplate.js',[],function () { return 'if (/*EXPORTS*/.noConflict) {\n    /*EXPORTS*/.noConflict(true);\n}\nreturn /*EXPORTS*/;\n';});
 
 define('text!amdify/doc.md',[],function () { return '## Usage\n\n    volo.js amdify [-noConflict] path/to/file.js [depend=] [exports=]\n\nwhere:\n\n* depend is a comma-separated list of dependencies, with no spaces\n* exports is the global value created by the file that should be treated as the\n  module\'s exported value.\n* -noConflict indicates that code shoud be included to call the exports\n  value\'s noConflict method if it exists.\n\n## Details\n\nThe file.js will be modified to include a define() wrapper with the given\ndependency names.\n\nThis example:\n\n    volo.js amdify www/js/aplugin.jquery.js depend=jquery\n\nWill result in modifying the www/js/aplugin.jquery.js contents to have a\nfunction wrapping that includes:\n\n    define([\'jquery\'], function () {\n        //original contents in here.\n    });\n\nThis example sets dependencies, but then also specifies the export value to\nbe used. If the export object has a \'noConflict\' method on it, then it will\nbe called as part of exporting the module value:\n\n    volo.js amdify www/js/lib.js depend=jquery exports=lib\n\nresults in a transform that looks roughly like:\n\n    define([\'jquery\'], function () {\n\n        //original contents in here.\n\n        return lib;\n    });\n\nIf you want "-noConflict" called on the exports value:\n\n    volo.js amdify -noConflict www/js/lib.js depend=jquery exports=lib\n\nresults in a transform that looks roughly like:\n\n    define([\'jquery\'], function () {\n\n        //original contents in here.\n\n        if (lib.noConflict)) {\n            lib.noConflict(true);\n        }\n        return lib;\n    });\n\n**Be careful with -noConflict**. You most likely do not want to use it if\nyou have other code that has been amdify\'d that depends on this amdify\'d code.\nFor instance, using amdify on underscore.js with -noConflict is bad since\nbackbone.js depends on underscore, and it looks for a global _ value.\n\namdify will set the "this" value for the original contents to be the global\nobject.\n\nIdeally the target file would optionally call define() itself, and use\nthe local dependency references instead of browser globals. However, for\nbootstrapping existing projects to use an AMD loader, amdify can be useful to\nget started.\n\nUsing amdify will produce code that is uglier than doing a proper code change\nto add optional an optional define() call. For better code examples, see:\nhttps://github.com/umdjs/umd\n';});
-
-/**
- * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
- * Available via the MIT or new BSD license.
- * see: http://github.com/volojs/volo for details
- */
-
-
-/*jslint */
-/*global define */
-
-define('amdify',['require','exports','module','fs','path','text!./amdify/template.js','text!./amdify/exportsTemplate.js','text!./amdify/exportsNoConflictTemplate.js','text!./amdify/doc.md','volo/commands'],function (require, exports, module) {
-    var fs = require('fs'),
-        path = require('path'),
-        template = require('text!./amdify/template.js'),
-        exportsTemplate = require('text!./amdify/exportsTemplate.js'),
-        exportsNoConflictTemplate = require('text!./amdify/exportsNoConflictTemplate.js'),
-        dependRegExp = /\/\*DEPENDENCIES\*\//g,
-        contentsComment = '/*CONTENTS*/',
-        exportsRegExp = /\/\*EXPORTS\*\//g,
-        amdifyRegExp = /volo amdify/,
-        main;
-
-    main = {
-        //Text summary used when listing commands.
-        summary: 'Does a simple AMD wrapping for JS libraries that use ' +
-                 'browser globals',
-
-        doc: require('text!./amdify/doc.md'),
-
-        flags: {
-            'noConflict': 'noConflict'
-        },
-
-        //Validate any arguments here.
-        validate: function (namedArgs, target) {
-            if (!target) {
-                return new Error('A target file needs to be specified');
-            }
-
-            if (!path.existsSync(target)) {
-                return new Error(target + ' does not exist!');
-            }
-
-            return undefined;
-        },
-
-        run: function (deferred, namedArgs, target) {
-            var depend = namedArgs.depend,
-                exports = namedArgs.exports || '',
-                contents = fs.readFileSync(target, 'utf8'),
-                temp, commentIndex;
-
-            if (depend) {
-                depend = depend.split(',').map(function (value) {
-                    return "'" + value + "'";
-                });
-            } else {
-                depend = [];
-            }
-
-            //Convert the depend to a string.
-            depend = depend.join(',');
-
-            if (amdifyRegExp.test(contents)) {
-                return deferred.reject('Looks like amdify has already been ' +
-                                       'applied to ' + target);
-            } else {
-                //Get the export boilerplate ready.
-                if (exports) {
-                    exports = namedArgs.noConflict ?
-                                exportsNoConflictTemplate.replace(exportsRegExp, exports) :
-                                exportsTemplate.replace(exportsRegExp, exports);
-                }
-
-                //Create the main wrapping. Do depend and exports replacement
-                //before inserting the main contents, to avoid problems with
-                //a possibly undesirable regexp replacement.
-                temp = template
-                        .replace(dependRegExp, depend)
-                        .replace(exportsRegExp, exports);
-
-                //Cannot use a regexp replacement for comment, because if
-                //the contents contain funky regexp associated markers, like
-                //a `$`, then get double content insertion.
-                commentIndex = temp.indexOf(contentsComment);
-                contents = temp.substring(0, commentIndex) +
-                           contents +
-                           temp.substring(commentIndex + contentsComment.length, temp.length);
-
-                fs.writeFileSync(target, contents, 'utf8');
-
-                return deferred.resolve('amdify has modified ' + target);
-            }
-        }
-    };
-
-    return require('volo/commands').register(module.id, main);
-});
 
 define('volo/uglifyjs/squeeze-more',["require", "exports", "module", "./parse-js", "./process"], function(require, exports, module) {
 
@@ -8591,10 +8627,14 @@ define('volo/parse',['./uglifyjs/index'], function (uglify) {
      * @param {Function} onMatch function to call on a parse match.
      * @param {Object} [options] This is normally the build config options if
      * it is passed.
+     * @param {Function} [recurseCallback] function to call on each valid
+     * node, defaults to parse.parseNode.
      */
-    parse.recurse = function (parentNode, onMatch, options) {
+    parse.recurse = function (parentNode, onMatch, options, recurseCallback) {
         var hasHas = options && options.has,
             i, node;
+
+        recurseCallback = recurseCallback || this.parseNode;
 
         if (isArray(parentNode)) {
             for (i = 0; i < parentNode.length; i++) {
@@ -8615,17 +8655,17 @@ define('volo/parse',['./uglifyjs/index'], function (uglify) {
                     if (hasHas && node[0] === 'if' && node[1] && node[1][0] === 'name' &&
                         (node[1][1] === 'true' || node[1][1] === 'false')) {
                         if (node[1][1] === 'true') {
-                            this.recurse([node[2]], onMatch, options);
+                            this.recurse([node[2]], onMatch, options, recurseCallback);
                         } else {
-                            this.recurse([node[3]], onMatch, options);
+                            this.recurse([node[3]], onMatch, options, recurseCallback);
                         }
                     } else {
-                        if (this.parseNode(node, onMatch)) {
+                        if (recurseCallback(node, onMatch)) {
                             //The onMatch indicated parsing should
                             //stop for children of this node.
                             continue;
                         }
-                        this.recurse(node, onMatch, options);
+                        this.recurse(node, onMatch, options, recurseCallback);
                     }
                 }
             }
@@ -8725,6 +8765,37 @@ define('volo/parse',['./uglifyjs/index'], function (uglify) {
     };
 
     /**
+     * Finds any config that is passed to requirejs.
+     * @param {String} fileName
+     * @param {String} fileContents
+     *
+     * @returns {Object} a config object. Will be null if no config.
+     * Can throw an error if the config in the file cannot be evaluated in
+     * a build context to valid JavaScript.
+     */
+    parse.findConfig = function (fileName, fileContents) {
+        /*jslint evil: true */
+        //This is a litle bit inefficient, it ends up with two uglifyjs parser
+        //calls. Can revisit later, but trying to build out larger functional
+        //pieces first.
+        var foundConfig = null,
+            astRoot = parser.parse(fileContents);
+
+        parse.recurse(astRoot, function (configNode) {
+            var jsConfig;
+
+            if (!foundConfig && configNode) {
+                jsConfig = parse.nodeToString(configNode);
+                foundConfig = eval('(' + jsConfig + ')');
+                return foundConfig;
+            }
+            return undefined;
+        }, null, parse.parseConfigNode);
+
+        return foundConfig;
+    };
+
+    /**
      * Finds all dependencies specified in dependency arrays and inside
      * simplified commonjs wrappers.
      * @param {String} fileName
@@ -8753,6 +8824,21 @@ define('volo/parse',['./uglifyjs/index'], function (uglify) {
         });
 
         return dependencies;
+    };
+
+    /**
+     * Determines if define(), require({}|[]) or requirejs was called in the
+     * file.
+     */
+    parse.usesAmdOrRequireJs = function (fileName, fileContents, options) {
+        var uses = false,
+            astRoot = parser.parse(fileContents);
+
+        parse.recurse(astRoot, function (callName, config, name, deps) {
+            return (uses = true);
+        }, options, parse.findAmdOrRequireJsNode);
+
+        return uses;
     };
 
     parse.findRequireDepNames = function (node, deps) {
@@ -8913,6 +8999,100 @@ define('volo/parse',['./uglifyjs/index'], function (uglify) {
     };
 
     /**
+     * Looks for define(), require({} || []), requirejs({} || []) calls.
+     */
+    parse.findAmdOrRequireJsNode = function (node, onMatch) {
+        var call, configNode, args;
+
+        if (!isArray(node)) {
+            return false;
+        }
+
+        if (node[0] === 'call') {
+            call = node[1];
+            args = node[2];
+
+            if (call) {
+                //A require.config() or requirejs.config() call.
+                if ((call[0] === 'dot' &&
+                   (call[1] && call[1][0] === 'name' &&
+                    (call[1][1] === 'require' || call[1][1] === 'requirejs')) &&
+                   call[2] === 'config') ||
+
+                   //A require() or requirejs() config call.
+                   (call[0] === 'name' &&
+                   (call[1] === 'require' || call[1] === 'requirejs')) ||
+
+                   //A define call.
+                   (call[0] === 'name' && call[1] === 'define')
+                ) {
+                    //It is a plain require() call.
+                    configNode = args[0];
+
+                    //Is a define call or the first arg is a config object
+                    //or an array of dependencies.
+                    if (call[1] === 'define' || configNode[0] === 'object' ||
+                        configNode[0] === 'array') {
+                        return onMatch(configNode);
+                    }
+
+                }
+            }
+        }
+
+        return false;
+    };
+
+    /**
+     * Determines if a specific node is a valid require/requirejs config
+     * call. That includes calls to require/requirejs.config().
+     * @param {Array} node
+     * @param {Function} onMatch a function to call when a match is found.
+     * It is passed the match name, and the config, name, deps possible args.
+     * The config, name and deps args are not normalized.
+     *
+     * @returns {String} a JS source string with the valid require/define call.
+     * Otherwise null.
+     */
+    parse.parseConfigNode = function (node, onMatch) {
+        var call, configNode, args;
+
+        if (!isArray(node)) {
+            return false;
+        }
+
+        if (node[0] === 'call') {
+            call = node[1];
+            args = node[2];
+
+            if (call) {
+                //A require.config() or requirejs.config() call.
+                if ((call[0] === 'dot' &&
+                   (call[1] && call[1][0] === 'name' &&
+                    (call[1][1] === 'require' || call[1][1] === 'requirejs')) &&
+                   call[2] === 'config') ||
+                   //A require() or requirejs() config call.
+
+                   (call[0] === 'name' &&
+                   (call[1] === 'require' || call[1] === 'requirejs'))
+                ) {
+                    //It is a plain require() call.
+                    configNode = args[0];
+
+                    if (configNode[0] !== 'object') {
+                        return null;
+                    }
+
+                    return onMatch(configNode);
+
+                }
+            }
+        }
+
+        return false;
+    };
+
+    /**
      * Converts an AST node into a JS source string. Does not maintain formatting
      * or even comments from original source, just returns valid JS source.
      * @param {Array} node
@@ -8923,6 +9103,105 @@ define('volo/parse',['./uglifyjs/index'], function (uglify) {
     };
 
     return parse;
+});
+
+/**
+ * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
+ * Available via the MIT or new BSD license.
+ * see: http://github.com/volojs/volo for details
+ */
+
+
+/*jslint */
+/*global define */
+
+define('amdify',['require','exports','module','fs','path','volo/parse','text!./amdify/template.js','text!./amdify/exportsTemplate.js','text!./amdify/exportsNoConflictTemplate.js','text!./amdify/doc.md','volo/commands'],function (require, exports, module) {
+    var fs = require('fs'),
+        path = require('path'),
+        parse = require('volo/parse'),
+        template = require('text!./amdify/template.js'),
+        exportsTemplate = require('text!./amdify/exportsTemplate.js'),
+        exportsNoConflictTemplate = require('text!./amdify/exportsNoConflictTemplate.js'),
+        dependRegExp = /\/\*DEPENDENCIES\*\//g,
+        contentsComment = '/*CONTENTS*/',
+        exportsRegExp = /\/\*EXPORTS\*\//g,
+        main;
+
+    main = {
+        //Text summary used when listing commands.
+        summary: 'Does a simple AMD wrapping for JS libraries that use ' +
+                 'browser globals',
+
+        doc: require('text!./amdify/doc.md'),
+
+        flags: {
+            'noConflict': 'noConflict'
+        },
+
+        //Validate any arguments here.
+        validate: function (namedArgs, target) {
+            if (!target) {
+                return new Error('A target file needs to be specified');
+            }
+
+            if (!path.existsSync(target)) {
+                return new Error(target + ' does not exist!');
+            }
+
+            return undefined;
+        },
+
+        run: function (deferred, v, namedArgs, target) {
+            var depend = namedArgs.depend,
+                exports = namedArgs.exports || '',
+                contents = fs.readFileSync(target, 'utf8'),
+                temp, commentIndex;
+
+            if (depend) {
+                depend = depend.split(',').map(function (value) {
+                    return "'" + value + "'";
+                });
+            } else {
+                depend = [];
+            }
+
+            //Convert the depend to a string.
+            depend = depend.join(',');
+debugger;
+            if (parse.usesAmdOrRequireJs(target, contents)) {
+                return deferred.reject(target +
+                        ' already supports AMD. No conversion done');
+            } else {
+                //Get the export boilerplate ready.
+                if (exports) {
+                    exports = namedArgs.noConflict ?
+                                exportsNoConflictTemplate.replace(exportsRegExp, exports) :
+                                exportsTemplate.replace(exportsRegExp, exports);
+                }
+
+                //Create the main wrapping. Do depend and exports replacement
+                //before inserting the main contents, to avoid problems with
+                //a possibly undesirable regexp replacement.
+                temp = template
+                        .replace(dependRegExp, depend)
+                        .replace(exportsRegExp, exports);
+
+                //Cannot use a regexp replacement for comment, because if
+                //the contents contain funky regexp associated markers, like
+                //a `$`, then get double content insertion.
+                commentIndex = temp.indexOf(contentsComment);
+                contents = temp.substring(0, commentIndex) +
+                           contents +
+                           temp.substring(commentIndex + contentsComment.length, temp.length);
+
+                fs.writeFileSync(target, contents, 'utf8');
+
+                return deferred.resolve('amdify has modified ' + target);
+            }
+        }
+    };
+
+    return require('volo/commands').register(module.id, main);
 });
 
 /**
@@ -8986,7 +9265,7 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
 
             return undefined;
         },
-        run: function (deferred, namedArgs, archiveName, specificLocalName) {
+        run: function (deferred, v, namedArgs, archiveName, specificLocalName) {
 
             q.when(archive.resolve(archiveName, namedArgs.volo.resolve), function (archiveInfo) {
 
@@ -9168,13 +9447,13 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
 
                             //Trace nested dependencies in the package.json
                             //TODO
-
+debugger;
                             q.call(function () {
                                 if (isAmdProject &&
                                     (namedArgs.exports || namedArgs.depend)) {
                                     var damd = q.defer();
-                                    amdify.run.apply(amdify, [damd, namedArgs, targetName]);
-                                    return damd;
+                                    amdify.run.apply(amdify, [damd, v, namedArgs, targetName]);
+                                    return damd.promise;
                                 }
                                 return undefined;
                             }).then(function () {
@@ -9313,7 +9592,7 @@ define('acquire',['require','exports','module','fs','q','path','add','text!./acq
             return add.validate.apply(add, arguments);
         },
 
-        run: function (deferred, namedArgs, packageName, localName) {
+        run: function (deferred, v, namedArgs, packageName, localName) {
             //Create a 'volo' directory as a sibling to the volo.js file
             var execName = process.argv[1],
                 dirName = path.dirname(execName),
@@ -9381,7 +9660,7 @@ define('rejuvenate',['require','exports','module','q','path','add','text!./rejuv
 
         validate: function (namedArgs) {},
 
-        run: function (deferred, namedArgs, from) {
+        run: function (deferred, v, namedArgs, from) {
             //Create a 'volo' directory as a sibling to the volo.js file
             var execName = process.argv[1],
                 dirName = path.dirname(execName),
