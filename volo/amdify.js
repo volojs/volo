@@ -11,13 +11,13 @@
 define(function (require, exports, module) {
     var fs = require('fs'),
         path = require('path'),
+        parse = require('volo/parse'),
         template = require('text!./amdify/template.js'),
         exportsTemplate = require('text!./amdify/exportsTemplate.js'),
         exportsNoConflictTemplate = require('text!./amdify/exportsNoConflictTemplate.js'),
         dependRegExp = /\/\*DEPENDENCIES\*\//g,
         contentsComment = '/*CONTENTS*/',
         exportsRegExp = /\/\*EXPORTS\*\//g,
-        amdifyRegExp = /volo amdify/,
         main;
 
     main = {
@@ -61,9 +61,9 @@ define(function (require, exports, module) {
             //Convert the depend to a string.
             depend = depend.join(',');
 
-            if (amdifyRegExp.test(contents)) {
-                return deferred.reject('Looks like amdify has already been ' +
-                                       'applied to ' + target);
+            if (parse.usesAmdOrRequireJs(target, contents)) {
+                return deferred.reject(target +
+                        ' already supports AMD. No conversion done.');
             } else {
                 //Get the export boilerplate ready.
                 if (exports) {

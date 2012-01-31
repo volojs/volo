@@ -14,7 +14,6 @@ define(function (require) {
         file = require('volo/file'),
         template = require('volo/template'),
         qutil = require('volo/qutil'),
-        stdin = process.stdin,
         defaultEncoding = 'utf8';
 
     /**
@@ -74,12 +73,12 @@ define(function (require) {
 
                     function onData(data) {
                         data = (data || '').toString().trim();
-                        stdin.pause();
+                        process.stdin.pause();
                         d.resolve(data);
                     }
 
-                    stdin.once('data', onData);
-                    stdin.resume();
+                    process.stdin.once('data', onData);
+                    process.stdin.resume();
 
                     process.stdout.write(message + ' ', 'utf8');
 

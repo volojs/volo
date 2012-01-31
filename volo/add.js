@@ -247,7 +247,7 @@ define(function (require, exports, module) {
                                     (namedArgs.exports || namedArgs.depend)) {
                                     var damd = q.defer();
                                     amdify.run.apply(amdify, [damd, v, namedArgs, targetName]);
-                                    return damd;
+                                    return damd.promise;
                                 }
                                 return undefined;
                             }).then(function () {

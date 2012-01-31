@@ -64,7 +64,7 @@ Backbone, jQuery and underscore:
     > cd fast
     > volo.js add jquery/jquery
     > volo.js add amdjs/underscore  (fetches most recent version tag with AMD)
-    > volo.js add amdjs/backbone/master
+    > volo.js add amdjs/backbone    (fetches most recent version tag with AMD)
 
 Then modify www/js/app.js to require the modules you need and add your app logic.
 
