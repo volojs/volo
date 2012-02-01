@@ -104,7 +104,7 @@ define(function (require, exports, module) {
                                       "__dirname = __filename.substring(0, __filename.lastIndexOf('/');";
                         }
                         //Just do a simple wrapper.
-                        contents = 'define(require, exports, module) {' + prelude + '\n' +
+                        contents = 'define(function (require, exports, module) {' + prelude + '\n' +
                                     contents +
                                     '\n});';
                         fs.writeFileSync(target, contents, 'utf8');

@@ -44,7 +44,7 @@ define(function (require, exports, module) {
         });
     })
     .then(function () {
-        return main(['add', '-amd', '../support/simple', 'simpleAmd', 'depend=foo'], function (result) {
+        return main(['add', '-amd', '../support/simple', 'simpleAmd', 'depends=foo'], function (result) {
             console.log(result);
             doh.register("addSimpleAmd",
                 [

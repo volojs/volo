@@ -1,7 +1,4 @@
-
-//File modified by volo amdify
 //Wrapped in an outer function to preserve global this
-
 (function (root) { define(['gamma'], function () { (function () {
 
 (function () {

@@ -83,7 +83,7 @@ to convert the files fetched from the documentcloud repos:
     > cd fast2
     > volo.js add jquery/jquery
     > volo.js add -amd documentcloud/underscore exports=_
-    > volo.js add -amd documentcloud/backbone depend=underscore,jquery exports=Backbone
+    > volo.js add -amd documentcloud/backbone depends=underscore,jquery exports=Backbone
 
 The amdify conversions are not as pretty as the amdjs handmade ones. However,
 it can be useful to use the documentcloud sources particularly if you want to

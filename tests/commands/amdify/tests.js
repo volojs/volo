@@ -60,7 +60,7 @@ define(function (require, exports, module) {
         });
     })
     .then(function () {
-        return main(['amdify', 'lib.js', 'depend=alpha,beta'], function (result) {
+        return main(['amdify', 'lib.js', 'depends=alpha,beta'], function (result) {
             console.log(result);
             doh.register("amdifyLib",
                 [
@@ -76,7 +76,7 @@ define(function (require, exports, module) {
         });
     })
     .then(function () {
-        return main(['amdify', '-noConflict', 'libExports.js', 'depend=gamma', 'exports=window.libExports'], function (result) {
+        return main(['amdify', '-noConflict', 'libExports.js', 'depends=gamma', 'exports=window.libExports'], function (result) {
             console.log(result);
             doh.register("amdifyLibExports",
                 [
