@@ -432,7 +432,7 @@ define(['./uglifyjs/index'], function (uglify) {
      * @returns {Array} an array of dependency strings. The dependencies
      * have not been normalized, they may be relative IDs.
      */
-    parse.findDependencies = function (fileName, fileContents) {
+    parse.findDependencies = function (fileName, fileContents, options) {
         //This is a litle bit inefficient, it ends up with two uglifyjs parser
         //calls. Can revisit later, but trying to build out larger functional
         //pieces first.
@@ -449,6 +449,46 @@ define(['./uglifyjs/index'], function (uglify) {
             if ((deps = getValidDeps(deps))) {
                 dependencies = dependencies.concat(deps);
             }
+        }, options);
+
+        return dependencies;
+    };
+
+    /**
+     * Finds only CJS dependencies, ones that are the form require('stringLiteral')
+     */
+    parse.findCjsDependencies = function (fileName, fileContents, options) {
+        //This is a litle bit inefficient, it ends up with two uglifyjs parser
+        //calls. Can revisit later, but trying to build out larger functional
+        //pieces first.
+        var dependencies = [],
+            astRoot = parser.parse(fileContents);
+
+        parse.recurse(astRoot, function (dep) {
+            dependencies.push(dep);
+        }, options, function (node, onMatch) {
+
+            var call, args;
+
+            if (!isArray(node)) {
+                return false;
+            }
+
+            if (node[0] === 'call') {
+                call = node[1];
+                args = node[2];
+
+                if (call) {
+                    //A require('') use.
+                    if (call[0] === 'name' && call[1] === 'require' &&
+                        args[0][0] === 'string') {
+                        return onMatch(args[0][1]);
+                    }
+                }
+            }
+
+            return false;
+
         });
 
         return dependencies;
@@ -456,18 +496,86 @@ define(['./uglifyjs/index'], function (uglify) {
 
     /**
      * Determines if define(), require({}|[]) or requirejs was called in the
-     * file.
+     * file. Also finds out if define() is declared and if define.amd is called.
      */
     parse.usesAmdOrRequireJs = function (fileName, fileContents, options) {
-        var uses = false,
-            astRoot = parser.parse(fileContents);
+        var astRoot = parser.parse(fileContents),
+            uses;
 
-        parse.recurse(astRoot, function (callName, config, name, deps) {
-            return (uses = true);
+        parse.recurse(astRoot, function (prop) {
+            if (!uses) {
+                uses = {};
+            }
+            uses[prop] = true;
         }, options, parse.findAmdOrRequireJsNode);
 
         return uses;
     };
+
+    /**
+     * Determines if require(''), exports.x =, module.exports =,
+     * __dirname, __filename are used. So, not strictly traditional CommonJS,
+     * also checks for Node variants.
+     */
+    parse.usesCommonJs = function (fileName, fileContents, options) {
+        var uses = null,
+            assignsExports = false,
+            astRoot = parser.parse(fileContents);
+
+        parse.recurse(astRoot, function (prop) {
+            if (prop === 'varExports') {
+                assignsExports = true;
+            } else if (prop !== 'exports' || !assignsExports) {
+                if (!uses) {
+                    uses = {};
+                }
+                uses[prop] = true;
+            }
+        }, options, function (node, onMatch) {
+
+            var call, args;
+
+            if (!isArray(node)) {
+                return false;
+            }
+
+            if (node[0] === 'name' && (node[1] === '__dirname' || node[1] === '__filename')) {
+                return onMatch(node[1].substring(2));
+            } else if (node[0] === 'var' && node[1] && node[1][0] && node[1][0][0] === 'exports') {
+                //Hmm, a variable assignment for exports, so does not use cjs exports.
+                return onMatch('varExports');
+            } else if (node[0] === 'assign' && node[2] && node[2][0] === 'dot') {
+                args = node[2][1];
+
+                if (args) {
+                    //An exports or module.exports assignment.
+                    if (args[0] === 'name' && args[1] === 'module' &&
+                        node[2][2] === 'exports') {
+                        return onMatch('moduleExports');
+                    } else if (args[0] === 'name' && args[1] === 'exports') {
+                        return onMatch('exports');
+                    }
+                }
+            } else if (node[0] === 'call') {
+                call = node[1];
+                args = node[2];
+
+                if (call) {
+                    //A require('') use.
+                    if (call[0] === 'name' && call[1] === 'require' &&
+                        args[0][0] === 'string') {
+                        return onMatch('require');
+                    }
+                }
+            }
+
+            return false;
+
+        });
+
+        return uses;
+    };
+
 
     parse.findRequireDepNames = function (node, deps) {
         var moduleName, i, n, call, args;
@@ -630,42 +738,46 @@ define(['./uglifyjs/index'], function (uglify) {
      * Looks for define(), require({} || []), requirejs({} || []) calls.
      */
     parse.findAmdOrRequireJsNode = function (node, onMatch) {
-        var call, configNode, args;
+        var call, args, configNode, type;
 
         if (!isArray(node)) {
             return false;
         }
 
-        if (node[0] === 'call') {
+        if (node[0] === 'defun' && node[1] === 'define') {
+            type = 'declaresDefine';
+        } else if (node[0] === 'assign' && node[2] && node[2][2] === 'amd' &&
+            node[2][1] && node[2][1][0] === 'name' &&
+            node[2][1][1] === 'define') {
+            type = 'defineAmd';
+        } else if (node[0] === 'call') {
             call = node[1];
             args = node[2];
 
             if (call) {
-                //A require.config() or requirejs.config() call.
                 if ((call[0] === 'dot' &&
                    (call[1] && call[1][0] === 'name' &&
                     (call[1][1] === 'require' || call[1][1] === 'requirejs')) &&
-                   call[2] === 'config') ||
-
-                   //A require() or requirejs() config call.
-                   (call[0] === 'name' &&
-                   (call[1] === 'require' || call[1] === 'requirejs')) ||
-
-                   //A define call.
-                   (call[0] === 'name' && call[1] === 'define')
-                ) {
-                    //It is a plain require() call.
+                   call[2] === 'config')) {
+                    //A require.config() or requirejs.config() call.
+                    type = call[1][1] + 'Config';
+                } else if (call[0] === 'name' &&
+                   (call[1] === 'require' || call[1] === 'requirejs')) {
+                    //A require() or requirejs() config call.
+                    //Only want ones that start with an object or an array.
                     configNode = args[0];
-
-                    //Is a define call or the first arg is a config object
-                    //or an array of dependencies.
-                    if (call[1] === 'define' || configNode[0] === 'object' ||
-                        configNode[0] === 'array') {
-                        return onMatch(configNode);
+                    if (configNode[0] === 'object' || configNode[0] === 'array') {
+                        type = call[1];
                     }
-
+                } else if (call[0] === 'name' && call[1] === 'define') {
+                    //A define call.
+                    type = 'define';
                 }
             }
+        }
+
+        if (type) {
+            return onMatch(type);
         }
 
         return false;

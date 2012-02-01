@@ -12,10 +12,11 @@ define(function (require, exports, module) {
     var fs = require('fs'),
         path = require('path'),
         parse = require('volo/parse'),
+        file = require('volo/file'),
         template = require('text!./amdify/template.js'),
         exportsTemplate = require('text!./amdify/exportsTemplate.js'),
         exportsNoConflictTemplate = require('text!./amdify/exportsNoConflictTemplate.js'),
-        dependRegExp = /\/\*DEPENDENCIES\*\//g,
+        dependsRegExp = /\/\*DEPENDENCIES\*\//g,
         contentsComment = '/*CONTENTS*/',
         exportsRegExp = /\/\*EXPORTS\*\//g,
         main;
@@ -45,51 +46,98 @@ define(function (require, exports, module) {
         },
 
         run: function (deferred, v, namedArgs, target) {
-            var depend = namedArgs.depend,
+            var depends = namedArgs.depends,
                 exports = namedArgs.exports || '',
-                contents = fs.readFileSync(target, 'utf8'),
-                temp, commentIndex;
+                noConflict = namedArgs.noConflict,
+                completeMessage = '',
+                jsFiles;
 
-            if (depend) {
-                depend = depend.split(',').map(function (value) {
+            if (depends) {
+                depends = depends.split(',').map(function (value) {
                     return "'" + value + "'";
                 });
             } else {
-                depend = [];
+                depends = [];
             }
 
-            //Convert the depend to a string.
-            depend = depend.join(',');
+            //Convert the depends to a string.
+            depends = depends.join(',');
 
-            if (parse.usesAmdOrRequireJs(target, contents)) {
-                return deferred.reject(target +
-                        ' already supports AMD. No conversion done.');
+            if (fs.statSync(target).isDirectory()) {
+                //Find all the .js files in the directory and convert them.
+                jsFiles = file.getFilteredFileList(target, /\.js$/);
+                jsFiles.forEach(function (file) {
+                    var msg = main.util.convert(file, depends, exports, noConflict);
+                    if (msg) {
+                        completeMessage += (completeMessage ? '\n' : '') +  msg;
+                    }
+                });
+                return deferred.resolve(completeMessage);
             } else {
-                //Get the export boilerplate ready.
-                if (exports) {
-                    exports = namedArgs.noConflict ?
-                                exportsNoConflictTemplate.replace(exportsRegExp, exports) :
-                                exportsTemplate.replace(exportsRegExp, exports);
+                return deferred.resolve(main.util.convert(target, depends, exports, noConflict));
+            }
+        },
+
+        util: {
+            convert: function (target, depends, exports, noConflict) {
+                var contents = fs.readFileSync(target, 'utf8'),
+                    prelude = '',
+                    temp, commentIndex, cjsProps, amdProps;
+
+                if (contents.charAt(0) === '#') {
+                    //This is probably an executable file for node, skip it.
+                    return 'SKIP: ' + target + ': node executable script.';
                 }
 
-                //Create the main wrapping. Do depend and exports replacement
-                //before inserting the main contents, to avoid problems with
-                //a possibly undesirable regexp replacement.
-                temp = template
-                        .replace(dependRegExp, depend)
-                        .replace(exportsRegExp, exports);
+                amdProps = parse.usesAmdOrRequireJs(target, contents);
+                if (amdProps && (!amdProps.declaresDefine ||
+                                (amdProps.declaresDefine && amdProps.defineAmd))) {
+                    //AMD in use, and it is not a file that declares a define()
+                    //or if it does, does not declare define.amd.
+                    return 'SKIP: ' + target + ': already uses AMD.';
+                } else {
+                    cjsProps = parse.usesCommonJs(target, contents);
+                    //If no exports or depends and it looks like a cjs module convert
+                    if (!exports && !depends && cjsProps) {
+                        if (cjsProps.filename || cjsProps.dirname) {
+                            prelude = "var __filename = module.uri, " +
+                                      "__dirname = __filename.substring(0, __filename.lastIndexOf('/');";
+                        }
+                        //Just do a simple wrapper.
+                        contents = 'define(require, exports, module) {' + prelude + '\n' +
+                                    contents +
+                                    '\n});';
+                        fs.writeFileSync(target, contents, 'utf8');
+                        return 'CONVERTED: ' + target + ': wrapped define().';
+                    } else {
+                        //Get the export boilerplate ready.
+                        if (exports) {
+                            exports = noConflict ?
+                                        exportsNoConflictTemplate.replace(exportsRegExp, exports) :
+                                        exportsTemplate.replace(exportsRegExp, exports);
+                        }
 
-                //Cannot use a regexp replacement for comment, because if
-                //the contents contain funky regexp associated markers, like
-                //a `$`, then get double content insertion.
-                commentIndex = temp.indexOf(contentsComment);
-                contents = temp.substring(0, commentIndex) +
-                           contents +
-                           temp.substring(commentIndex + contentsComment.length, temp.length);
+                        //Create the main wrapping. Do depends and exports replacement
+                        //before inserting the main contents, to avoid problems with
+                        //a possibly undesirable regexp replacement.
+                        temp = template
+                                .replace(dependsRegExp, depends)
+                                .replace(exportsRegExp, exports);
 
-                fs.writeFileSync(target, contents, 'utf8');
+                        //Cannot use a regexp replacement for comment, because if
+                        //the contents contain funky regexp associated markers, like
+                        //a `$`, then get double content insertion.
+                        commentIndex = temp.indexOf(contentsComment);
+                        contents = temp.substring(0, commentIndex) +
+                                   contents +
+                                   temp.substring(commentIndex + contentsComment.length, temp.length);
 
-                return deferred.resolve('amdify has modified ' + target);
+                        fs.writeFileSync(target, contents, 'utf8');
+
+                        return 'CONVERTED: ' + target + ': depends: ' + depends +
+                               '; exports: ' + exports + '.';
+                    }
+                }
             }
         }
     };

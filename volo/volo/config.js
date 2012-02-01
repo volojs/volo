@@ -40,6 +40,7 @@ define(function (require) {
 
         "volo/add": {
             "discard": {
+                ".gitignore": true,
                 "test": true,
                 "tests": true,
                 "doc": true,

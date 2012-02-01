@@ -1,10 +1,10 @@
 ## Usage
 
-    volo.js amdify [-noConflict] path/to/file.js [depend=] [exports=]
+    volo.js amdify [-noConflict] path/to/file.js [depends=] [exports=]
 
 where:
 
-* depend is a comma-separated list of dependencies, with no spaces
+* depends is a comma-separated list of dependencies, with no spaces
 * exports is the global value created by the file that should be treated as the
   module's exported value.
 * -noConflict indicates that code shoud be included to call the exports
@@ -17,7 +17,7 @@ dependency names.
 
 This example:
 
-    volo.js amdify www/js/aplugin.jquery.js depend=jquery
+    volo.js amdify www/js/aplugin.jquery.js depends=jquery
 
 Will result in modifying the www/js/aplugin.jquery.js contents to have a
 function wrapping that includes:
@@ -30,7 +30,7 @@ This example sets dependencies, but then also specifies the export value to
 be used. If the export object has a 'noConflict' method on it, then it will
 be called as part of exporting the module value:
 
-    volo.js amdify www/js/lib.js depend=jquery exports=lib
+    volo.js amdify www/js/lib.js depends=jquery exports=lib
 
 results in a transform that looks roughly like:
 
@@ -43,7 +43,7 @@ results in a transform that looks roughly like:
 
 If you want "-noConflict" called on the exports value:
 
-    volo.js amdify -noConflict www/js/lib.js depend=jquery exports=lib
+    volo.js amdify -noConflict www/js/lib.js depends=jquery exports=lib
 
 results in a transform that looks roughly like:
 

@@ -11,6 +11,7 @@
 define(function (require) {
     var q = require('q'),
         path = require('path'),
+        endSlashIndexRegExp = /[\/\\]$/,
         tarGzRegExp = /\.tar\.gz$/,
         //Regexp used to strip off file extension
         fileExtRegExp = /\.tar\.gz$|\.\w+$/,
@@ -50,7 +51,18 @@ define(function (require) {
                 index = archive.indexOf(':'),
                 fragIndex = archive.indexOf('#'),
                 fragment = null,
-                scheme,  resolverId, localName;
+                localRefName, scheme,  resolverId, localName;
+
+            //If there is a specific file desired inside the archive, peel
+            //that off.
+            if (fragIndex !== -1) {
+                fragment = archive.substring(fragIndex + 1);
+                archive = archive.substring(0, fragIndex);
+            }
+
+            //Make sure the archive does not end in a slash, since slashes
+            //are important, particularly for github urls.
+            archive = archive.replace(endSlashIndexRegExp, '');
 
             //Figure out the scheme. Default is github, unless a local
             //path matches.
@@ -65,17 +77,15 @@ define(function (require) {
                 archive = archive.substring(index + 1);
             }
 
-            //If there is a specific file desired inside the archive, peel
-            //that off.
-            if (fragIndex !== -1) {
-                fragment = archive.substring(fragIndex + 1);
-                archive = archive.substring(0, fragIndex);
-            }
-
             if (handledSchemes.hasOwnProperty(scheme)) {
                 //localName is the file name without extension. If a .tar.gz
                 //file, then a does not include .tar.gz
-                localName = archive.substring(archive.lastIndexOf('/') + 1);
+                if (fragment) {
+                    localRefName = fragment;
+                } else {
+                    localRefName = archive;
+                }
+                localName = localRefName.substring(localRefName.lastIndexOf('/') + 1);
                 localName = localName.replace(fileExtRegExp, '');
 
                 //Resolve relative paths for this particular archive

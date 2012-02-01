@@ -7,6 +7,8 @@ where the allowed flags are:
 * -f: Forces the add even if the code has already been added to the project.
 * -amd: Indicates the project is an AMD project. If the project has a
   package.json entry for "amd": {} then this flag is not needed.
+* -amdlog: Prints out more details on files converted to AMD, if AMD conversion
+  is done.
 
 **archive** is in one of the following formats:
 

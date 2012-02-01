@@ -49,7 +49,8 @@ define(function (require, exports, module) {
 
         flags: {
             'f': 'force',
-            'amd': 'amd'
+            'amd': 'amd',
+            'amdlog': 'amdlog'
         },
 
         validate: function (namedArgs, archiveName, version) {
@@ -137,8 +138,10 @@ define(function (require, exports, module) {
                     try {
                         //Find the directory that was unpacked in tempDirName
                         var dirName = file.firstDir(tempDirName),
-                            info, sourceName, targetName, completeMessage,
-                            listing, defaultName, mainFile, deps;
+                            completeMessage = '',
+                            info, sourceName, targetName,
+                            rmPromises = [],
+                            listing, defaultName, mainFile, mainContents, deps;
 
                         if (dirName) {
                             info = packageJson(dirName);
@@ -150,8 +153,13 @@ define(function (require, exports, module) {
                             if (mainFile) {
                                 mainFile += jsRegExp.test(mainFile) ? '' : '.js';
                                 mainFile = path.join(dirName, mainFile);
+                                mainContents = fs.readFileSync(mainFile, 'utf8');
                                 deps = parse.findDependencies(mainFile,
-                                       fs.readFileSync(mainFile, 'utf8'));
+                                       mainContents);
+                                if (!deps || !deps.length) {
+                                    deps = parse.findCjsDependencies(mainFile,
+                                           mainContents);
+                                }
                                 if (deps && deps.some(function (dep) {
                                     return dep.indexOf('.') === 0;
                                 })) {
@@ -216,16 +224,13 @@ define(function (require, exports, module) {
                                 fs.renameSync(dirName, targetName);
 
                                 //If directory, remove common directories not
-                                //needed for install. This is a bit goofy,
-                                //file.rmdir is actually callback based,
-                                //but cheating here a bit
-                                //TODO: make this Q-based at some point.
+                                //needed for install.
                                 if (myConfig.discard) {
                                     fs.readdirSync(targetName).forEach(
                                         function (name) {
                                         if (myConfig.discard[name]) {
-                                            file.rmdir(path.join(targetName,
-                                                                     name));
+                                            rmPromises.push(file.rmdir(path.join(targetName,
+                                                                     name)));
                                         }
                                     });
                                 }
@@ -243,17 +248,25 @@ define(function (require, exports, module) {
                             //TODO
 
                             q.call(function () {
-                                if (isAmdProject &&
-                                    (namedArgs.exports || namedArgs.depend)) {
+                                //Wait for all the rm commands to finish.
+                                if (rmPromises.length) {
+                                    return q.all(rmPromises);
+                                }
+                                return undefined;
+                            }).then(function () {
+                                if (isAmdProject) {
                                     var damd = q.defer();
                                     amdify.run.apply(amdify, [damd, v, namedArgs, targetName]);
                                     return damd.promise;
                                 }
                                 return undefined;
-                            }).then(function () {
+                            }).then(function (amdMessage) {
                                 //All done.
                                 file.rmdir(tempDirName);
-                                completeMessage = 'Installed ' +
+                                if (namedArgs.amdlog && amdMessage) {
+                                    completeMessage += amdMessage + '\n';
+                                }
+                                completeMessage += 'Installed ' +
                                     archiveInfo.url +
                                     (archiveInfo.fragment ? '#' +
                                      archiveInfo.fragment : '') +
