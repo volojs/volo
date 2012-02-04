@@ -12,6 +12,7 @@ define(function (require) {
     var path = require('path'),
         fs = require('fs'),
         q = require('q'),
+        exec = require('child_process').exec,
         file = require('volo/file'),
         template = require('volo/template'),
         qutil = require('volo/qutil'),
@@ -93,6 +94,22 @@ define(function (require) {
                     req(['volo/main'], function (main) {
                         d.resolve(main(args));
                     });
+
+                    return d.promise;
+                },
+                //Executes the text in the shell
+                exec: function (text) {
+                    var d = q.defer();
+
+                    exec(text,
+                        function (error, stdout, stderr) {
+                            if (error) {
+                                d.reject(error);
+                            } else {
+                                d.resolve();
+                            }
+                        }
+                    );
 
                     return d.promise;
                 }
