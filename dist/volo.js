@@ -3846,10 +3846,11 @@ define('volo/template',['require'],function (require) {
 /*jslint plusplus: false */
 /*global define, console, process */
 
-define('volo/v',['require','path','fs','q','volo/file','volo/template','volo/qutil'],function (require) {
+define('volo/v',['require','path','fs','q','child_process','volo/file','volo/template','volo/qutil'],function (require) {
     var path = require('path'),
         fs = require('fs'),
         q = require('q'),
+        exec = require('child_process').exec,
         file = require('volo/file'),
         template = require('volo/template'),
         qutil = require('volo/qutil'),
@@ -3931,6 +3932,22 @@ define('volo/v',['require','path','fs','q','volo/file','volo/template','volo/qut
                     req(['volo/main'], function (main) {
                         d.resolve(main(args));
                     });
+
+                    return d.promise;
+                },
+                //Executes the text in the shell
+                exec: function (text) {
+                    var d = q.defer();
+
+                    exec(text,
+                        function (error, stdout, stderr) {
+                            if (error) {
+                                d.reject(error);
+                            } else {
+                                d.resolve();
+                            }
+                        }
+                    );
 
                     return d.promise;
                 }
