@@ -93,6 +93,26 @@ define(function (require) {
             }
         }
 
+
+        //Tries to run the command from the top, not from a local volofile.
+        function runTopCommand() {
+            if (commands.have(commandName)) {
+                //a volo command is available, run it.
+                require([commandName], runCommand);
+            } else {
+                //Show usage info.
+                commands.list(function (message) {
+                    //voloVersion set in tools/wrap.start
+                    deferred.resolve(path.basename(config.volo.path) +
+                                     (typeof voloVersion !== 'undefined' ?
+                                        ' v' + voloVersion : '') +
+                                    ', a JavaScript tool to make ' +
+                                    'JavaScript projects. Allowed commands:\n\n' +
+                                    message);
+                });
+            }
+        }
+
         if (!commandOverride && path.existsSync(path.resolve(cwd, 'volofile'))) {
             volofile(cwd).then(function (voloMod) {
                 //Set up default command name if none specified.
@@ -101,25 +121,12 @@ define(function (require) {
                 if (voloMod.hasOwnProperty(commandName)) {
                     runCommand(voloMod[commandName]);
                 } else {
-                    deferred.reject('volofile does not have command "' +
-                                    commandName + '".');
+                    runTopCommand();
                 }
             })
             .fail(deferred.reject);
-        } else if (commands.have(commandName)) {
-            //a volo command is available, run it.
-            require([commandName], runCommand);
         } else {
-            //Show usage info.
-            commands.list(function (message) {
-                //voloVersion set in tools/wrap.start
-                deferred.resolve(path.basename(config.volo.path) +
-                                 (typeof voloVersion !== 'undefined' ?
-                                    ' v' + voloVersion : '') +
-                                ', a JavaScript tool to make ' +
-                                'JavaScript projects. Allowed commands:\n\n' +
-                                message);
-            });
+            runTopCommand();
         }
 
         return q.when(deferred.promise, callback, errback);

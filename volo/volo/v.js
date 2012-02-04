@@ -11,6 +11,7 @@
 define(function (require) {
     var path = require('path'),
         fs = require('fs'),
+        q = require('q'),
         file = require('volo/file'),
         template = require('volo/template'),
         qutil = require('volo/qutil'),
@@ -26,7 +27,7 @@ define(function (require) {
             return path.resolve(dirName, relativePath);
         }
 
-        return {
+        var instance = {
             env: {
                 path: path.resolve(dirName),
                 exists: function (filePath) {
@@ -83,9 +84,22 @@ define(function (require) {
                     process.stdout.write(message + ' ', 'utf8');
 
                     return d.promise;
+                },
+                command: function () {
+                    var args = [].slice.call(arguments, 0),
+                        req = require,
+                        d = q.defer();
+
+                    req(['volo/main'], function (main) {
+                        d.resolve(main(args));
+                    });
+
+                    return d.promise;
                 }
             }
         };
+
+        return instance;
     }
 
     return v;

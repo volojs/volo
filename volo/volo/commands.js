@@ -70,7 +70,7 @@ define(function (require) {
                 args;
 
             if (!venv) {
-                venv = v('.').env;
+                venv = v(path.resolve('.')).env;
             }
 
             if (!command) {
