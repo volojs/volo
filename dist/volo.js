@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
 /**
- * @license volo 0.0.4 Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
+ * @license volo 0.0.4+ Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
  * see: http://github.com/volojs/volo for details
  */
 
-var voloVersion = '0.0.4';
+var voloVersion = '0.0.4+';
 
 /** vim: et:ts=4:sw=4:sts=4
  * @license RequireJS 1.0.5 Copyright (c) 2010-2012, The Dojo Foundation All Rights Reserved.
@@ -3846,9 +3846,10 @@ define('volo/template',['require'],function (require) {
 /*jslint plusplus: false */
 /*global define, console, process */
 
-define('volo/v',['require','path','fs','volo/file','volo/template','volo/qutil'],function (require) {
+define('volo/v',['require','path','fs','q','volo/file','volo/template','volo/qutil'],function (require) {
     var path = require('path'),
         fs = require('fs'),
+        q = require('q'),
         file = require('volo/file'),
         template = require('volo/template'),
         qutil = require('volo/qutil'),
@@ -3864,7 +3865,7 @@ define('volo/v',['require','path','fs','volo/file','volo/template','volo/qutil']
             return path.resolve(dirName, relativePath);
         }
 
-        return {
+        var instance = {
             env: {
                 path: path.resolve(dirName),
                 exists: function (filePath) {
@@ -3921,9 +3922,22 @@ define('volo/v',['require','path','fs','volo/file','volo/template','volo/qutil']
                     process.stdout.write(message + ' ', 'utf8');
 
                     return d.promise;
+                },
+                command: function () {
+                    var args = [].slice.call(arguments, 0),
+                        req = require,
+                        d = q.defer();
+
+                    req(['volo/main'], function (main) {
+                        d.resolve(main(args));
+                    });
+
+                    return d.promise;
                 }
             }
         };
+
+        return instance;
     }
 
     return v;
@@ -4001,7 +4015,7 @@ define('volo/commands',['require','./baseUrl','fs','path','q','volo/v'],function
                 args;
 
             if (!venv) {
-                venv = v('.').env;
+                venv = v(path.resolve('.')).env;
             }
 
             if (!command) {
@@ -4207,6 +4221,26 @@ define('volo/main',['require','./commands','./config','./volofile','path','q'],f
             }
         }
 
+
+        //Tries to run the command from the top, not from a local volofile.
+        function runTopCommand() {
+            if (commands.have(commandName)) {
+                //a volo command is available, run it.
+                require([commandName], runCommand);
+            } else {
+                //Show usage info.
+                commands.list(function (message) {
+                    //voloVersion set in tools/wrap.start
+                    deferred.resolve(path.basename(config.volo.path) +
+                                     (typeof voloVersion !== 'undefined' ?
+                                        ' v' + voloVersion : '') +
+                                    ', a JavaScript tool to make ' +
+                                    'JavaScript projects. Allowed commands:\n\n' +
+                                    message);
+                });
+            }
+        }
+
         if (!commandOverride && path.existsSync(path.resolve(cwd, 'volofile'))) {
             volofile(cwd).then(function (voloMod) {
                 //Set up default command name if none specified.
@@ -4215,25 +4249,12 @@ define('volo/main',['require','./commands','./config','./volofile','path','q'],f
                 if (voloMod.hasOwnProperty(commandName)) {
                     runCommand(voloMod[commandName]);
                 } else {
-                    deferred.reject('volofile does not have command "' +
-                                    commandName + '".');
+                    runTopCommand();
                 }
             })
             .fail(deferred.reject);
-        } else if (commands.have(commandName)) {
-            //a volo command is available, run it.
-            require([commandName], runCommand);
         } else {
-            //Show usage info.
-            commands.list(function (message) {
-                //voloVersion set in tools/wrap.start
-                deferred.resolve(path.basename(config.volo.path) +
-                                 (typeof voloVersion !== 'undefined' ?
-                                    ' v' + voloVersion : '') +
-                                ', a JavaScript tool to make ' +
-                                'JavaScript projects. Allowed commands:\n\n' +
-                                message);
-            });
+            runTopCommand();
         }
 
         return q.when(deferred.promise, callback, errback);
