@@ -3884,14 +3884,21 @@ define('volo/v',['require','path','fs','q','child_process','volo/file','volo/tem
                                             (encoding || defaultEncoding));
                 },
                 rm: function (dirOrFile) {
+                    var d, stat;
+
                     dirOrFile = resolve(dirOrFile);
-                    var stat = fs.statSync(dirOrFile);
-                    if (stat.isFile()) {
-                        fs.unlinkSync(dirOrFile);
-                    } else if (stat.isDirectory()) {
-                        //TODO: need to make rmdir synchronous
-                        file.rmdir(dirOrFile);
+                    if (dirOrFile) {
+                        stat = fs.statSync(dirOrFile);
+                        if (stat.isFile()) {
+                            fs.unlinkSync(dirOrFile);
+                        } else if (stat.isDirectory()) {
+                            //TODO: need to make rmdir synchronous
+                            return file.rmdir(dirOrFile);
+                        }
                     }
+                    d = q.defer();
+                    d.resolve();
+                    return d.promise;
                 },
                 mv: function (start, end) {
                     return fs.renameSync(start, end);
@@ -3944,7 +3951,7 @@ define('volo/v',['require','path','fs','q','child_process','volo/file','volo/tem
                             if (error) {
                                 d.reject(error);
                             } else {
-                                d.resolve();
+                                d.resolve(stdout);
                             }
                         }
                     );
