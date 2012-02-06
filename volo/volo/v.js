@@ -12,11 +12,17 @@ define(function (require) {
     var path = require('path'),
         fs = require('fs'),
         q = require('q'),
+        spawn = require('child_process').spawn,
         exec = require('child_process').exec,
         file = require('volo/file'),
         template = require('volo/template'),
         qutil = require('volo/qutil'),
-        defaultEncoding = 'utf8';
+        defaultEncoding = 'utf8',
+        lineRegExp = /(\r)?\n$/;
+
+    function execToConsole(value) {
+        console.log(value.replace(lineRegExp, ''));
+    }
 
     /**
     * Creates a v instance that is bound to the dirName path, all paths are
@@ -104,19 +110,59 @@ define(function (require) {
 
                     return d.promise;
                 },
-                //Executes the text in the shell
+                //Spawns a command in the shell via child_process.spawn.
+                //If options.useConsole is true, then data sent to stdout,
+                //stderr will be sent to console as soon as it is received.
+                //Otherwise, it works similar to exec(), except spawn separates
+                //the command from the args passed to it.
+                spawn: function (cmd, args, options) {
+                    var d = q.defer(),
+                        spawned = spawn(cmd, args, options),
+                        okResponse = '',
+                        errResponse = '',
+                        onData, onErrData;
+
+                    if (options.useConsole) {
+                        onData = execToConsole;
+                        onErrData = execToConsole;
+                    } else {
+                        onData = function (ok) {
+                            okResponse += ok;
+                        };
+                        onErrData = function (err) {
+                            errResponse = err;
+                        };
+                    }
+
+                    spawned.stdout.setEncoding('utf8');
+                    spawned.stdout.on('data', onData);
+
+                    spawned.stderr.setEncoding('utf8');
+                    spawned.stderr.on('data', onErrData);
+
+                    spawned.on('exit', function (code) {
+                        if (code) {
+                            errResponse.exitCode = code;
+                            d.reject(errResponse);
+                        } else {
+                            okResponse.exitCode = code;
+                            d.resolve(okResponse);
+                        }
+                    });
+
+                    return d.promise;
+                },
+                //Executes the text in the shell via child_process.exec.
                 exec: function (text) {
                     var d = q.defer();
 
-                    exec(text,
-                        function (error, stdout, stderr) {
-                            if (error) {
-                                d.reject(error);
-                            } else {
-                                d.resolve(stdout);
-                            }
+                    exec(text, function (error, stdout, stderr) {
+                        if (error) {
+                            d.reject(error);
+                        } else {
+                            d.resolve(stdout);
                         }
-                    );
+                    });
 
                     return d.promise;
                 }
