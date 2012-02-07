@@ -18,10 +18,7 @@ define(function (require, exports, module) {
 
     //Clean up old test output, create a fresh directory for it.
     end = start.promise.then(function () {
-        if (path.existsSync(testDir)) {
-            return file.rmdir(testDir);
-        }
-        return undefined;
+        return file.rm(testDir);
     })
     .then(function () {
         file.copyDir(supportDir, testDir);

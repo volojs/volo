@@ -128,7 +128,7 @@ define(function (require, exports, module) {
 
                 //Function used to clean up in case of errors.
                 function errCleanUp(err) {
-                    file.rmdir(tempDirName);
+                    file.rm(tempDirName);
                     deferred.reject(err);
                 }
 
@@ -140,7 +140,6 @@ define(function (require, exports, module) {
                         var dirName = file.firstDir(tempDirName),
                             completeMessage = '',
                             info, sourceName, targetName,
-                            rmPromises = [],
                             listing, defaultName, mainFile, mainContents, deps;
 
                         if (dirName) {
@@ -229,8 +228,7 @@ define(function (require, exports, module) {
                                     fs.readdirSync(targetName).forEach(
                                         function (name) {
                                         if (myConfig.discard[name]) {
-                                            rmPromises.push(file.rmdir(path.join(targetName,
-                                                                     name)));
+                                            file.rm(path.join(targetName, name));
                                         }
                                     });
                                 }
@@ -248,12 +246,6 @@ define(function (require, exports, module) {
                             //TODO
 
                             q.call(function () {
-                                //Wait for all the rm commands to finish.
-                                if (rmPromises.length) {
-                                    return q.all(rmPromises);
-                                }
-                                return undefined;
-                            }).then(function () {
                                 if (isAmdProject) {
                                     var damd = q.defer();
                                     amdify.run.apply(amdify, [damd, v, namedArgs, targetName]);
@@ -262,7 +254,7 @@ define(function (require, exports, module) {
                                 return undefined;
                             }).then(function (amdMessage) {
                                 //All done.
-                                file.rmdir(tempDirName);
+                                file.rm(tempDirName);
                                 if (namedArgs.amdlog && amdMessage) {
                                     completeMessage += amdMessage + '\n';
                                 }

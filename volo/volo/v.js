@@ -52,27 +52,13 @@ define(function (require) {
                                             (encoding || defaultEncoding));
                 },
                 rm: function (dirOrFile) {
-                    var d, stat;
-
-                    dirOrFile = resolve(dirOrFile);
-                    if (dirOrFile) {
-                        stat = fs.statSync(dirOrFile);
-                        if (stat.isFile()) {
-                            fs.unlinkSync(dirOrFile);
-                        } else if (stat.isDirectory()) {
-                            //TODO: need to make rmdir synchronous
-                            return file.rmdir(dirOrFile);
-                        }
-                    }
-                    d = q.defer();
-                    d.resolve();
-                    return d.promise;
+                    return file.rm(resolve(dirOrFile));
                 },
                 mv: function (start, end) {
-                    return fs.renameSync(start, end);
+                    return fs.renameSync(resolve(start), resolve(end));
                 },
                 mkdir: function (dir) {
-                    return file.mkdirs(dir);
+                    return file.mkdirs(resolve(dir));
                 },
                 getFilteredFileList: function (startDir, regExpInclude, regExpExclude, dirRegExpExclude) {
                     return file.getFilteredFileList(resolve(startDir), regExpInclude, regExpExclude, dirRegExpExclude);

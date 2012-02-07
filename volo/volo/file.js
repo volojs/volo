@@ -5,8 +5,6 @@
 define(function (require) {
     var fs = require('fs'),
         path = require('path'),
-        exec = require('child_process').exec,
-        qutil = require('./qutil'),
         file;
 
     function frontSlash(path) {
@@ -98,36 +96,31 @@ define(function (require) {
         },
 
         /**
-         * Does an rm -rf on a directory. Like a boss.
+         * Works on files and directories. Does not prompt just tries to delete
+         * with no feedback.
          */
-        rmdir: function (dir, callback, errback) {
-            var d = qutil.convert(callback, errback);
-
-            if (!dir) {
-                d.resolve();
+        rm: function (dirOrFile) {
+            if (!dirOrFile || !path.existsSync((dirOrFile = path.resolve(dirOrFile)))) {
+                return undefined;
             }
 
-            dir = path.resolve(dir);
-
-            if (!path.existsSync(dir)) {
-                d.resolve();
+            if (dirOrFile === '/') {
+                throw new Error('file.rm() cannot handle /');
             }
 
-            if (dir === '/') {
-                d.reject(new Error('file.rmdir cannot handle /'));
-            }
-
-            exec('rm -rf ' + dir,
-                function (error, stdout, stderr) {
-                    if (error) {
-                        d.reject(error);
-                    } else {
-                        d.resolve();
-                    }
+            function rm(target) {
+                var stat = fs.statSync(target);
+                if (stat.isDirectory()) {
+                    fs.readdirSync(target).forEach(function (file) {
+                        rm(path.resolve(target, file));
+                    });
+                    return fs.rmdirSync(target);
+                } else {
+                    return fs.unlinkSync(target);
                 }
-            );
+            }
 
-            return d.promise;
+            return rm(dirOrFile);
         },
 
         /**

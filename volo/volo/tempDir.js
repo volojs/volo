@@ -23,14 +23,10 @@ define(function (require) {
                 d = qutil.convert(callback, errback);
 
             if (path.existsSync(temp)) {
-                file.rmdir(temp, function () {
-                    fs.mkdirSync(temp);
-                    d.resolve(temp);
-                }, d.reject);
-            } else {
-                fs.mkdirSync(temp);
-                d.resolve(temp);
+                file.rm(temp);
             }
+            fs.mkdirSync(temp);
+            d.resolve(temp);
 
             return d.promise;
         },

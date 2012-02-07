@@ -55,7 +55,7 @@ define(function (require, exports, module) {
 
                 //Function used to clean up in case of errors.
                 function errCleanUp(err) {
-                    file.rmdir(tempDirName);
+                    file.rm(tempDirName);
                     return err;
                 }
 
@@ -80,7 +80,7 @@ define(function (require, exports, module) {
                         fs.renameSync(dirName, appName);
 
                         //Clean up temp area.
-                        file.rmdir(tempDirName);
+                        file.rm(tempDirName);
 
                         return undefined;
                     } else {
