@@ -39,7 +39,7 @@ define(function (require) {
                         gzd.resolve();
                     });
 
-                    return gzd;
+                    return gzd.promise;
                 }
                 return undefined;
             }).then(function () {

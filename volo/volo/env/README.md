@@ -55,7 +55,9 @@ Then in the Reader constructor, for the switch case, did this change:
       break
   }
 
-  ClassType = require('./' + impl)
+  if (impl) {
+    ClassType = require('./' + impl)
+  }
 
   if (!(me instanceof ClassType)) {
     return new ClassType(props)
@@ -93,7 +95,9 @@ Then in the Writer constructor, for the switch case, did this change:
       break
   }
 
-  ClassType = require('./' + impl)
+  if (impl) {
+    ClassType = require('./' + impl)
+  }
 
 ## tar/lib/entry-writer.js
 
