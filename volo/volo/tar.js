@@ -9,39 +9,47 @@
 /*global define, console */
 
 define(function (require) {
-    var exec = require('child_process').exec,
-        path = require('path'),
+    var fs = require('fs'),
         qutil = require('volo/qutil'),
+        q = require('q'),
+        zlib = require('zlib'),
+        extract = require('./env/tar').Extract,
         gzRegExp = /\.gz$/,
         tar;
 
     tar = {
         untar: function (fileName, callback, errback) {
+            var outName = fileName.replace(/\.tar(\.gz)?$/, ''),
+                d = qutil.convert(callback, errback);
 
-            var flags = 'xf',
-                dirName = path.dirname(fileName),
-                d = qutil.convert(callback, errback),
-                command;
+            q.call(function () {
+                //If a .gz file add z to the flags.
+                if (gzRegExp.test(fileName)) {
+                    var gzd = q.defer(),
+                        unzippedName = fileName.replace(/\.gz$/, ''),
+                        gunzip = zlib.createGzip(),
+                        inStream = fs.createReadStream(fileName),
+                        outStream = fs.createWriteStream(unzippedName);
 
-            //If a .gz file add z to the flags.
-            if (gzRegExp.test(fileName)) {
-                flags = 'z' + flags;
-            }
+                    inStream.pipe(gunzip).pipe(outStream);
 
-            command = 'tar -' + flags + ' ' + fileName;
-            if (dirName) {
-                command += ' -C ' + dirName;
-            }
+                    outStream.on('error', gzd.reject);
+                    outStream.on('close', function () {
+                        fileName = unzippedName;
+                        gzd.resolve();
+                    });
 
-            exec(command,
-                function (error, stdout, stderr) {
-                    if (error) {
-                        d.reject(error);
-                    } else {
-                        d.resolve();
-                    }
+                    return gzd;
                 }
-            );
+                return undefined;
+            }).then(function () {
+                //Extract the tar file.
+                fs.createReadStream(fileName)
+                    .pipe(extract({ path: outName }))
+                    .on("error", d.reject)
+                    .on("end", d.resolve);
+            })
+            .fail(d.reject);
 
             return d.promise;
         }
