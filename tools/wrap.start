@@ -7,3 +7,6 @@
  */
 
 var voloVersion = '0.0.4+';
+
+//Wipe out the exports object since some node-converted modules look for it.
+var exports = undefined;

@@ -22,25 +22,9 @@ define(function (require, exports, module) {
         file = require('volo/file'),
         tempDir = require('volo/tempDir'),
         amdify = require('amdify'),
+        makeMainAmdAdapter = amdify.util.makeMainAmdAdapter,
         jsRegExp = /\.js$/,
         add;
-
-    function makeMainAmdAdapter(mainValue, localName, targetFileName) {
-        //Trim off any leading dot and file
-        //extension, if they exist.
-        var mainName = mainValue
-                       .replace(/^\.\//, '')
-                       .replace(/\.js$/, ''),
-        contents;
-
-        //Add in adapter module for AMD code
-        contents = "define(['" + localName + "/" + mainName +
-                   "'], function (main) {\n" +
-                    "    return main;\n" +
-                    "});";
-
-        fs.writeFileSync(targetFileName, contents, 'utf8');
-    }
 
     add = {
         summary: 'Add code to your project.',
@@ -224,14 +208,7 @@ define(function (require, exports, module) {
 
                                 //If directory, remove common directories not
                                 //needed for install.
-                                if (myConfig.discard) {
-                                    fs.readdirSync(targetName).forEach(
-                                        function (name) {
-                                        if (myConfig.discard[name]) {
-                                            file.rm(path.join(targetName, name));
-                                        }
-                                    });
-                                }
+                                add.util.discard(targetName);
 
                                 if (info.data.main && isAmdProject) {
                                     makeMainAmdAdapter(info.data.main,
@@ -357,6 +334,20 @@ define(function (require, exports, module) {
 
                 return undefined;
             }, deferred.reject);
+        },
+        util: {
+            //Discards certain directories based on the config for the add
+            //comand.
+            discard: function (dir) {
+                if (myConfig.discard) {
+                    fs.readdirSync(dir).forEach(
+                        function (name) {
+                        if (myConfig.discard[name]) {
+                            file.rm(path.join(dir, name));
+                        }
+                    });
+                }
+            }
         }
     };
 

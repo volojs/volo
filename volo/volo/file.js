@@ -16,22 +16,24 @@ define(function (require) {
             var files = fs.readdirSync(dir);
             files.forEach(function (filePath) {
                 filePath = path.join(dir, filePath);
-                var stat = fs.statSync(filePath),
-                    ok = false;
-                if (stat.isFile()) {
-                    ok = true;
-                    if (regExpInclude) {
-                        ok = filePath.match(regExpInclude);
-                    }
-                    if (ok && regExpExclude) {
-                        ok = !filePath.match(regExpExclude);
-                    }
+                if (path.existsSync(filePath)) {
+                    var stat = fs.statSync(filePath),
+                        ok = false;
+                    if (stat.isFile()) {
+                        ok = true;
+                        if (regExpInclude) {
+                            ok = filePath.match(regExpInclude);
+                        }
+                        if (ok && regExpExclude) {
+                            ok = !filePath.match(regExpExclude);
+                        }
 
-                    if (ok) {
-                        matches.push(filePath);
+                        if (ok) {
+                            matches.push(filePath);
+                        }
+                    } else if (stat.isDirectory() && !dirRegExpExclude.test(filePath)) {
+                        findMatches(matches, filePath, regExpInclude, regExpExclude, dirRegExpExclude);
                     }
-                } else if (stat.isDirectory() && !dirRegExpExclude.test(filePath)) {
-                    findMatches(matches, filePath, regExpInclude, regExpExclude, dirRegExpExclude);
                 }
             });
         }

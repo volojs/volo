@@ -1,13 +1,17 @@
 ({
     baseUrl: '../volo',
     paths: {
+        'assert': 'empty:',
+        'child_process': 'empty:',
+        'constants': 'empty:',
         'fs': 'empty:',
-        'path': 'empty:',
-        'url': 'empty:',
         'http': 'empty:',
         'https': 'empty:',
-        'child_process': 'empty:',
-        'readline': 'empty:'
+        'path': 'empty:',
+        'readline': 'empty:',
+        'stream': 'empty:',
+        'url': 'empty:',
+        'zlib': 'empty:'
     },
     name: '../tools/require',
     optimize: 'none',
@@ -25,6 +29,7 @@
         'create',
         'add',
         'amdify',
+        'npmrel',
 
         //Leave this one last, see r.js issue #70
         'text'

@@ -79,6 +79,23 @@ define(function (require, exports, module) {
         },
 
         util: {
+            makeMainAmdAdapter: function (mainValue, localName, targetFileName) {
+                //Trim off any leading dot and file
+                //extension, if they exist.
+                var mainName = mainValue
+                               .replace(/^\.\//, '')
+                               .replace(/\.js$/, ''),
+                contents;
+
+                //Add in adapter module for AMD code
+                contents = "define(['" + localName + "/" + mainName +
+                           "'], function (main) {\n" +
+                            "    return main;\n" +
+                            "});";
+
+                fs.writeFileSync(targetFileName, contents, 'utf8');
+            },
+
             convert: function (target, depends, exports, noConflict) {
                 var contents = fs.readFileSync(target, 'utf8'),
                     prelude = '',
