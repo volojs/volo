@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
 /**
- * @license volo 0.0.4+ Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
+ * @license volo 0.0.5 Copyright (c) 2012, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
  * see: http://github.com/volojs/volo for details
  */
 
-var voloVersion = '0.0.4+';
+var voloVersion = '0.0.5';
 
 //Wipe out the exports object since some node-converted modules look for it.
 var exports = undefined;
@@ -2511,17 +2511,23 @@ define('volo/config',['require','fs','path','./lang','./baseUrl'],function (requ
             }
         },
 
-        "volo/add": {
-            "discard": {
-                ".gitignore": true,
-                "test": true,
-                "tests": true,
-                "doc": true,
-                "docs": true,
-                "example": true,
-                "examples": true,
-                "demo": true,
-                "demos": true
+        "command": {
+            "add": {
+                "discard": {
+                    ".gitignore": true,
+                    "test": true,
+                    "tests": true,
+                    "doc": true,
+                    "docs": true,
+                    "example": true,
+                    "examples": true,
+                    "demo": true,
+                    "demos": true
+                }
+            },
+
+            "rejuvenate":  {
+                archive: 'volojs/volo#dist/volo'
             }
         }
     };
@@ -3762,6 +3768,7 @@ define('volo/resolve/github',['require','path','../config','../archive','../gith
         github.latestTag(ownerPlusRepo + (version ? '/' + version : ''))
             .then(function (tag) {
                 var isArchive = true,
+                    isSingleFile = false,
                     url;
 
                 //If there is a specific override to finding the file,
@@ -3783,6 +3790,7 @@ define('volo/resolve/github',['require','path','../config','../archive','../gith
 
                     //Set fragment to null since it has already been processed.
                     fragment = null;
+                    isSingleFile = true;
 
                     isArchive = archive.isArchive(url);
                 } else {
@@ -3793,6 +3801,7 @@ define('volo/resolve/github',['require','path','../config','../archive','../gith
                     scheme: 'github',
                     url: url,
                     isArchive: isArchive,
+                    isSingleFile: isSingleFile,
                     fragment: fragment,
                     localName: localName
                 };
@@ -4336,7 +4345,7 @@ define('help',['require','exports','module','volo/commands','volo/commands'],fun
     help = {
         summary: 'Gives more detailed help on a volo command.',
 
-        doc: '##Usage\n\n    volo.js help commandName',
+        doc: '##Usage\n\n    volo help commandName',
 
         validate: function (namedArgs, commandName) {
             if (!commandName) {
@@ -4464,7 +4473,8 @@ define('volo/download',['require','https','http','fs','url','volo/qutil','volo/f
                             //Redirect, try the new location
                             d.resolve(download(response.headers.location, path));
                         } else {
-                            d.resolve(response);
+                            d.reject(new Error('Download failed, HTTP code: ' +
+                                               response.statusCode + ': ' + url));
                         }
                     } catch (e) {
                         d.reject(e);
@@ -9482,7 +9492,7 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
         path = require('path'),
         q = require('q'),
         config = require('volo/config'),
-        myConfig = config['volo/add'],
+        myConfig = config.command.add,
         archive = require('volo/archive'),
         download = require('volo/download'),
         packageJson = require('volo/packageJson'),
@@ -9592,6 +9602,7 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
                         //Find the directory that was unpacked in tempDirName
                         var dirName = file.firstDir(tempDirName),
                             completeMessage = '',
+                            ext = '',
                             info, sourceName, targetName,
                             listing, defaultName, mainFile, mainContents, deps;
 
@@ -9627,6 +9638,7 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
                                 if (listing.length === 1) {
                                     sourceName = path.join(dirName, listing[0]);
                                     defaultName = listing[0];
+                                    ext = path.extname(sourceName);
                                 } else {
                                     //packagJson will look for one top level .js
                                     //file, and if so, and has package data via
@@ -9650,8 +9662,7 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
                                 //Just move the single file into position.
                                 if (specificLocalName) {
                                     targetName = path.join(baseUrl,
-                                                           specificLocalName +
-                                                           '.js');
+                                                           specificLocalName + ext);
                                 } else {
                                     targetName = path.join(baseUrl, defaultName);
                                 }
@@ -9756,13 +9767,21 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
 
                     var url = archiveInfo.url,
                         localName = archiveInfo.finalLocalName,
-                        lastDotIndex = url.lastIndexOf('.'),
+                        index, lastDotIndex, urlBaseName,
                         ext, urlDir, tarName, downloadTarget, downloadPath;
+
+                    //Find extension, but only take the last part of path for it.
+                    index = url.lastIndexOf('/');
+                    if (index === -1) {
+                        index = 0;
+                    }
+                    urlBaseName = url.substring(index, url.length);
+                    lastDotIndex = urlBaseName.lastIndexOf('.');
 
                     if (archiveInfo.isArchive) {
                         ext = '.tar.gz';
                     } else if (lastDotIndex !== -1) {
-                        ext = url.substring(lastDotIndex, url.length);
+                        ext = urlBaseName.substring(lastDotIndex, urlBaseName.length);
                     }
 
                     downloadTarget = localName + (ext || '');
@@ -9779,7 +9798,7 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
                             }, errCleanUp);
                         }, errCleanUp);
                     } else {
-                        if (ext) {
+                        if (archiveInfo.isSingleFile) {
                             //Single file install.
                             //Create a directory inside tempDirName to receive the
                             //file, since the tarball path has a similar setup.
@@ -9853,7 +9872,7 @@ define('acquire',['require','exports','module','fs','q','path','add','volo/baseU
         },
 
         run: function (deferred, v, namedArgs, packageName, localName) {
-            //Create a 'volo' directory as a sibling to the volo.js file
+            //Create a 'vololib' directory as a sibling to the volo file
             var targetDir = baseUrl,
                 cwd = process.cwd(),
                 d = q.defer(),
@@ -9902,14 +9921,16 @@ define('acquire',['require','exports','module','fs','q','path','add','volo/baseU
 /*jslint */
 /*global define, console, process */
 
-define('rejuvenate',['require','exports','module','q','path','add','text!./rejuvenate/doc.md','volo/commands'],function (require, exports, module) {
+define('rejuvenate',['require','exports','module','q','path','add','volo/baseUrl','volo/config','text!./rejuvenate/doc.md','volo/commands'],function (require, exports, module) {
     var q = require('q'),
         path = require('path'),
         add = require('add'),
+        baseUrl = require('volo/baseUrl'),
+        config = require('volo/config').command.rejuvenate,
         rejuvenate;
 
     rejuvenate = {
-        summary: 'Updates volo.js to latest version.',
+        summary: 'Updates volo to latest version.',
 
         doc: require('text!./rejuvenate/doc.md'),
 
@@ -9918,16 +9939,15 @@ define('rejuvenate',['require','exports','module','q','path','add','text!./rejuv
         validate: function (namedArgs) {},
 
         run: function (deferred, v, namedArgs, from) {
-            //Create a 'volo' directory as a sibling to the volo.js file
-            var execName = process.argv[1],
-                dirName = path.dirname(execName),
-                baseName = path.basename(execName, '.js'),
+            //Create a 'vololib' directory as a sibling to the volo file
+            var dirName = path.dirname(baseUrl),
+                baseName = path.basename(process.argv[1]),
                 cwd = process.cwd(),
                 d = q.defer();
 
-            from = from || 'volojs/volo#dist/volo.js';
+            from = from || config.archive;
 
-            //Change directory to the one holding volo.js
+            //Change directory to the one holding volo
             process.chdir(dirName);
 
             function finish(result) {
@@ -9938,11 +9958,11 @@ define('rejuvenate',['require','exports','module','q','path','add','text!./rejuv
             //work even though volo.js exists.
             namedArgs.force = true;
 
-            add.run(d, namedArgs, from, baseName);
+            add.run(d, v, namedArgs, from, baseName);
 
             q.when(d.promise, function (result) {
                 finish();
-                deferred.resolve(result + '\n' + baseName + '.js has been updated!');
+                deferred.resolve(result + '\n' + baseName + ' has been updated!');
             }, function (err) {
                 finish();
                 deferred.reject(err);
@@ -10122,10 +10142,10 @@ requirejs(['volo/main']);
 
 //Light it up! This call is separate because if main
 //is called as part of first requirejs() call, all of
-//the commands that are built into volo.js may not have
+//the commands that are built into volo may not have
 //been registered yet.
 requirejs(['volo/main'], function (main) {
-    //First two args are 'node' and 'volo.js'
+    //First two args are 'node' and 'volo'
     var args = process.argv.slice(2);
 
     main(args, function (message) {
