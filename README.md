@@ -26,7 +26,7 @@ Windows? Help out with [issue #1](https://github.com/volojs/volo/issues/1).
 
 ## Install
 
-The latest release is 0.0.4, but you can use the **latest** tag to always get
+The latest release is 0.0.5, but you can use the **latest** tag to always get
 the latest release:
 
     > curl https://raw.github.com/volojs/volo/latest/dist/volo > volo
