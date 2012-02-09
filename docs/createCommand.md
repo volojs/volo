@@ -1,6 +1,6 @@
 # Creating a volo command
 
-    > volo.js create yourcommand volojs/create-command-template
+    > volo create yourcommand volojs/create-command-template
     > cd yourcommand
 
 yourcommand/main.js is where the command is implemented.
@@ -8,11 +8,11 @@ yourcommand/main.js is where the command is implemented.
 See
 [create-command-template's README.md](https://github.com/volojs/create-command-template)
 for instructions on how to create a symlink to your command so you can develop
-it and test it with volo.js.
+it and test it with volo.
 
 Once it is done, put it up on GitHub. People can install it by doing:
 
-    > volo.js acquire yourGitHubUserName/yourcommand
+    > volo acquire yourGitHubUserName/yourcommand
 
 ## Implementation details
 
@@ -25,17 +25,17 @@ is available to load text into your command. This is how the expanded help doc
 for your command is loaded.
 
 You also have access to any of the modules shipped as part
-of volo.js.
+of volo.
 
 One of those modules is the [q promise library](https://github.com/kriskowal/q)
 if you would like to use promises in your command. It is not a
 requirement to use promises in your command though.
 
 See [this directory](https://github.com/volojs/volo/tree/master/volo) for the
-commands that ship with volo.js for inspiration on how to code a command.
+commands that ship with volo for inspiration on how to code a command.
 
 See [this directory](https://github.com/volojs/volo/tree/master/volo/volo) for
 a list of utility modules that ship with volo.
 
-The API for commands and the modules included in volo.js are likely to change
+The API for commands and the modules included in volo are likely to change
 frequently since volo is a new project.

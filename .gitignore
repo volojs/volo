@@ -1,5 +1,5 @@
 .DS_Store
-/volo.js
+/volo
 tests/commands/amdify/output
 tests/commands/create/output
 tests/commands/volofile/output

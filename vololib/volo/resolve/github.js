@@ -30,6 +30,7 @@ define(function (require) {
         github.latestTag(ownerPlusRepo + (version ? '/' + version : ''))
             .then(function (tag) {
                 var isArchive = true,
+                    isSingleFile = false,
                     url;
 
                 //If there is a specific override to finding the file,
@@ -51,6 +52,7 @@ define(function (require) {
 
                     //Set fragment to null since it has already been processed.
                     fragment = null;
+                    isSingleFile = true;
 
                     isArchive = archive.isArchive(url);
                 } else {
@@ -61,6 +63,7 @@ define(function (require) {
                     scheme: 'github',
                     url: url,
                     isArchive: isArchive,
+                    isSingleFile: isSingleFile,
                     fragment: fragment,
                     localName: localName
                 };

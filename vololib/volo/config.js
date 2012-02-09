@@ -38,17 +38,23 @@ define(function (require) {
             }
         },
 
-        "volo/add": {
-            "discard": {
-                ".gitignore": true,
-                "test": true,
-                "tests": true,
-                "doc": true,
-                "docs": true,
-                "example": true,
-                "examples": true,
-                "demo": true,
-                "demos": true
+        "command": {
+            "add": {
+                "discard": {
+                    ".gitignore": true,
+                    "test": true,
+                    "tests": true,
+                    "doc": true,
+                    "docs": true,
+                    "example": true,
+                    "examples": true,
+                    "demo": true,
+                    "demos": true
+                }
+            },
+
+            "rejuvenate":  {
+                archive: 'volojs/volo#dist/volo'
             }
         }
     };

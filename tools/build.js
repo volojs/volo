@@ -1,5 +1,5 @@
 ({
-    baseUrl: '../volo',
+    baseUrl: '../vololib',
     paths: {
         'assert': 'empty:',
         'child_process': 'empty:',
@@ -38,5 +38,5 @@
         startFile: "wrap.start",
         endFile: "wrap.end"
     },
-    out: '../volo.js'
+    out: '../volo'
 })

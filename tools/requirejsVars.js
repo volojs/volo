@@ -16,7 +16,9 @@ requirejs.nodeRequire = require;
 (function () {
     var path = require('path'),
         vpath = typeof voloPath === 'undefined' ? process.argv[1] : voloPath,
-        name = path.basename(vpath, '.js'),
+        //Get the script name, and if it ends in .js strip off the .js,
+        //and add a 'lib' suffix
+        name = path.basename(vpath).replace(/\.js$/, '') + 'lib',
         baseUrl = path.join(path.dirname(vpath), name);
 
     requirejs.config({

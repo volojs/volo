@@ -13,6 +13,7 @@ define(function (require, exports, module) {
         q = require('q'),
         path = require('path'),
         add = require('add'),
+        baseUrl = require('volo/baseUrl'),
         acquire;
 
     acquire = {
@@ -27,11 +28,8 @@ define(function (require, exports, module) {
         },
 
         run: function (deferred, v, namedArgs, packageName, localName) {
-            //Create a 'volo' directory as a sibling to the volo.js file
-            var execName = process.argv[1],
-                dirName = path.dirname(execName),
-                baseName = path.basename(execName, '.js'),
-                targetDir = path.join(dirName, baseName),
+            //Create a 'vololib' directory as a sibling to the volo file
+            var targetDir = baseUrl,
                 cwd = process.cwd(),
                 d = q.defer(),
                 args = [].slice.call(arguments, 0);
@@ -61,7 +59,7 @@ define(function (require, exports, module) {
                 deferred.resolve(result + '\nNew volo command aquired!');
             }, function (err) {
                 finish();
-                deferred.reject(err + message);
+                deferred.reject(err);
             });
         }
     };

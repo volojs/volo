@@ -17,9 +17,9 @@ info generally applies to volo too.
 
 ## Building the code
 
-volo.js is made up of a series of AMD modules that are built into one file
-using the RequireJS optimizer. To build volo.js, use the following command:
+volo is made up of a series of AMD modules that are built into one file
+using the RequireJS optimizer. To build volo, use the following command:
 
     > node tools/r.js -o tools/build.js
 
-That will generate a volo.js file in the top level directory for the project.
+That will generate a volo file in the top level directory for the project.

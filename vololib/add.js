@@ -13,7 +13,7 @@ define(function (require, exports, module) {
         path = require('path'),
         q = require('q'),
         config = require('volo/config'),
-        myConfig = config['volo/add'],
+        myConfig = config.command.add,
         archive = require('volo/archive'),
         download = require('volo/download'),
         packageJson = require('volo/packageJson'),
@@ -123,6 +123,7 @@ define(function (require, exports, module) {
                         //Find the directory that was unpacked in tempDirName
                         var dirName = file.firstDir(tempDirName),
                             completeMessage = '',
+                            ext = '',
                             info, sourceName, targetName,
                             listing, defaultName, mainFile, mainContents, deps;
 
@@ -158,6 +159,7 @@ define(function (require, exports, module) {
                                 if (listing.length === 1) {
                                     sourceName = path.join(dirName, listing[0]);
                                     defaultName = listing[0];
+                                    ext = path.extname(sourceName);
                                 } else {
                                     //packagJson will look for one top level .js
                                     //file, and if so, and has package data via
@@ -181,8 +183,7 @@ define(function (require, exports, module) {
                                 //Just move the single file into position.
                                 if (specificLocalName) {
                                     targetName = path.join(baseUrl,
-                                                           specificLocalName +
-                                                           '.js');
+                                                           specificLocalName + ext);
                                 } else {
                                     targetName = path.join(baseUrl, defaultName);
                                 }
@@ -287,13 +288,21 @@ define(function (require, exports, module) {
 
                     var url = archiveInfo.url,
                         localName = archiveInfo.finalLocalName,
-                        lastDotIndex = url.lastIndexOf('.'),
+                        index, lastDotIndex, urlBaseName,
                         ext, urlDir, tarName, downloadTarget, downloadPath;
+
+                    //Find extension, but only take the last part of path for it.
+                    index = url.lastIndexOf('/');
+                    if (index === -1) {
+                        index = 0;
+                    }
+                    urlBaseName = url.substring(index, url.length);
+                    lastDotIndex = urlBaseName.lastIndexOf('.');
 
                     if (archiveInfo.isArchive) {
                         ext = '.tar.gz';
                     } else if (lastDotIndex !== -1) {
-                        ext = url.substring(lastDotIndex, url.length);
+                        ext = urlBaseName.substring(lastDotIndex, urlBaseName.length);
                     }
 
                     downloadTarget = localName + (ext || '');
@@ -310,7 +319,7 @@ define(function (require, exports, module) {
                             }, errCleanUp);
                         }, errCleanUp);
                     } else {
-                        if (ext) {
+                        if (archiveInfo.isSingleFile) {
                             //Single file install.
                             //Create a directory inside tempDirName to receive the
                             //file, since the tarball path has a similar setup.

@@ -16,7 +16,7 @@ var vm = require('vm'),
     //Set voloPath, used to set up volo/baseUrl and used in volo/config
     //If this is not set, then the all.js location is used, which is not
     //desirable.
-    voloPath = path.resolve(path.join('..', 'volo.js')),
+    voloPath = path.resolve(path.join('..', 'volo')),
     nodeRequire = require,
     //Special global flag used by DOH.
     skipDohSetup = true,

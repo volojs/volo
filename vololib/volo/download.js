@@ -56,7 +56,8 @@ define(function (require) {
                             //Redirect, try the new location
                             d.resolve(download(response.headers.location, path));
                         } else {
-                            d.resolve(response);
+                            d.reject(new Error('Download failed, HTTP code: ' +
+                                               response.statusCode + ': ' + url));
                         }
                     } catch (e) {
                         d.reject(e);

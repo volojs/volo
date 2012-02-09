@@ -2084,7 +2084,9 @@ requirejs.nodeRequire = require;
 (function () {
     var path = require('path'),
         vpath = typeof voloPath === 'undefined' ? process.argv[1] : voloPath,
-        name = path.basename(vpath, '.js'),
+        //Get the script name, and if it ends in .js strip off the .js,
+        //and add a 'lib' suffix
+        name = path.basename(vpath).replace(/\.js$/, '') + 'lib',
         baseUrl = path.join(path.dirname(vpath), name);
 
     requirejs.config({
@@ -9831,11 +9833,12 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
 /*jslint */
 /*global define, console, process */
 
-define('acquire',['require','exports','module','fs','q','path','add','text!./acquire/doc.md','volo/commands'],function (require, exports, module) {
+define('acquire',['require','exports','module','fs','q','path','add','volo/baseUrl','text!./acquire/doc.md','volo/commands'],function (require, exports, module) {
     var fs = require('fs'),
         q = require('q'),
         path = require('path'),
         add = require('add'),
+        baseUrl = require('volo/baseUrl'),
         acquire;
 
     acquire = {
@@ -9851,10 +9854,7 @@ define('acquire',['require','exports','module','fs','q','path','add','text!./acq
 
         run: function (deferred, v, namedArgs, packageName, localName) {
             //Create a 'volo' directory as a sibling to the volo.js file
-            var execName = process.argv[1],
-                dirName = path.dirname(execName),
-                baseName = path.basename(execName, '.js'),
-                targetDir = path.join(dirName, baseName),
+            var targetDir = baseUrl,
                 cwd = process.cwd(),
                 d = q.defer(),
                 args = [].slice.call(arguments, 0);
@@ -9884,7 +9884,7 @@ define('acquire',['require','exports','module','fs','q','path','add','text!./acq
                 deferred.resolve(result + '\nNew volo command aquired!');
             }, function (err) {
                 finish();
-                deferred.reject(err + message);
+                deferred.reject(err);
             });
         }
     };

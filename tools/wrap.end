@@ -4,10 +4,10 @@ requirejs(['volo/main']);
 
 //Light it up! This call is separate because if main
 //is called as part of first requirejs() call, all of
-//the commands that are built into volo.js may not have
+//the commands that are built into volo may not have
 //been registered yet.
 requirejs(['volo/main'], function (main) {
-    //First two args are 'node' and 'volo.js'
+    //First two args are 'node' and 'volo'
     var args = process.argv.slice(2);
 
     main(args, function (message) {
