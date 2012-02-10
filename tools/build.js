@@ -2,6 +2,7 @@
     baseUrl: '../vololib',
     paths: {
         'assert': 'empty:',
+        'buffer': 'empty:',
         'child_process': 'empty:',
         'constants': 'empty:',
         'fs': 'empty:',

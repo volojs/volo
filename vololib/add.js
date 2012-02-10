@@ -18,7 +18,7 @@ define(function (require, exports, module) {
         download = require('volo/download'),
         packageJson = require('volo/packageJson'),
         parse = require('volo/parse'),
-        tar = require('volo/tar'),
+        unzip = require('volo/unzip'),
         file = require('volo/file'),
         tempDir = require('volo/tempDir'),
         amdify = require('amdify'),
@@ -250,7 +250,7 @@ define(function (require, exports, module) {
                                 deferred.resolve(completeMessage);
                             }, deferred.reject);
                         } else {
-                            errCleanUp('Unexpected tarball configuration');
+                            errCleanUp('Unexpected zipball configuration');
                         }
                     } catch (e) {
                         errCleanUp(e);
@@ -289,7 +289,7 @@ define(function (require, exports, module) {
                     var url = archiveInfo.url,
                         localName = archiveInfo.finalLocalName,
                         index, lastDotIndex, urlBaseName,
-                        ext, urlDir, tarName, downloadTarget, downloadPath;
+                        ext, urlDir, zipName, downloadTarget, downloadPath;
 
                     //Find extension, but only take the last part of path for it.
                     index = url.lastIndexOf('/');
@@ -300,7 +300,7 @@ define(function (require, exports, module) {
                     lastDotIndex = urlBaseName.lastIndexOf('.');
 
                     if (archiveInfo.isArchive) {
-                        ext = '.tar.gz';
+                        ext = '.zip';
                     } else if (lastDotIndex !== -1) {
                         ext = urlBaseName.substring(lastDotIndex, urlBaseName.length);
                     }
@@ -312,9 +312,9 @@ define(function (require, exports, module) {
                             function (filePath) {
 
                             //Unpack the zip file.
-                            tarName = path.join(tempDirName, localName +
-                                                '.tar.gz');
-                            tar.untar(tarName, function () {
+                            zipName = path.join(tempDirName, localName +
+                                                '.zip');
+                            unzip(zipName, function () {
                                 moveFromTemp();
                             }, errCleanUp);
                         }, errCleanUp);
@@ -322,7 +322,7 @@ define(function (require, exports, module) {
                         if (archiveInfo.isSingleFile) {
                             //Single file install.
                             //Create a directory inside tempDirName to receive the
-                            //file, since the tarball path has a similar setup.
+                            //file, since the zipball path has a similar setup.
                             urlDir = path.join(tempDirName, 'download');
                             fs.mkdirSync(urlDir);
                             downloadPath = path.join(urlDir, downloadTarget);

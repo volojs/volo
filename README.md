@@ -21,8 +21,6 @@ easy to try out and discard.
 ### Prerequisites
 
 * Node 0.6.5 or later installed.
-* Probably does not work on Windows (needs tar and gzip). Want it to work on
-Windows? Help out with [issue #1](https://github.com/volojs/volo/issues/1).
 
 ## Install
 
@@ -106,7 +104,7 @@ use Backbone and underscore (the Boilerplate already has jQuery):
 
 * [Design goals](https://github.com/volojs/volo/blob/master/docs/designGoals.md)
 * [Create a volo command](https://github.com/volojs/volo/blob/master/docs/createCommand.md)
-* License: [MIT and new BSD](https://github.com/volojs/volo/blob/master/LICENSE)
+* License: [MIT and new BSD](https://github.com/volojs/volo/blob/master/LICENSE).
 
 ## Engage
 

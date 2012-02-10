@@ -16,7 +16,7 @@ define(function (require, exports, module) {
         archive = require('volo/archive'),
         file = require('volo/file'),
         download = require('volo/download'),
-        tar = require('volo/tar'),
+        unzip = require('volo/unzip'),
         volofile = require('volo/volofile'),
         create;
 
@@ -50,7 +50,7 @@ define(function (require, exports, module) {
             })
             //Download and unpack the template.
             .then(function (tempDirName) {
-                var tarFileName = path.join(tempDirName, 'template.tar.gz'),
+                var zipFileName = path.join(tempDirName, 'template.zip'),
                     step;
 
                 //Function used to clean up in case of errors.
@@ -61,19 +61,19 @@ define(function (require, exports, module) {
 
                 //Download
                 step = q.call(function () {
-                    return download(archiveInfo.url, tarFileName);
+                    return download(archiveInfo.url, zipFileName);
                 }, errCleanUp);
 
                 //If an archive unpack it.
                 if (archiveInfo.isArchive) {
                     step = step.then(function () {
-                        return tar.untar(tarFileName);
+                        return unzip(zipFileName);
                     }, errCleanUp);
                 }
 
                 //Move the contents to the final destination.
                 step = step.then(function () {
-                    //Move the untarred directory to the final location.
+                    //Move the unzipped directory to the final location.
                     var dirName = file.firstDir(tempDirName);
                     if (dirName) {
                         //Move the unpacked template to appName
@@ -84,7 +84,7 @@ define(function (require, exports, module) {
 
                         return undefined;
                     } else {
-                        return errCleanUp(new Error('Unexpected tarball configuration'));
+                        return errCleanUp(new Error('Unexpected zipball configuration'));
                     }
                 }, errCleanUp)
 

@@ -76,6 +76,10 @@ define(function (require) {
         return github.url(ownerPlusRepo) + '/tarball/' + version;
     };
 
+    github.zipballUrl = function (ownerPlusRepo, version) {
+        return github.url(ownerPlusRepo) + '/zipball/' + version;
+    };
+
     github.tags = function (ownerPlusRepo) {
         return github('repos/' + ownerPlusRepo + '/tags').then(function (data) {
             data = data.map(function (data) {

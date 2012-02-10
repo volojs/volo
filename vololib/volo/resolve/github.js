@@ -38,7 +38,7 @@ define(function (require) {
                 //committed to github, use the override.
                 if (fragment || (override && override.pattern)) {
                     //If a specific file in the repo. Do not need the full
-                    //tarball, just use a raw github url to get it.
+                    //zipball, just use a raw github url to get it.
                     if (fragment) {
                         url = github.rawUrl(ownerPlusRepo, tag, fragment);
                         //Adjust local name to be the fragment name.
@@ -56,7 +56,7 @@ define(function (require) {
 
                     isArchive = archive.isArchive(url);
                 } else {
-                    url = github.tarballUrl(ownerPlusRepo, tag);
+                    url = github.zipballUrl(ownerPlusRepo, tag);
                 }
 
                 return {

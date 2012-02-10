@@ -4,11 +4,12 @@
  * see: http://github.com/volojs/volo for details
  */
 
-'use strict';
 /*jslint plusplus: false */
-/*global define, console */
+/*global console */
 
 define(function (require) {
+    'use strict';
+
     var https = require('https'),
         http = require('http'),
         fs = require('fs'),
@@ -43,13 +44,9 @@ define(function (require) {
 
                             console.log('Downloading: ' + url);
 
-                            //Bingo, do the download.
-                            response.on('data', function (data) {
-                                writeStream.write(data);
-                            });
+                            response.pipe(writeStream);
 
                             response.on('end', function () {
-                                writeStream.end();
                                 d.resolve(path);
                             });
                         } else if (response.statusCode === 302) {
