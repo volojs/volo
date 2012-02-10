@@ -4,11 +4,12 @@
  * see: http://github.com/volojs/volo for details
  */
 
-'use strict';
 /*jslint */
 /*global define, console, process */
 
 define(function (require, exports, module) {
+    'use strict';
+
     var fs = require('fs'),
         path = require('path'),
         q = require('q'),
@@ -37,7 +38,15 @@ define(function (require, exports, module) {
         run: function (deferred, v, namedArgs, appName, template) {
             template = template || 'volojs/create-template';
 
-            var archiveInfo;
+            var archiveInfo, tempDirName, zipFileName;
+
+            //Function used to clean up in case of errors.
+            function errCleanUp(err) {
+                if (tempDirName) {
+                    file.rm(tempDirName);
+                }
+                return err;
+            }
 
             //Find out how to get the template
             deferred.resolve(q.call(function () {
@@ -48,57 +57,39 @@ define(function (require, exports, module) {
                 archiveInfo = info;
                 return tempDir.create(template);
             })
-            //Download and unpack the template.
-            .then(function (tempDirName) {
-                var zipFileName = path.join(tempDirName, 'template.zip'),
-                    step;
+            .then(function (tempName) {
+                //Save the name for the outer errCleanUp to use later.
+                tempDirName = tempName;
+                zipFileName = path.join(tempDirName, 'template.zip');
 
-                //Function used to clean up in case of errors.
-                function errCleanUp(err) {
-                    file.rm(tempDirName);
-                    return err;
-                }
-
-                //Download
-                step = q.call(function () {
-                    return download(archiveInfo.url, zipFileName);
-                }, errCleanUp);
-
-                //If an archive unpack it.
+                return download(archiveInfo.url, zipFileName);
+            }).then(function () {
                 if (archiveInfo.isArchive) {
-                    step = step.then(function () {
-                        return unzip(zipFileName);
-                    }, errCleanUp);
+                    return unzip(zipFileName);
                 }
+                return undefined;
+            }).then(function () {
+                //Move the unzipped directory to the final location.
+                var dirName = file.firstDir(tempDirName);
+                if (dirName) {
+                    //Move the unpacked template to appName
+                    fs.renameSync(dirName, appName);
 
-                //Move the contents to the final destination.
-                step = step.then(function () {
-                    //Move the unzipped directory to the final location.
-                    var dirName = file.firstDir(tempDirName);
-                    if (dirName) {
-                        //Move the unpacked template to appName
-                        fs.renameSync(dirName, appName);
+                    //Clean up temp area.
+                    file.rm(tempDirName);
 
-                        //Clean up temp area.
-                        file.rm(tempDirName);
-
-                        return undefined;
-                    } else {
-                        return errCleanUp(new Error('Unexpected zipball configuration'));
-                    }
-                }, errCleanUp)
-
+                    return undefined;
+                } else {
+                    return errCleanUp(new Error('Unexpected zipball configuration'));
+                }
+            }).then(function () {
                 //If there is a volofile with an onCreate, run it.
-                .then(function () {
-                    return volofile.run(appName, 'onCreate', namedArgs, appName);
-                })
-                .then(function (commandOutput) {
-                    return (commandOutput ? commandOutput : '') +
-                            archiveInfo.url + ' used to create ' + appName;
-                });
-
-                return step;
-            }));
+                return volofile.run(appName, 'onCreate', namedArgs, appName);
+            }).then(function (commandOutput) {
+                return (commandOutput || '') +
+                        archiveInfo.url + ' used to create ' + appName;
+            })
+            .fail(errCleanUp));
         }
     };
 

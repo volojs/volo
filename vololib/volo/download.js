@@ -44,14 +44,22 @@ define(function (require) {
 
                             console.log('Downloading: ' + url);
 
+                            //Pipe will automatically call writeStream's
+                            //end method.
                             response.pipe(writeStream);
 
+                            response.on('error', function (err) {
+                                d.reject(err);
+                            });
+
+                            //Write stream is done, so we can continue.
                             response.on('end', function () {
                                 d.resolve(path);
                             });
                         } else if (response.statusCode === 302) {
                             //Redirect, try the new location
-                            d.resolve(download(response.headers.location, path));
+                            download(response.headers.location, path)
+                                .then(d.resolve, d.reject);
                         } else {
                             d.reject(new Error('Download failed, HTTP code: ' +
                                                response.statusCode + ': ' + url));

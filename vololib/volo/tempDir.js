@@ -4,11 +4,12 @@
  * see: http://github.com/volojs/volo for details
  */
 
-'use strict';
 /*jslint */
 /*global define, console, process */
 
 define(function (require) {
+    'use strict';
+
     var path = require('path'),
         fs = require('fs'),
         file = require('./file'),
@@ -33,7 +34,7 @@ define(function (require) {
 
         createTempName: function (seed) {
             counter += 1;
-            return seed.replace(/[\/\:]/g, '-') + '-temp-' + counter;
+            return 'temp-' + seed.replace(/[\/\:]/g, '-') + '-' + counter;
         }
     };
 
