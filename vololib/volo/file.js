@@ -1,10 +1,13 @@
-'use strict';
-/*jslint plusplus: false */
-/*global define */
+/*jslint plusplus: true */
+/*global define, process */
 
 define(function (require) {
+    'use strict';
+
     var fs = require('fs'),
         path = require('path'),
+        qutil = require('./qutil'),
+        exec = require('child_process').exec,
         file;
 
     function frontSlash(path) {
@@ -123,6 +126,48 @@ define(function (require) {
             }
 
             return rm(dirOrFile);
+        },
+
+
+        /**
+        * Does a platform specific rm -rf on a directory. Like a boss.
+        * This ticket may explain why doing sync rm like file.rm does
+        * may not work on Windows:
+        * https://github.com/joyent/node/issues/2451
+        * and seems to explain an issue volo has on Windows when it tries
+        * to remove the temp directory created for the "create" task.
+        */
+        asyncPlatformRm: function (dir, callback, errback) {
+            var d = qutil.convert(callback, errback),
+                rmCommand = process.platform === 'win32' ?
+                            'rmdir /S /Q ' :
+                            'rm -rf ';
+
+            if (!dir) {
+                d.resolve();
+            }
+
+            dir = path.resolve(dir);
+
+            if (!path.existsSync(dir)) {
+                d.resolve();
+            }
+
+            if (dir === '/') {
+                d.reject(new Error('file.rmdir cannot handle /'));
+            }
+
+            exec(rmCommand + dir,
+                function (error, stdout, stderr) {
+                    if (error) {
+                        d.reject(error);
+                    } else {
+                        d.resolve();
+                    }
+                }
+            );
+
+            return d.promise;
         },
 
         /**

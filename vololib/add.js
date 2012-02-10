@@ -4,11 +4,13 @@
  * see: http://github.com/volojs/volo for details
  */
 
-'use strict';
+
 /*jslint */
 /*global define, console, process */
 
 define(function (require, exports, module) {
+'use strict';
+
     var fs = require('fs'),
         path = require('path'),
         q = require('q'),
@@ -112,7 +114,10 @@ define(function (require, exports, module) {
 
                 //Function used to clean up in case of errors.
                 function errCleanUp(err) {
-                    file.rm(tempDirName);
+                    //Clean up temp area. Even though this is async,
+                    //it is not important to track the completion.
+                    file.asyncPlatformRm(tempDirName);
+
                     deferred.reject(err);
                 }
 
@@ -232,7 +237,10 @@ define(function (require, exports, module) {
                                 return undefined;
                             }).then(function (amdMessage) {
                                 //All done.
-                                file.rm(tempDirName);
+                                //Clean up temp area. Even though this is async,
+                                //it is not important to track the completion.
+                                file.asyncPlatformRm(tempDirName);
+
                                 if (namedArgs.amdlog && amdMessage) {
                                     completeMessage += amdMessage + '\n';
                                 }

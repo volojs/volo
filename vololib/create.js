@@ -43,7 +43,9 @@ define(function (require, exports, module) {
             //Function used to clean up in case of errors.
             function errCleanUp(err) {
                 if (tempDirName) {
-                    file.rm(tempDirName);
+                    //Clean up temp area. Even though this is async,
+                    //it is not important to track the completion.
+                    file.asyncPlatformRm(tempDirName);
                 }
                 return err;
             }
@@ -75,8 +77,9 @@ define(function (require, exports, module) {
                     //Move the unpacked template to appName
                     fs.renameSync(dirName, appName);
 
-                    //Clean up temp area.
-                    file.rm(tempDirName);
+                    //Clean up temp area. Even though this is async,
+                    //it is not important to track the completion.
+                    file.asyncPlatformRm(tempDirName);
 
                     return undefined;
                 } else {
