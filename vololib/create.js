@@ -35,7 +35,7 @@ define(function (require, exports, module) {
             return undefined;
         },
 
-        run: function (deferred, v, namedArgs, appName, template) {
+        run: function (d, v, namedArgs, appName, template) {
             template = template || 'volojs/create-template';
 
             var archiveInfo, tempDirName, zipFileName;
@@ -49,7 +49,7 @@ define(function (require, exports, module) {
             }
 
             //Find out how to get the template
-            deferred.resolve(q.call(function () {
+            q.call(function () {
                 return archive.resolve(template, namedArgs.volo.resolve);
             })
             //Create a tempdir to store the archive.
@@ -89,7 +89,10 @@ define(function (require, exports, module) {
                 return (commandOutput || '') +
                         archiveInfo.url + ' used to create ' + appName;
             })
-            .fail(errCleanUp));
+            .then(d.resolve, function (err) {
+                errCleanUp(err);
+                d.reject(err);
+            });
         }
     };
 

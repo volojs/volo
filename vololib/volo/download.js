@@ -53,7 +53,7 @@ define(function (require) {
                             });
 
                             //Write stream is done, so we can continue.
-                            response.on('end', function () {
+                            writeStream.on('close', function () {
                                 d.resolve(path);
                             });
                         } else if (response.statusCode === 302) {
