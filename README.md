@@ -118,4 +118,3 @@ volo uses code from these projects:
 
 * [q](https://github.com/kriskowal/q)
 * [zip](https://github.com/kriskowal/zip)
-* [rimraf](https://github.com/isaacs/rimraf)

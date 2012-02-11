@@ -12,20 +12,26 @@ define(function (require) {
 
     var path = require('path'),
         fs = require('fs'),
-        file = require('./file'),
         qutil = require('./qutil'),
         counter = 0,
-        tempDir;
+        env = process.env,
+        base, tempDir;
+
+    //Match npm for base temp dir priority
+    base = env.TMPDIR || env.TMP || env.TEMP ||
+           (process.platform === 'win32' ? 'c:\\windows\\temp' : '/tmp');
 
     tempDir = {
 
         create: function (seed, callback, errback) {
-            var temp = tempDir.createTempName(seed),
-                d = qutil.convert(callback, errback);
+            var d = qutil.convert(callback, errback),
+                temp;
 
-            if (path.existsSync(temp)) {
-                file.rm(temp);
+            do {
+                temp = tempDir.createTempName(seed);
             }
+            while (path.existsSync(temp));
+
             fs.mkdirSync(temp);
             d.resolve(temp);
 
@@ -34,7 +40,11 @@ define(function (require) {
 
         createTempName: function (seed) {
             counter += 1;
-            return 'temp-' + seed.replace(/[\/\:]/g, '-') + '-' + counter;
+
+            var stamp = (new Date()).getTime();
+
+            return path.join(base, 'temp-' + seed.replace(/[\/\:]/g, '-') +
+                             '-' + stamp + '-' + counter);
         }
     };
 

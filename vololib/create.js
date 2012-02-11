@@ -77,7 +77,11 @@ define(function (require, exports, module) {
                     //Move the unpacked template to appName
                     fs.renameSync(dirName, appName);
 
-                    return file.asyncPlatformRm(tempDirName);
+                    //Clean up temp area. Even though this is async,
+                    //it is not important to track the completion.
+                    file.asyncPlatformRm(tempDirName);
+
+                    return undefined;
                 } else {
                     return errCleanUp(new Error('Unexpected zipball configuration'));
                 }
