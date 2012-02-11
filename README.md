@@ -28,7 +28,7 @@ easy to try out and discard.
 
 You can use the **[latest](https://raw.github.com/volojs/volo/latest/dist/volo)** tag to always get the latest release:
 
-    > curl https://raw.github.com/volojs/volo/latest/dist/volo](https://raw.github.com/volojs/volo/latest/dist/volo > volo
+    > curl https://raw.github.com/volojs/volo/latest/dist/volo > volo
     > chmod +x volo
 
 If you like to live dangerously on the edge, use the master version:
