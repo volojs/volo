@@ -24,8 +24,9 @@ easy to try out and discard.
 
 ## Install
 
-The latest release is 0.0.5, but you can use the **latest** tag to always get
-the latest release:
+### All platforms except Windows
+
+You can use the **latest** tag to always get the latest release:
 
     > curl https://raw.github.com/volojs/volo/latest/dist/volo > volo
     > chmod +x volo
@@ -47,6 +48,17 @@ Then add **~/scripts** to your PATH in your .profile.
 
 Since it is just a single JS file, you can have multiple copies laying around,
 tailored to use specific commands for specific purposes.
+
+### Windows
+
+You can use the **latest** tag to always get the latest release.
+
+Download volo from this URL:
+
+   https://raw.github.com/volojs/volo/latest/dist/volo
+
+When you see `volo` used in the notes below, and in any help docs, type the
+following instead when on Windows: `node path/to/volo`
 
 ## Usage
 
