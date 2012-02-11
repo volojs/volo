@@ -54,7 +54,7 @@ define(function (require, exports, module) {
                     isAmdProject = namedArgs.amd || (pkg.data && pkg.data.amd),
                     baseUrl = pkg.data && pkg.data.amd && pkg.data.amd.baseUrl,
                     existingPath, tempDirName, linkPath, linkStat, linkTarget,
-                    info;
+                    info, amdMessage;
 
                 //If no baseUrl, then look for an existing js directory
                 if (!baseUrl) {
@@ -235,12 +235,13 @@ define(function (require, exports, module) {
                                     return damd.promise;
                                 }
                                 return undefined;
-                            }).then(function (amdMessage) {
+                            }).then(function (message) {
+                                amdMessage = message;
                                 //All done.
                                 //Clean up temp area. Even though this is async,
                                 //it is not important to track the completion.
-                                file.asyncPlatformRm(tempDirName);
-
+                                return file.asyncPlatformRm(tempDirName);
+                            }).then(function () {
                                 if (namedArgs.amdlog && amdMessage) {
                                     completeMessage += amdMessage + '\n';
                                 }

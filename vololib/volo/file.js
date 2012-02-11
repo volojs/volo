@@ -7,7 +7,7 @@ define(function (require) {
     var fs = require('fs'),
         path = require('path'),
         qutil = require('./qutil'),
-        exec = require('child_process').exec,
+        rimraf = require('./rimraf'),
         file;
 
     function frontSlash(path) {
@@ -138,34 +138,15 @@ define(function (require) {
         * to remove the temp directory created for the "create" task.
         */
         asyncPlatformRm: function (dir, callback, errback) {
-            var d = qutil.convert(callback, errback),
-                rmCommand = process.platform === 'win32' ?
-                            'rmdir /S /Q ' :
-                            'rm -rf ';
+            var d = qutil.convert(callback, errback);
 
-            if (!dir) {
-                d.resolve();
-            }
-
-            dir = path.resolve(dir);
-
-            if (!path.existsSync(dir)) {
-                d.resolve();
-            }
-
-            if (dir === '/') {
-                d.reject(new Error('file.rmdir cannot handle /'));
-            }
-
-            exec(rmCommand + dir,
-                function (error, stdout, stderr) {
-                    if (error) {
-                        d.reject(error);
-                    } else {
-                        d.resolve();
-                    }
+            rimraf(dir, function (e) {
+                if (e) {
+                    d.reject(e);
+                } else {
+                    d.resolve();
                 }
-            );
+            });
 
             return d.promise;
         },

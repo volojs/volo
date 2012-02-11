@@ -111,3 +111,11 @@ use Backbone and underscore (the Boilerplate already has jQuery):
 * [Discussion list](http://groups.google.com/group/volojs)
 * [File an issue](https://github.com/volojs/volo/issues)
 * [Working with the volo code](https://github.com/volojs/volo/blob/master/docs/workingWithCode.md)
+
+## Callouts
+
+volo uses code from these projects:
+
+* [q](https://github.com/kriskowal/q)
+* [zip](https://github.com/kriskowal/zip)
+* [rimraf](https://github.com/isaacs/rimraf)
