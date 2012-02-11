@@ -1,6 +1,6 @@
 ## Usage
 
-    volo.js add [flags] archive [localName]
+    volo add [flags] archive [localName]
 
 where the allowed flags are:
 
@@ -45,7 +45,7 @@ This one fetches Underscore and converts it to have an AMD wrapper. Underscore
 still registers a global export, but AMD code can get a local reference
 through the module ID:
 
-    volo.js add -amd documentcloud/underscore exports=_
+    volo add -amd documentcloud/underscore exports=_
 
 When the -amd flag is used, the the **amdify** command is used to convert
 the file downloaded by the **add** command, so the named arguments supported
@@ -54,7 +54,7 @@ by **amdify** can als be used with **add**.
 Here is a command that fetches Backbone and wraps in it in an AMD define() call,
 specifying 'jquery' and 'underscore' as dependencies:
 
-    volo.js add -amd documentcloud/backbone depend=underscore,jquery exports=Backbone
+    volo add -amd documentcloud/backbone depend=underscore,jquery exports=Backbone
 
 
 ## Installation Details

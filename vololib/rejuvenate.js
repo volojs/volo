@@ -42,7 +42,7 @@ define(function (require, exports, module) {
             }
 
             //Set force: true in namedArgs so that add will do the
-            //work even though volo.js exists.
+            //work even though volo exists.
             namedArgs.force = true;
 
             add.run(d, v, namedArgs, from, baseName);

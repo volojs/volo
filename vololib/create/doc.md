@@ -1,6 +1,6 @@
 ## Usage
 
-    volo.js create appName [templateArchive]
+    volo create appName [templateArchive]
 
 **appName** is the name of the directory that should be created containing the
 contents of the templateArchive.

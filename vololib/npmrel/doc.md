@@ -1,6 +1,6 @@
 ## Usage
 
-    volo.js npmrel targetDir
+    volo npmrel targetDir
 
 Command line arguments:
 
@@ -24,7 +24,7 @@ It then converts the modules to have an AMD define() wrapper.
 
     > mkdir node_modules
     > npm install foo
-    > volo.js npmrel node_modules/foo
+    > volo npmrel node_modules/foo
 
 Now you can move node_modules/foo.js and node_modules/foo to the baseUrl of
 your AMD project.
