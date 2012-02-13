@@ -4,11 +4,12 @@
  * see: http://github.com/volojs/volo for details
  */
 
-'use strict';
-/*jslint plusplus: false */
+/*jslint */
 /*global define, console, process */
 
 define(function (require) {
+    'use strict';
+
     var path = require('path'),
         fs = require('fs'),
         q = require('q'),
@@ -85,10 +86,24 @@ define(function (require) {
 
                     return d.promise;
                 },
-                command: function () {
-                    var args = [].slice.call(arguments, 0),
-                        req = require,
-                        d = q.defer();
+                command: function (commandName) {
+                    //Get arguments from command line
+                    var req = require,
+                        d = q.defer(),
+                        args;
+
+                    if (arguments.length === 1) {
+                        //Only the command name was passed in. So the other
+                        //arguments from the command line will be passed
+                        //through for this command.
+                        args = [].slice.call(process.argv, 2);
+
+                        //Replace the original command name with the current one.
+                        args[0] = commandName;
+                    } else {
+                        //The command with its arguments have been passed.
+                        args = [].slice.call(arguments, 0);
+                    }
 
                     req(['volo/main'], function (main) {
                         d.resolve(main(args));

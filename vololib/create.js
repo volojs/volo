@@ -87,9 +87,15 @@ define(function (require, exports, module) {
                 }
             }).then(function () {
                 //If there is a volofile with an onCreate, run it.
-                return volofile.run(appName, 'onCreate', namedArgs, appName);
+                return volofile.run(appName, 'onCreate', namedArgs, appName)
+                    .fail(function (err) {
+                        return err + '\nonCreate did not succeed. You can ' +
+                            'try later by typing "volo onCreate" inside ' +
+                            'the project that was just created, passing any ' +
+                            'arguments you passed to the create call.';
+                    });
             }).then(function (commandOutput) {
-                return (commandOutput || '') +
+                return (commandOutput ? commandOutput + '\n' : '') +
                         archiveInfo.url + ' used to create ' + appName;
             })
             .then(d.resolve, function (err) {

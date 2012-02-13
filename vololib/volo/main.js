@@ -4,11 +4,12 @@
  * see: http://github.com/volojs/volo for details
  */
 
-'use strict';
-/*jslint plusplus: false */
+/*jslint */
 /*global define, voloVersion, console, process */
 
 define(function (require) {
+    'use strict';
+
     var commands = require('./commands'),
         config = require('./config'),
         volofile = require('./volofile'),
@@ -72,25 +73,14 @@ define(function (require) {
         //Function to run after the command object has been loaded, either
         //by a volofile or by installed volo actions.
         function runCommand(command) {
-            //Really have the command. Now convert the flags into
-            //named arguments.
-            var hasFlagError = false;
-
-            flags.some(function (flag) {
+            flags.forEach(function (flag) {
                 if (command.flags && command.flags[flag]) {
                     namedArgs[command.flags[flag]] = true;
-                } else {
-                    hasFlagError = true;
-                    deferred.reject('Invalid flag for ' + commandName + ': -' + flag);
                 }
-
-                return hasFlagError;
             });
 
-            if (!hasFlagError) {
-                commands.run.apply(commands, [command, null].concat(combinedArgs))
-                    .then(deferred.resolve, deferred.reject);
-            }
+            commands.run.apply(commands, [command, null].concat(combinedArgs))
+                .then(deferred.resolve, deferred.reject);
         }
 
 
