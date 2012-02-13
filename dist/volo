@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
 /**
- * @license volo 0.0.6 Copyright (c) 2012, The Dojo Foundation All Rights Reserved.
+ * @license volo 0.0.6+ Copyright (c) 2012, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
  * see: http://github.com/volojs/volo for details
  */
 
-var voloVersion = '0.0.6';
+var voloVersion = '0.0.6+';
 
 //Wipe out the exports object since some node-converted modules look for it.
 var exports = undefined;
@@ -3900,11 +3900,12 @@ define('volo/template',['require'],function (require) {
  * see: http://github.com/volojs/volo for details
  */
 
-
-/*jslint plusplus: false */
+/*jslint */
 /*global define, console, process */
 
 define('volo/v',['require','path','fs','q','child_process','child_process','volo/file','volo/template','volo/qutil'],function (require) {
+    
+
     var path = require('path'),
         fs = require('fs'),
         q = require('q'),
@@ -3981,10 +3982,24 @@ define('volo/v',['require','path','fs','q','child_process','child_process','volo
 
                     return d.promise;
                 },
-                command: function () {
-                    var args = [].slice.call(arguments, 0),
-                        req = require,
-                        d = q.defer();
+                command: function (commandName) {
+                    //Get arguments from command line
+                    var req = require,
+                        d = q.defer(),
+                        args;
+
+                    if (arguments.length === 1) {
+                        //Only the command name was passed in. So the other
+                        //arguments from the command line will be passed
+                        //through for this command.
+                        args = [].slice.call(process.argv, 2);
+
+                        //Replace the original command name with the current one.
+                        args[0] = commandName;
+                    } else {
+                        //The command with its arguments have been passed.
+                        args = [].slice.call(arguments, 0);
+                    }
 
                     req(['volo/main'], function (main) {
                         d.resolve(main(args));
@@ -4246,11 +4261,12 @@ define('volo/volofile',['require','path','volo/commands','volo/qutil'],function 
  * see: http://github.com/volojs/volo for details
  */
 
-
-/*jslint plusplus: false */
+/*jslint */
 /*global define, voloVersion, console, process */
 
 define('volo/main',['require','./commands','./config','./volofile','path','q'],function (require) {
+    
+
     var commands = require('./commands'),
         config = require('./config'),
         volofile = require('./volofile'),
@@ -4314,25 +4330,14 @@ define('volo/main',['require','./commands','./config','./volofile','path','q'],f
         //Function to run after the command object has been loaded, either
         //by a volofile or by installed volo actions.
         function runCommand(command) {
-            //Really have the command. Now convert the flags into
-            //named arguments.
-            var hasFlagError = false;
-
-            flags.some(function (flag) {
+            flags.forEach(function (flag) {
                 if (command.flags && command.flags[flag]) {
                     namedArgs[command.flags[flag]] = true;
-                } else {
-                    hasFlagError = true;
-                    deferred.reject('Invalid flag for ' + commandName + ': -' + flag);
                 }
-
-                return hasFlagError;
             });
 
-            if (!hasFlagError) {
-                commands.run.apply(commands, [command, null].concat(combinedArgs))
-                    .then(deferred.resolve, deferred.reject);
-            }
+            commands.run.apply(commands, [command, null].concat(combinedArgs))
+                .then(deferred.resolve, deferred.reject);
         }
 
 
@@ -7607,9 +7612,15 @@ define('create',['require','exports','module','fs','path','q','volo/tempDir','vo
                 }
             }).then(function () {
                 //If there is a volofile with an onCreate, run it.
-                return volofile.run(appName, 'onCreate', namedArgs, appName);
+                return volofile.run(appName, 'onCreate', namedArgs, appName)
+                    .fail(function (err) {
+                        return err + '\nonCreate did not succeed. You can ' +
+                            'try later by typing "volo onCreate" inside ' +
+                            'the project that was just created, passing any ' +
+                            'arguments you passed to the create call.';
+                    });
             }).then(function (commandOutput) {
-                return (commandOutput || '') +
+                return (commandOutput ? commandOutput + '\n' : '') +
                         archiveInfo.url + ' used to create ' + appName;
             })
             .then(d.resolve, function (err) {
