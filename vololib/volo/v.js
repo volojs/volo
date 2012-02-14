@@ -123,6 +123,8 @@ define(function (require) {
                         errResponse = '',
                         onData, onErrData;
 
+                    options = options || {};
+
                     if (options.useConsole) {
                         onData = execToConsole;
                         onErrData = execToConsole;
