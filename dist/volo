@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
 /**
- * @license volo 0.0.7 Copyright (c) 2012, The Dojo Foundation All Rights Reserved.
+ * @license volo 0.0.7+ Copyright (c) 2012, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
  * see: http://github.com/volojs/volo for details
  */
 
-var voloVersion = '0.0.7';
+var voloVersion = '0.0.7+';
 
 //Wipe out the exports object since some node-converted modules look for it.
 var exports = undefined;
@@ -11207,12 +11207,13 @@ define('acquire',['require','exports','module','fs','q','path','add','volo/baseU
  * see: http://github.com/volojs/volo for details
  */
 
-
-/*jslint */
 /*global define, console, process */
 
-define('rejuvenate',['require','exports','module','q','path','add','volo/baseUrl','volo/config','text!./rejuvenate/doc.md','volo/commands'],function (require, exports, module) {
+define('rejuvenate',['require','exports','module','q','fs','path','add','volo/baseUrl','volo/config','text!./rejuvenate/doc.md','volo/commands'],function (require, exports, module) {
+    
+
     var q = require('q'),
+        fs = require('fs'),
         path = require('path'),
         add = require('add'),
         baseUrl = require('volo/baseUrl'),
@@ -11233,14 +11234,15 @@ define('rejuvenate',['require','exports','module','q','path','add','volo/baseUrl
             var dirName = path.dirname(baseUrl),
                 baseName = path.basename(process.argv[1]),
                 cwd = process.cwd(),
-                d = q.defer();
+                d = q.defer(),
+                voloFileMode = fs.statSync(baseName).mode;
 
             from = from || config.archive;
 
             //Change directory to the one holding volo
             process.chdir(dirName);
 
-            function finish(result) {
+            function finish() {
                 process.chdir(cwd);
             }
 
@@ -11252,6 +11254,7 @@ define('rejuvenate',['require','exports','module','q','path','add','volo/baseUrl
 
             q.when(d.promise, function (result) {
                 finish();
+                fs.chmodSync(baseName, voloFileMode);
                 deferred.resolve(result + '\n' + baseName + ' has been updated!');
             }, function (err) {
                 finish();
