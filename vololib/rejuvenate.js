@@ -4,19 +4,18 @@
  * see: http://github.com/volojs/volo for details
  */
 
-'use strict';
-/*jslint */
 /*global define, console, process */
 
 define(function (require, exports, module) {
+    'use strict';
+
     var q = require('q'),
+        fs = require('fs'),
         path = require('path'),
         add = require('add'),
         baseUrl = require('volo/baseUrl'),
         config = require('volo/config').command.rejuvenate,
-        rejuvenate,
-        nodeReq = requirejsVars.nodeRequire,
-        fs = nodeReq('fs');
+        rejuvenate;
 
     rejuvenate = {
         summary: 'Updates volo to latest version.',
@@ -40,7 +39,7 @@ define(function (require, exports, module) {
             //Change directory to the one holding volo
             process.chdir(dirName);
 
-            function finish(result) {
+            function finish() {
                 process.chdir(cwd);
             }
 
