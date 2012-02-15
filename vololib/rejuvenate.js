@@ -14,7 +14,9 @@ define(function (require, exports, module) {
         add = require('add'),
         baseUrl = require('volo/baseUrl'),
         config = require('volo/config').command.rejuvenate,
-        rejuvenate;
+        rejuvenate,
+        nodeReq = requirejsVars.nodeRequire,
+        fs = nodeReq('fs');
 
     rejuvenate = {
         summary: 'Updates volo to latest version.',
@@ -30,7 +32,8 @@ define(function (require, exports, module) {
             var dirName = path.dirname(baseUrl),
                 baseName = path.basename(process.argv[1]),
                 cwd = process.cwd(),
-                d = q.defer();
+                d = q.defer(),
+                voloFileMode = fs.statSync(baseName).mode;
 
             from = from || config.archive;
 
@@ -49,6 +52,7 @@ define(function (require, exports, module) {
 
             q.when(d.promise, function (result) {
                 finish();
+                fs.chmodSync(baseName, voloFileMode);
                 deferred.resolve(result + '\n' + baseName + ' has been updated!');
             }, function (err) {
                 finish();
