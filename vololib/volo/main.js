@@ -36,7 +36,9 @@ define(function (require) {
 
         //Cycle through args, pulling off name=value pairs into an object.
         args.forEach(function (arg) {
-            if (arg.indexOf('=') === -1) {
+            var eqIndex = arg.indexOf('='),
+                name, value;
+            if (eqIndex === -1) {
                 //If passed a flag like -f, convert to named
                 //argument based on the command's configuration.
                 if (arg.indexOf('-') === 0) {
@@ -46,8 +48,9 @@ define(function (require) {
                     aryArgs.push(arg);
                 }
             } else {
-                var pair = arg.split('=');
-                namedArgs[pair[0]] = pair[1];
+                name = arg.substring(0, eqIndex);
+                value = arg.substring(eqIndex + 1);
+                namedArgs[name] = value;
             }
         });
 

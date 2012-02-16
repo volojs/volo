@@ -4,11 +4,11 @@
  * see: http://github.com/volojs/volo for details
  */
 
-'use strict';
-/*jslint */
 /*global define */
 
 define(function (require, exports, module) {
+    'use strict';
+
     var fs = require('fs'),
         path = require('path'),
         parse = require('volo/parse'),
@@ -17,6 +17,7 @@ define(function (require, exports, module) {
         exportsTemplate = require('text!./amdify/exportsTemplate.js'),
         exportsNoConflictTemplate = require('text!./amdify/exportsNoConflictTemplate.js'),
         dependsRegExp = /\/\*DEPENDENCIES\*\//g,
+        varNamesRegExp = /\/\*VARNAMES\*\//g,
         contentsComment = '/*CONTENTS*/',
         exportsRegExp = /\/\*EXPORTS\*\//g,
         main;
@@ -50,31 +51,46 @@ define(function (require, exports, module) {
                 exports = namedArgs.exports || '',
                 noConflict = namedArgs.noConflict,
                 completeMessage = '',
+                varNames = [],
                 jsFiles;
 
             if (depends) {
                 depends = depends.split(',').map(function (value) {
+                    var varSeparator = value.indexOf('='),
+                        varName;
+
+                    //If the dependency is id>localvar, split it apart,
+                    //and track the localvar separately.
+                    if (varSeparator !== -1) {
+                        varName = value.substring(varSeparator + 1);
+                        value = value.substring(0, varSeparator);
+                    }
+
+                    if (varName) {
+                        varNames.push(varName);
+                    }
                     return "'" + value + "'";
                 });
             } else {
                 depends = [];
             }
 
-            //Convert the depends to a string.
+            //Convert the depends and varNames to a string.
             depends = depends.join(',');
+            varNames = varNames.join(',');
 
             if (fs.statSync(target).isDirectory()) {
                 //Find all the .js files in the directory and convert them.
                 jsFiles = file.getFilteredFileList(target, /\.js$/);
                 jsFiles.forEach(function (file) {
-                    var msg = main.util.convert(file, depends, exports, noConflict);
+                    var msg = main.util.convert(file, depends, varNames, exports, noConflict);
                     if (msg) {
                         completeMessage += (completeMessage ? '\n' : '') +  msg;
                     }
                 });
                 return deferred.resolve(completeMessage);
             } else {
-                return deferred.resolve(main.util.convert(target, depends, exports, noConflict));
+                return deferred.resolve(main.util.convert(target, depends, varNames, exports, noConflict));
             }
         },
 
@@ -96,7 +112,7 @@ define(function (require, exports, module) {
                 fs.writeFileSync(targetFileName, contents, 'utf8');
             },
 
-            convert: function (target, depends, exports, noConflict) {
+            convert: function (target, depends, varNames, exports, noConflict) {
                 var contents = fs.readFileSync(target, 'utf8'),
                     prelude = '',
                     temp, commentIndex, cjsProps, amdProps;
@@ -139,6 +155,7 @@ define(function (require, exports, module) {
                         //a possibly undesirable regexp replacement.
                         temp = template
                                 .replace(dependsRegExp, depends)
+                                .replace(varNamesRegExp, varNames)
                                 .replace(exportsRegExp, exports);
 
                         //Cannot use a regexp replacement for comment, because if
@@ -151,8 +168,10 @@ define(function (require, exports, module) {
 
                         fs.writeFileSync(target, contents, 'utf8');
 
-                        return 'CONVERTED: ' + target + ': depends: ' + depends +
-                               '; exports: ' + exports + '.';
+                        return 'CONVERTED: ' + target +
+                               (depends ? ': depends: ' + depends.trim() : '') +
+                               (varNames ? ': localvars: ' + varNames : '') +
+                               (exports ? ': exports: ' + exports.trim() : '');
                     }
                 }
             }

@@ -73,6 +73,22 @@ define(function (require, exports, module) {
         });
     })
     .then(function () {
+        return main(['amdify', 'varnames.js', 'depends=jquery=$,underscore='], function (result) {
+            console.log(result);
+            doh.register("amdifyVarnames",
+                [
+                    function amdifyLib(t) {
+                        var output = fs.readFileSync('varnames.js', 'utf8'),
+                            expected = fs.readFileSync('../expected/varnames.js', 'utf8');
+
+                        t.is(expected, output);
+                    }
+                ]
+            );
+            doh.run();
+        });
+    })
+    .then(function () {
         return main(['amdify', '-noConflict', 'libExports.js', 'depends=gamma', 'exports=window.libExports'], function (result) {
             console.log(result);
             doh.register("amdifyLibExports",

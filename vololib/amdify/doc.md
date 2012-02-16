@@ -26,6 +26,22 @@ function wrapping that includes:
         //original contents in here.
     });
 
+If a dependency calls AMD's define(), then it may not create a global when
+loaded by an AMD loader. In that case, you may need to give the dependency
+as specific name to act as the "global" in the script. you can do this by
+passing `=localvarname` for the dependency. Here is an example for a "ko"
+dependency that does not export a global "ko" as a global if AMD is in use,
+so this amdify command will make sure to create a `kolocal` for use by
+the wrapped code. It will also create a local `beta` for `beta.1.7.2`:
+
+    volo amdify www/js/ko.plugin.js depends=ko=kolocal,beta.1.7.2=beta
+
+Results in:
+
+    define(['ko', 'beta.1.7.2'], function (kolocal, beta) {
+        //original contents in here.
+    });
+
 This example sets dependencies, but then also specifies the export value to
 be used. If the export object has a 'noConflict' method on it, then it will
 be called as part of exporting the module value:

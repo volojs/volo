@@ -1,0 +1,4 @@
+
+$(function () {
+    window._('something');
+});
