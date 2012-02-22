@@ -35,9 +35,8 @@ If you like to live dangerously on the edge, use the master version:
 
 https://raw.github.com/volojs/volo/master/dist/volo
 
-It is best to put volo in your path, but *do not* install it as root.
-
-Suggested path so that it is always available:
+It is best to put volo in your path. Here is a suggested path so that it is
+always available:
 
     > mkdir ~/scripts
     > cd ~/scripts
