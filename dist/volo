@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
 /**
- * @license volo 0.0.8 Copyright (c) 2012, The Dojo Foundation All Rights Reserved.
+ * @license volo 0.0.8+ Copyright (c) 2012, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
  * see: http://github.com/volojs/volo for details
  */
 
-var voloVersion = '0.0.8';
+var voloVersion = '0.0.8+';
 
 //Wipe out the exports object since some node-converted modules look for it.
 var exports = undefined;
@@ -10881,7 +10881,7 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
 
                         //Create an adapter module if an AMD project.
                         info = packageJson(linkPath);
-                        if (info.data.main && isAmdProject) {
+                        if (info.data && info.data.main && isAmdProject) {
                             makeMainAmdAdapter(info.data.main,
                                                archiveInfo.finalLocalName,
                                                linkTarget + '.js');
@@ -10999,7 +10999,7 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
                                 //needed for install.
                                 add.util.discard(targetName);
 
-                                if (info.data.main && isAmdProject) {
+                                if (info.data && info.data.main && isAmdProject) {
                                     makeMainAmdAdapter(info.data.main,
                                                        archiveInfo.finalLocalName,
                                                        targetName + '.js');
