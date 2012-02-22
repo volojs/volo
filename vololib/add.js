@@ -98,7 +98,7 @@ define(function (require, exports, module) {
 
                         //Create an adapter module if an AMD project.
                         info = packageJson(linkPath);
-                        if (info.data.main && isAmdProject) {
+                        if (info.data && info.data.main && isAmdProject) {
                             makeMainAmdAdapter(info.data.main,
                                                archiveInfo.finalLocalName,
                                                linkTarget + '.js');
@@ -216,7 +216,7 @@ define(function (require, exports, module) {
                                 //needed for install.
                                 add.util.discard(targetName);
 
-                                if (info.data.main && isAmdProject) {
+                                if (info.data && info.data.main && isAmdProject) {
                                     makeMainAmdAdapter(info.data.main,
                                                        archiveInfo.finalLocalName,
                                                        targetName + '.js');
