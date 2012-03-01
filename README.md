@@ -63,7 +63,7 @@ following instead when on Windows: `node path/to/volo`
 
 volo can use GitHub to retrieve code, so one of the core concepts when using
 it is understanding **user/repo** for archive names. See the
-[add doc](https://github.com/volojs/volo/blob/master/volo/add/doc.md) for more
+[add doc](https://github.com/volojs/volo/blob/master/vololib/add/doc.md) for more
 info on the types of archive names to use.
 
 To set up an AMD/RequireJS-based project called **fast** that uses AMD versions of
