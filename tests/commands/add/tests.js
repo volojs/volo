@@ -1,8 +1,8 @@
-/*jslint nomen: false */
+/*jslint */
 /*global define, doh, process, console */
-'use strict';
 
 define(function (require, exports, module) {
+    'use strict';
 
     var q = require('q'),
         main = require('volo/main'),
@@ -50,6 +50,23 @@ define(function (require, exports, module) {
                             output = fs.readFileSync('simpleAmd.js', 'utf8');
 
                         t.is(true, path.existsSync('simpleAmd.js'));
+                        t.is(expected, output);
+                    }
+                ]
+            );
+            doh.run();
+        });
+    })
+    .then(function () {
+        return main(['add', '../support/addable'], function (result) {
+            console.log(result);
+            doh.register("addOnAdd",
+                [
+                    function addOnAdd(t) {
+                        var expected = fs.readFileSync('../support/addable/temp/a.js', 'utf8'),
+                            output = fs.readFileSync('addable/a.js', 'utf8');
+
+                        t.is(false, path.existsSync('addable/temp'));
                         t.is(expected, output);
                     }
                 ]

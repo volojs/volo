@@ -4,7 +4,6 @@
  * see: http://github.com/volojs/volo for details
  */
 
-'use strict';
 /*jslint */
 /*global define, process */
 
@@ -13,6 +12,8 @@
  * set of modules.
  */
 define(function (require) {
+    'use strict';
+
     var path = require('path'),
         commands = require('volo/commands'),
         qutil = require('volo/qutil');
@@ -39,7 +40,7 @@ define(function (require) {
      * @returns {Promise} that resolves to false exactly, otherwise it has the
      * commmand output, if any.
      */
-    volofile.run = function (basePath, commandName, namedArgs /*other args can be passed*/) {
+    volofile.run = function (basePath, commandName /*other args can be passed*/) {
         var args = [].slice.call(arguments, 2),
             cwd = process.cwd();
 
@@ -47,7 +48,9 @@ define(function (require) {
 
         return volofile('.').then(function (vfMod) {
             var command = vfMod && vfMod[commandName];
-            return commands.run.apply(commands, [command, null].concat(args));
+            if (command) {
+                return commands.run.apply(commands, [command, null].concat(args));
+            }
         })
         .then(function (result) {
             process.chdir(cwd);

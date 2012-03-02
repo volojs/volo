@@ -1,0 +1,16 @@
+/*jslint */
+/*global define */
+
+define(function (require) {
+    'use strict';
+    return {
+        onAdd: function (d, v) {
+            //Just do a simple move of a.js from temp and remove temp.
+            v.mv('temp/a.js', 'a.js');
+            v.rm('temp');
+            v.rm('volofile');
+
+            d.resolve();
+        }
+    };
+});
