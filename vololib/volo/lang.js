@@ -4,15 +4,17 @@
  * see: http://github.com/jrburke/requirejs for details
  */
 
-/*jslint plusplus: false, strict: false */
+/*jslint */
 /*global define: false */
 
 define(function () {
+    'use strict';
+
     var lang = {
         backSlashRegExp: /\\/g,
         ostring: Object.prototype.toString,
 
-        isArray: Array.isArray ? Array.isArray : function (it) {
+        isArray: Array.isArray || function (it) {
             return lang.ostring.call(it) === "[object Array]";
         },
 
@@ -25,7 +27,7 @@ define(function () {
             //Object.prototype.
             var empty = {}, prop;
             for (prop in source) {
-                if (override || !(prop in target)) {
+                if (override || !target.hasOwnProperty(prop)) {
                     target[prop] = source[prop];
                 }
             }
@@ -43,7 +45,63 @@ define(function () {
                 }
                 return tmp; // Object
             };
-        }())
+        }()),
+
+        //Sets up a nested object hierachy: setObject(foo, 'a.b.c')
+        //will make sure foo.a.b.c = {}
+        setObject: function (target, dotProps) {
+            var parts = dotProps.split('.'),
+                part, i;
+
+            for (i = 0; i < parts.length; i += 1) {
+                part = parts[i];
+                if (!target.hasOwnProperty(part)) {
+                    target[part] = {};
+                }
+                target = target[part];
+            }
+
+        },
+
+        //Find a the matching end for the given start. Used to match parens,
+        //curly braces. Returns an object with a 'start' and 'end' Number
+        //values. If start is -1 then it did not find a starting character.
+        //If start is 0 or higher, but end is -1, it means the start was found
+        //but a matching end was not.
+        //An enhancement would be to add awareness of strings and possibly
+        //regexps.
+        findMatchingPair: function (text, start, end, startIndex) {
+            var count = 0,
+                result = {
+                    start: -1,
+                    end: -1
+                },
+                cursor, i, value;
+
+            startIndex = startIndex || 0;
+
+            cursor = text.indexOf(start, startIndex);
+
+            if (cursor !== -1 && cursor < text.length - 1) {
+                result.start = cursor;
+                count += 1;
+                for (i = cursor + 1; i < text.length; i += 1) {
+                    value = text[i];
+                    if (value === start) {
+                        count += 1;
+                    } else if (value === end) {
+                        count -= 1;
+                    }
+                    if (count === 0) {
+                        result.end = i;
+                        break;
+                    }
+                }
+            }
+
+            return result;
+
+        }
     };
     return lang;
 });

@@ -17,9 +17,7 @@ define(function (require, exports, module) {
 
     //Clean up old test output, create a fresh directory for it.
     end = start.promise.then(function () {
-        return file.rm(testDir);
-    })
-    .then(function () {
+        file.rm(testDir);
         fs.mkdirSync(testDir);
         process.chdir(testDir);
     })

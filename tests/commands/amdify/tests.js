@@ -1,8 +1,8 @@
-/*jslint nomen: false */
+/*jslint */
 /*global define, doh, process, console */
-'use strict';
 
 define(function (require, exports, module) {
+    'use strict';
 
     var q = require('q'),
         main = require('volo/main'),

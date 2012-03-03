@@ -1,9 +1,9 @@
 
-/*jslint plusplus: false */
+/*jslint */
 /*global define, doh */
-'use strict';
 
 define(['volo/version', 'q'], function (version, q) {
+    'use strict';
 
     var start = q.defer(),
         end;
@@ -13,7 +13,7 @@ define(['volo/version', 'q'], function (version, q) {
 
         t.is(expected.length, actual.length);
 
-        for (i = 0; i < expected.length; i++) {
+        for (i = 0; i < expected.length; i += 1) {
             t.is(expected[i], actual[i]);
         }
     }
@@ -34,6 +34,6 @@ define(['volo/version', 'q'], function (version, q) {
 
     return {
         start: start,
-        end: end.promise
+        end: end
     };
 });

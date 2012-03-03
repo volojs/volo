@@ -4,3 +4,4 @@ tests/commands/add/output
 tests/commands/amdify/output
 tests/commands/create/output
 tests/commands/volofile/output
+tests/lib/volo/packageJson/output
