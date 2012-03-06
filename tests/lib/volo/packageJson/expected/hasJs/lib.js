@@ -6,8 +6,13 @@
 
 /* package.json
 {
-    "name": "lib",
-    "version": "1.0"
+  "name": "lib",
+  "version": "1.0",
+  "volo": {
+    "dependencies": {
+      "jquery": "jquery/jquery/1.7.1"
+    }
+  }
 }
 */
 

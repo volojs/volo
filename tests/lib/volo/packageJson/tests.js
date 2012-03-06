@@ -12,6 +12,7 @@ define(function (require, exports, module) {
         start = q.defer(),
         cwd = process.cwd(),
         dir = path.dirname(module.uri),
+        expectedDir = path.join(dir, 'expected'),
         outputDir = path.join(dir, 'output'),
         supportDir = path.join(dir, 'support'),
         end;
@@ -24,6 +25,7 @@ define(function (require, exports, module) {
                            'hasFile',
                            'hasJs',
                            'hasJsNoComment',
+                           'hasJsonFile',
                            'tooManyJs'
                         ],
                         result;
@@ -42,21 +44,43 @@ define(function (require, exports, module) {
 
                     //Test favoring a single js file package.json comment
                     //over a package.json file.
+
                     result = packageJson(path.join(outputDir, 'hasFile'));
                     t.is('empty', result.data.name);
                     t.is('1.0', result.data.version);
+
+                    //Add a volo dep to the package.son, save, confirm the save.
+                    result.addVoloDep('dojo', 'dojo/dojo/1.7.2');
+                    result.save();
+                    result.refresh();
+                    t.is('dojo/dojo/1.7.2', result.data.volo.dependencies.dojo);
+                    t.is(file.readFile(path.join(expectedDir, 'hasFile', 'empty.js')),
+                         file.readFile(path.join(outputDir, 'hasFile', 'empty.js')));
+
+                    result = packageJson(path.join(outputDir, 'hasJsonFile'));
+                    t.is('hasJsonFile', result.data.name);
+                    t.is('2.0', result.data.version);
+
+                    //Add a volo dep to the package.son, save, confirm the save.
+                    result.addVoloDep('dijit', 'dojo/dijit/1.7.2');
+                    result.save();
+                    result.refresh();
+                    t.is('dojo/dijit/1.7.2', result.data.volo.dependencies.dijit);
+                    t.is(file.readFile(path.join(expectedDir, 'hasJsonFile', 'package.json')),
+                         file.readFile(path.join(outputDir, 'hasJsonFile', 'package.json')));
 
                     //Test file comment
                     result = packageJson(path.join(outputDir, 'hasJs'));
                     t.is('lib', result.data.name);
                     t.is('1.0', result.data.version);
 
-                    //Add a volo dep to the file, save, confirm the save.
+                    //Add a volo dep to the package.json, save, confirm the save.
                     result.addVoloDep('jquery', 'jquery/jquery/1.7.1');
                     result.save();
                     result.refresh();
                     t.is('jquery/jquery/1.7.1', result.data.volo.dependencies.jquery);
-
+                    t.is(file.readFile(path.join(expectedDir, 'hasJs', 'lib.js')),
+                         file.readFile(path.join(outputDir, 'hasJs', 'lib.js')));
 
                     //Test file, but no comment or package.json
                     result = packageJson(path.join(outputDir, 'hasJsNoComment'));

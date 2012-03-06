@@ -13,10 +13,10 @@ define(function (require) {
     var path = require('path'),
         fs = require('fs'),
         lang = require('./lang'),
-        commentStartRegExp = /\/\*\s*package\.json\s*/g,
+        commentStartRegExp = /\/\*\s*package\.json\s*/,
         commentEndRegExp = /\s*\*\//,
-        endsInJsRegExp = /\.js$/;
-
+        endsInJsRegExp = /\.js$/,
+        crRegExp = /\r\n/;
 
     //Used to find the indices within a file for the /*package.json */
     //comment and a JSON segment inside it. If the result.end is not -1 it
@@ -73,6 +73,7 @@ define(function (require) {
 
     function saveCommentData(file, data) {
         var text = fs.readFileSync(file, 'utf8'),
+            lineEnding = crRegExp.test(text) ? '\r\n' : '\n',
             indices = getCommentIndices(text),
             json = JSON.stringify(data, null, '  ');
 
@@ -80,9 +81,9 @@ define(function (require) {
             //No valid comment, so insert it.
             //TODO: would be nice to place this under the license comment,
             //if there is one.
-            text = '/*package.json \n' +
+            text = '/*package.json' + lineEnding +
                     json +
-                    '\n*/\n' +
+                    '\n*/' + lineEnding +
                     text;
         } else {
             text = text.substring(0, indices.jsonStart) +

@@ -1,0 +1,9 @@
+{
+  "name": "hasJsonFile",
+  "version": "2.0",
+  "volo": {
+    "dependencies": {
+      "dijit": "dojo/dijit/1.7.2"
+    }
+  }
+}
