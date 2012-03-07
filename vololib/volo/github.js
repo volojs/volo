@@ -4,11 +4,11 @@
  * see: http://github.com/volojs/volo for details
  */
 
-'use strict';
-/*jslint regexp: false */
+/*jslint regexp: true */
 /*global define, console */
 
 define(function (require) {
+    'use strict';
     var q = require('q'),
         https = require('https'),
         config = require('volo/config').github,
@@ -123,6 +123,42 @@ define(function (require) {
                 return tagNames[0];
             });
         }
+    };
+
+
+    github.search = function (query) {
+
+        var args = {
+            host: config.searchHost,
+            path: config.searchPath.replace(/\{query\}/, query)
+        },
+        d = q.defer();
+
+        https.get(args, function (response) {
+            //console.log("statusCode: ", response.statusCode);
+            //console.log("headers: ", response.headers);
+            var body = '';
+
+            response.on('data', function (data) {
+                body += data;
+            });
+
+            response.on('end', function () {
+                if (response.statusCode === 404) {
+                    d.reject(args.host + args.path + ' does not exist');
+                } else if (response.statusCode === 200) {
+                    //Convert the response into an object
+                    d.resolve(JSON.parse(body));
+                } else {
+                    d.reject(args.host + args.path + ' returned status: ' +
+                             response.statusCode + '. ' + body);
+                }
+            });
+        }).on('error', function (e) {
+            d.reject(e);
+        });
+
+        return d.promise;
     };
 
     return github;

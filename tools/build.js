@@ -23,6 +23,7 @@
         'volo/main',
         'volo/github',
         'volo/resolve/github',
+        'volo/search/github',
         'volo/template',
         'help',
         'acquire',
@@ -30,6 +31,7 @@
         'create',
         'add',
         'amdify',
+        'search',
         'npmrel',
 
         //Leave this one last, see r.js issue #70

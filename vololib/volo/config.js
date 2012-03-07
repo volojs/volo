@@ -30,7 +30,9 @@ define(function (require) {
             "scheme": "https",
             "host": "github.com",
             "apiHost": "api.github.com",
+            "searchHost": "github.com",
             "rawUrlPattern": "https://raw.github.com/{owner}/{repo}/{version}/{file}",
+            "searchPath": "/api/v2/json/repos/search/{query}",
             "overrides": {
                 "jquery/jquery": {
                     "pattern": "http://code.jquery.com/jquery-{version}.js"
