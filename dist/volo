@@ -2224,15 +2224,17 @@ define("../tools/node", function(){});
  * see: http://github.com/jrburke/requirejs for details
  */
 
-/*jslint plusplus: false, strict: false */
+/*jslint */
 /*global define: false */
 
 define('volo/lang',[],function () {
+    
+
     var lang = {
         backSlashRegExp: /\\/g,
         ostring: Object.prototype.toString,
 
-        isArray: Array.isArray ? Array.isArray : function (it) {
+        isArray: Array.isArray || function (it) {
             return lang.ostring.call(it) === "[object Array]";
         },
 
@@ -2245,7 +2247,7 @@ define('volo/lang',[],function () {
             //Object.prototype.
             var empty = {}, prop;
             for (prop in source) {
-                if (override || !(prop in target)) {
+                if (override || !target.hasOwnProperty(prop)) {
                     target[prop] = source[prop];
                 }
             }
@@ -2263,7 +2265,63 @@ define('volo/lang',[],function () {
                 }
                 return tmp; // Object
             };
-        }())
+        }()),
+
+        //Sets up a nested object hierachy: setObject(foo, 'a.b.c')
+        //will make sure foo.a.b.c = {}
+        setObject: function (target, dotProps) {
+            var parts = dotProps.split('.'),
+                part, i;
+
+            for (i = 0; i < parts.length; i += 1) {
+                part = parts[i];
+                if (!target.hasOwnProperty(part)) {
+                    target[part] = {};
+                }
+                target = target[part];
+            }
+
+        },
+
+        //Find a the matching end for the given start. Used to match parens,
+        //curly braces. Returns an object with a 'start' and 'end' Number
+        //values. If start is -1 then it did not find a starting character.
+        //If start is 0 or higher, but end is -1, it means the start was found
+        //but a matching end was not.
+        //An enhancement would be to add awareness of strings and possibly
+        //regexps.
+        findMatchingPair: function (text, start, end, startIndex) {
+            var count = 0,
+                result = {
+                    start: -1,
+                    end: -1
+                },
+                cursor, i, value;
+
+            startIndex = startIndex || 0;
+
+            cursor = text.indexOf(start, startIndex);
+
+            if (cursor !== -1 && cursor < text.length - 1) {
+                result.start = cursor;
+                count += 1;
+                for (i = cursor + 1; i < text.length; i += 1) {
+                    value = text[i];
+                    if (value === start) {
+                        count += 1;
+                    } else if (value === end) {
+                        count -= 1;
+                    }
+                    if (count === 0) {
+                        result.end = i;
+                        break;
+                    }
+                }
+            }
+
+            return result;
+
+        }
     };
     return lang;
 });
@@ -2300,7 +2358,9 @@ define('volo/config',['require','fs','path','./lang','./baseUrl'],function (requ
             "scheme": "https",
             "host": "github.com",
             "apiHost": "api.github.com",
+            "searchHost": "github.com",
             "rawUrlPattern": "https://raw.github.com/{owner}/{repo}/{version}/{file}",
+            "searchPath": "/api/v2/json/repos/search/{query}?language=JavaScript",
             "overrides": {
                 "jquery/jquery": {
                     "pattern": "http://code.jquery.com/jquery-{version}.js"
@@ -3527,11 +3587,11 @@ define('volo/version',['require'],function (require) {
  * see: http://github.com/volojs/volo for details
  */
 
-
-/*jslint regexp: false */
+/*jslint regexp: true */
 /*global define, console */
 
 define('volo/github',['require','q','https','volo/config','volo/version'],function (require) {
+    
     var q = require('q'),
         https = require('https'),
         config = require('volo/config').github,
@@ -3648,6 +3708,42 @@ define('volo/github',['require','q','https','volo/config','volo/version'],functi
         }
     };
 
+
+    github.search = function (query) {
+
+        var args = {
+            host: config.searchHost,
+            path: config.searchPath.replace(/\{query\}/, query)
+        },
+        d = q.defer();
+
+        https.get(args, function (response) {
+            //console.log("statusCode: ", response.statusCode);
+            //console.log("headers: ", response.headers);
+            var body = '';
+
+            response.on('data', function (data) {
+                body += data;
+            });
+
+            response.on('end', function () {
+                if (response.statusCode === 404) {
+                    d.reject(args.host + args.path + ' does not exist');
+                } else if (response.statusCode === 200) {
+                    //Convert the response into an object
+                    d.resolve(JSON.parse(body));
+                } else {
+                    d.reject(args.host + args.path + ' returned status: ' +
+                             response.statusCode + '. ' + body);
+                }
+            });
+        }).on('error', function (e) {
+            d.reject(e);
+        });
+
+        return d.promise;
+    };
+
     return github;
 });
 
@@ -3754,6 +3850,7 @@ define('volo/archive',['require','q','path'],function (require) {
                 }
 
                 d.resolve({
+                    id: scheme + ':' + archive + (fragment ? '#' + fragment : ''),
                     scheme: scheme,
                     url: scheme + ':' + archive,
                     isArchive: tarGzRegExp.test(archive),
@@ -3792,74 +3889,48 @@ define('volo/archive',['require','q','path'],function (require) {
  * see: http://github.com/volojs/volo for details
  */
 
+define('volo/search/github',['require','../qutil','../lang','../github'],function (require) {
+    
 
-/*jslint */
-/*global define, console */
+    var qutil = require('../qutil'),
+        lang = require('../lang'),
+        github = require('../github'),
+        defaultOptions = {
+            max: 5
+        };
 
-define('volo/resolve/github',['require','path','../config','../archive','../github'],function (require) {
-    var path = require('path'),
-        config = require('../config'),
-        archive = require('../archive'),
-        github = require('../github');
+    function searchGithub(query, options, callback, errback) {
+        var d = qutil.convert(callback, errback),
+            opts = options || {};
 
-    function resolveGithub(archiveName, fragment, callback, errback) {
+        lang.mixin(opts, defaultOptions);
 
-        var parts = archiveName.split('/'),
-            ownerPlusRepo, version, localName, override;
+        github.search(query).then(function (data) {
+            var sanitized = [],
+                repos = data && data.repositories;
 
-        localName = parts[1];
-
-        ownerPlusRepo = parts[0] + '/'  + parts[1];
-        version = parts[2];
-
-        override = config.github.overrides[ownerPlusRepo];
-
-        //Fetch the latest version
-        github.latestTag(ownerPlusRepo + (version ? '/' + version : ''))
-            .then(function (tag) {
-                var isArchive = true,
-                    isSingleFile = false,
-                    url;
-
-                //If there is a specific override to finding the file,
-                //for instance jQuery releases are put on a CDN and are not
-                //committed to github, use the override.
-                if (fragment || (override && override.pattern)) {
-                    //If a specific file in the repo. Do not need the full
-                    //zipball, just use a raw github url to get it.
-                    if (fragment) {
-                        url = github.rawUrl(ownerPlusRepo, tag, fragment);
-                        //Adjust local name to be the fragment name.
-                        localName = path.basename(fragment);
-                        //Strip off extension name.
-                        localName = localName.substring(0, localName.lastIndexOf('.'));
-                    } else {
-                        //An override situation.
-                        url = override.pattern.replace(/\{version\}/, tag);
+            if (repos && repos.length) {
+                repos.some(function(entry, i) {
+                    if (i === opts.max) {
+                        return true;
                     }
+                    sanitized.push({
+                        archive: entry.owner + '/' + entry.name,
+                        fork: entry.fork,
+                        watchers: entry.watchers,
+                        pushed: entry.pushed,
+                        description: entry.description
+                    });
+                });
+            }
 
-                    //Set fragment to null since it has already been processed.
-                    fragment = null;
-                    isSingleFile = true;
+            return sanitized.length ? sanitized : null;
+        }).then(d.resolve, d.reject);
 
-                    isArchive = archive.isArchive(url);
-                } else {
-                    url = github.zipballUrl(ownerPlusRepo, tag);
-                }
-
-                return {
-                    scheme: 'github',
-                    url: url,
-                    isArchive: isArchive,
-                    isSingleFile: isSingleFile,
-                    fragment: fragment,
-                    localName: localName
-                };
-            })
-            .then(callback, errback);
+        return d.promise;
     }
 
-    return resolveGithub;
+    return searchGithub;
 });
 
 /**
@@ -4204,7 +4275,6 @@ define('volo/commands',['require','./baseUrl','fs','path','q','volo/v'],function
  * see: http://github.com/volojs/volo for details
  */
 
-
 /*jslint */
 /*global define, process */
 
@@ -4213,6 +4283,8 @@ define('volo/commands',['require','./baseUrl','fs','path','q','volo/v'],function
  * set of modules.
  */
 define('volo/volofile',['require','path','volo/commands','volo/qutil'],function (require) {
+    
+
     var path = require('path'),
         commands = require('volo/commands'),
         qutil = require('volo/qutil');
@@ -4239,7 +4311,7 @@ define('volo/volofile',['require','path','volo/commands','volo/qutil'],function 
      * @returns {Promise} that resolves to false exactly, otherwise it has the
      * commmand output, if any.
      */
-    volofile.run = function (basePath, commandName, namedArgs /*other args can be passed*/) {
+    volofile.run = function (basePath, commandName /*other args can be passed*/) {
         var args = [].slice.call(arguments, 2),
             cwd = process.cwd();
 
@@ -4247,7 +4319,9 @@ define('volo/volofile',['require','path','volo/commands','volo/qutil'],function 
 
         return volofile('.').then(function (vfMod) {
             var command = vfMod && vfMod[commandName];
-            return commands.run.apply(commands, [command, null].concat(args));
+            if (command) {
+                return commands.run.apply(commands, [command, null].concat(args));
+            }
         })
         .then(function (result) {
             process.chdir(cwd);
@@ -5831,40 +5905,145 @@ define('volo/unzip',['require','./zip/zip','./qutil','path','fs'],function (requ
  * see: http://github.com/volojs/volo for details
  */
 
-
 /*jslint */
 /*global define, console */
 
-define('volo/packageJson',['require','path','fs'],function (require) {
+define('volo/packageJson',['require','path','fs','./lang'],function (require) {
+    
+
     var path = require('path'),
         fs = require('fs'),
-        commentRegExp = /\/\*package\.json([\s\S]*?)\*\//,
-        endsInJsRegExp = /\.js$/;
+        lang = require('./lang'),
+        commentStartRegExp = /\/\*\s*package\.json\s*/,
+        commentEndRegExp = /\s*\*\//,
+        endsInJsRegExp = /\.js$/,
+        crRegExp = /\r\n/;
+
+    //Used to find the indices within a file for the /*package.json */
+    //comment and a JSON segment inside it. If the result.end is not -1 it
+    //means a proper comment was found.
+    function getCommentIndices(text) {
+        var match = commentStartRegExp.exec(text),
+            pairMatch,
+            result = {
+                start: -1,
+                end: -1,
+                jsonStart: -1,
+                jsonEnd: -1
+            };
+
+        if (match) {
+            result.start = match.index;
+
+            //Search for the end of the comment. Need to be careful of
+            //contents in strings that look like end of comment. For now,
+            //just using a "match the curlies" approach, but this would
+            //fail if a string property has a { or } without a match within
+            //the string.
+            pairMatch = lang.findMatchingPair(text, '{', '}',
+                                            result.start + match[0].length);
+
+            result.jsonStart = pairMatch.start;
+            result.jsonEnd = pairMatch.end;
+
+            if (result.jsonEnd !== -1) {
+                //Have a real json end, find the comment end.
+                match = commentEndRegExp.exec(text.substring(result.jsonEnd));
+                if (match) {
+                    result.end = result.jsonEnd + match.index + match[0].length;
+                }
+            }
+        }
+
+        return result;
+    }
 
     function extractCommentData(file) {
-        var match = commentRegExp.exec(fs.readFileSync(file, 'utf8')),
-            json = match && match[1] && match[1].trim();
-        if (json) {
-            return JSON.parse(json);
-        } else {
+        var text = fs.readFileSync(file, 'utf8'),
+            indices = getCommentIndices(text),
+            json;
+
+        if (indices.end === -1) {
+            //No valid comment
             return null;
+        } else {
+            json = text.substring(indices.jsonStart, indices.jsonEnd + 1);
+            return JSON.parse(json);
         }
     }
 
-    function packageJson(fileOrDir) {
-        var result = {
-            file: null,
-            data: null,
-            singleFile: false
+    function saveCommentData(file, data) {
+        var text = fs.readFileSync(file, 'utf8'),
+            lineEnding = crRegExp.test(text) ? '\r\n' : '\n',
+            indices = getCommentIndices(text),
+            json = JSON.stringify(data, null, '  ');
+
+        if (indices.end === -1) {
+            //No valid comment, so insert it.
+            //TODO: would be nice to place this under the license comment,
+            //if there is one.
+            text = '/*package.json' + lineEnding +
+                    json +
+                    '\n*/' + lineEnding +
+                    text;
+        } else {
+            text = text.substring(0, indices.jsonStart) +
+                   json +
+                   text.substring(indices.jsonEnd + 1);
+        }
+
+        fs.writeFileSync(file, text, 'utf8');
+    }
+
+    function PackageInfo() {
+            this.file = null;
+            this.data = null;
+            this.singleFile = false;
+    }
+
+    PackageInfo.prototype = {
+        refresh: function () {
+            if (!this.file) {
+                return;
+            }
+
+            if (this.singleFile) {
+                this.data = extractCommentData(this.file);
+            } else {
+                this.data = JSON.parse(fs.readFileSync(this.file, 'utf8'));
+            }
         },
+
+        save: function () {
+            if (this.file && this.data) {
+                if (this.singleFile) {
+                    saveCommentData(this.file, this.data);
+                } else {
+                    fs.writeFileSync(this.file,
+                                     JSON.stringify(this.data, null, '  '),
+                                     'utf8');
+                }
+            }
+        },
+
+        addVoloDep: function (id, archiveName) {
+            if (this.file) {
+                lang.setObject(this, 'data.volo.dependencies');
+                this.data.volo.dependencies[id] = archiveName;
+            }
+        }
+    };
+
+    function packageJson(fileOrDir) {
+        var result = new PackageInfo(),
         packagePath = path.join(fileOrDir, 'package.json'),
         jsFiles, filePath, packageData;
 
         if (fs.statSync(fileOrDir).isFile()) {
             //A .js file that may have a package.json content
-            result.data = extractCommentData(fileOrDir);
             result.file = fileOrDir;
             result.singleFile = true;
+            result.refresh();
         } else {
             //Check for /*package.json */ in a .js file if it is the
             //only .js file in the dir.
@@ -5883,15 +6062,13 @@ define('volo/packageJson',['require','path','fs'],function (require) {
                 result.singleFile = true;
             } else if (path.existsSync(packagePath)) {
                 //Plain package.json case
-                packagePath = path.join(fileOrDir, 'package.json');
-                result.file = packagePath;
-                result.data = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+                result.file = path.join(fileOrDir, 'package.json');
+                result.refresh();
             }
         }
 
         return result;
     }
-
 
     return packageJson;
 });
@@ -7648,6 +7825,173 @@ define('text!amdify/exportsTemplate.js',[],function () { return 'return /*EXPORT
 define('text!amdify/exportsNoConflictTemplate.js',[],function () { return 'if (/*EXPORTS*/.noConflict) {\n    /*EXPORTS*/.noConflict(true);\n}\nreturn /*EXPORTS*/;\n';});
 
 define('text!amdify/doc.md',[],function () { return '## Usage\n\n    volo amdify [-noConflict] path/to/file.js [depends=] [exports=]\n\nwhere:\n\n* depends is a comma-separated list of dependencies, with no spaces\n* exports is the global value created by the file that should be treated as the\n  module\'s exported value.\n* -noConflict indicates that code shoud be included to call the exports\n  value\'s noConflict method if it exists.\n\n## Details\n\nThe file.js will be modified to include a define() wrapper with the given\ndependency names.\n\nThis example:\n\n    volo amdify www/js/aplugin.jquery.js depends=jquery\n\nWill result in modifying the www/js/aplugin.jquery.js contents to have a\nfunction wrapping that includes:\n\n    define([\'jquery\'], function () {\n        //original contents in here.\n    });\n\nIf a dependency calls AMD\'s define(), then it may not create a global when\nloaded by an AMD loader. In that case, you may need to give the dependency\nas specific name to act as the "global" in the script. you can do this by\npassing `=localvarname` for the dependency. Here is an example for a "ko"\ndependency that does not export a global "ko" as a global if AMD is in use,\nso this amdify command will make sure to create a `kolocal` for use by\nthe wrapped code. It will also create a local `beta` for `beta.1.7.2`:\n\n    volo amdify www/js/ko.plugin.js depends=ko=kolocal,beta.1.7.2=beta\n\nResults in:\n\n    define([\'ko\', \'beta.1.7.2\'], function (kolocal, beta) {\n        //original contents in here.\n    });\n\nThis example sets dependencies, but then also specifies the export value to\nbe used. If the export object has a \'noConflict\' method on it, then it will\nbe called as part of exporting the module value:\n\n    volo amdify www/js/lib.js depends=jquery exports=lib\n\nresults in a transform that looks roughly like:\n\n    define([\'jquery\'], function () {\n\n        //original contents in here.\n\n        return lib;\n    });\n\nIf you want "-noConflict" called on the exports value:\n\n    volo amdify -noConflict www/js/lib.js depends=jquery exports=lib\n\nresults in a transform that looks roughly like:\n\n    define([\'jquery\'], function () {\n\n        //original contents in here.\n\n        if (lib.noConflict)) {\n            lib.noConflict(true);\n        }\n        return lib;\n    });\n\n**Be careful with -noConflict**. You most likely do not want to use it if\nyou have other code that has been amdify\'d that depends on this amdify\'d code.\nFor instance, using amdify on underscore.js with -noConflict is bad since\nbackbone.js depends on underscore, and it looks for a global _ value.\n\namdify will set the "this" value for the original contents to be the global\nobject.\n\nIdeally the target file would optionally call define() itself, and use\nthe local dependency references instead of browser globals. However, for\nbootstrapping existing projects to use an AMD loader, amdify can be useful to\nget started.\n\nUsing amdify will produce code that is uglier than doing a proper code change\nto add optional an optional define() call. For better code examples, see:\nhttps://github.com/umdjs/umd\n';});
+
+define('text!search/doc.md',[],function () { return '## Usage\n\n    volo search query\n\nwhere query is a string used for the search. The query can have a scheme on it,\nto specify what type of search module to use. For example:\n\n    volo search foo:bar\n\nuses the foo search module to get search results on \'bar\'.\n\nThe default query scheme is \'github\', so to search for the right repo to use\nfor installing \'jquery\':\n\n    volo search jquery\n\n';});
+
+/**
+ * @license Copyright (c) 2011-2012, The Dojo Foundation All Rights Reserved.
+ * Available via the MIT or new BSD license.
+ * see: http://github.com/volojs/volo for details
+ */
+
+define('search',['require','exports','module','volo/qutil','path','text!./search/doc.md','volo/commands'],function (require, exports, module) {
+    
+
+    var qutil = require('volo/qutil'),
+        path = require('path'),
+        search;
+
+    search = {
+        summary: 'Searches for a repo name.',
+
+        doc: require('text!./search/doc.md'),
+
+        validate: function (namedArgs, query) {
+            if (!query) {
+                return new Error('Please pass a query.');
+            }
+        },
+
+        run: function (d, v, namedArgs, query) {
+            d.resolve(search.api(query).then(function (results) {
+                return results ? JSON.stringify(results, null, '  ') :
+                                 'No results';
+            }));
+        },
+
+        api: function(query, callback, errback) {
+            var index = query.indexOf(':'),
+                scheme = 'github',
+                d = qutil.convert(callback, errback),
+                searchId;
+
+            //Figure out the scheme.
+            if (index !== -1) {
+                scheme = query.substring(0, index);
+                query = query.substring(index + 1);
+            }
+
+            //Figure out if there is a resolver for the given scheme.
+            searchId = 'volo/search/' + scheme;
+
+            if (require.defined(searchId) ||
+                path.existsSync(require.toUrl(searchId + '.js'))) {
+                require([searchId], function (search) {
+                    d.resolve(search(query));
+                });
+            } else {
+                d.reject('Do not have a volo search provider for scheme: ' + scheme);
+            }
+
+            return d.promise;
+        }
+    };
+
+    return require('volo/commands').register(module.id, search);
+});
+/**
+ * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
+ * Available via the MIT or new BSD license.
+ * see: http://github.com/volojs/volo for details
+ */
+
+/*global console */
+
+define('volo/resolve/github',['require','path','../config','../archive','../github','search','q','../qutil'],function (require) {
+    
+
+    var path = require('path'),
+        config = require('../config'),
+        archive = require('../archive'),
+        github = require('../github'),
+        search = require('search'),
+        q = require('q'),
+        qutil = require('../qutil');
+
+    function resolveGithub(archiveName, fragment, callback, errback) {
+
+        var parts = archiveName.split('/'),
+            originalFragment = fragment,
+            d = qutil.convert(callback, errback),
+            ownerPlusRepo, version, localName, override;
+
+        d.resolve(q.call(function () {
+            if (parts.length === 1) {
+                //Need to do a search for a repo.
+                return search.api(archiveName).then(function (results) {
+                    var archive;
+                    if (results && results.length) {
+                        archive = results[0].archive;
+                        console.log('Using search result "' + archive +
+                                    '" for "' + archiveName + '"...');
+                        return archive;
+                    } else {
+                        throw new Error('No search results for: ' + archiveName);
+                    }
+                });
+            }
+            return archiveName;
+        }).then(function (archiveName) {
+            parts = archiveName.split('/');
+
+            localName = parts[1];
+
+            ownerPlusRepo = parts[0] + '/'  + parts[1];
+            version = parts[2];
+
+            override = config.github.overrides[ownerPlusRepo];
+
+            //Fetch the latest version
+            return github.latestTag(ownerPlusRepo + (version ? '/' + version : ''));
+        }).then(function (tag) {
+            var isArchive = true,
+                isSingleFile = false,
+                scheme = 'github',
+                url;
+
+            //If there is a specific override to finding the file,
+            //for instance jQuery releases are put on a CDN and are not
+            //committed to github, use the override.
+            if (fragment || (override && override.pattern)) {
+                //If a specific file in the repo. Do not need the full
+                //zipball, just use a raw github url to get it.
+                if (fragment) {
+                    url = github.rawUrl(ownerPlusRepo, tag, fragment);
+                    //Adjust local name to be the fragment name.
+                    localName = path.basename(fragment);
+                    //Strip off extension name.
+                    localName = localName.substring(0, localName.lastIndexOf('.'));
+                } else {
+                    //An override situation.
+                    url = override.pattern.replace(/\{version\}/, tag);
+                }
+
+                //Set fragment to null since it has already been processed.
+                fragment = null;
+                isSingleFile = true;
+
+                isArchive = archive.isArchive(url);
+            } else {
+                url = github.zipballUrl(ownerPlusRepo, tag);
+            }
+
+            return {
+                id: scheme + ':' + ownerPlusRepo + '/' + tag +
+                         (originalFragment ? '#' + originalFragment : ''),
+                scheme: scheme,
+                url: url,
+                isArchive: isArchive,
+                isSingleFile: isSingleFile,
+                fragment: fragment,
+                localName: localName
+            };
+        }));
+
+        return d.promise;
+    }
+
+    return resolveGithub;
+});
 
 define('text!npmrel/doc.md',[],function () { return '## Usage\n\n    volo npmrel targetDir\n\nCommand line arguments:\n\n**targetDir** is the name of the directory that contains a package installed\nby npm.\n\n## Details\n\nnpm installs a package with its dependencies in nested node_modules storage.\nNode\'s module ID-to-path resolution can do multiple IO operations to find those\nmodules. However, in an AMD, browser-based deployment, only one IO operation per\nmodule, at most, is advised.\n\nThis command determines the nested package names and locations, and updates\nany require(\'\') calls in the modules to use a relative module ID so that the\nmodules can be used in an AMD project.\n\nIt then converts the modules to have an AMD define() wrapper.\n\n## Example\n\n    > mkdir node_modules\n    > npm install foo\n    > volo npmrel node_modules/foo\n\nNow you can move node_modules/foo.js and node_modules/foo to the baseUrl of\nyour AMD project.\n\n## Notes\n\nThis will not work for all node modules. In particular, if the module calculates\nthe require dependency:\n\n    var a = require(someCondition ? \'a\' : \'a1\');\n\nor\n\n    var name = prefix + \'/\' + action,\n        impl = require(name);\n\nThis command also does not create "browser friendly" versions of the core\nmodules like "fs". It only converts module IDs that map to packages that\nare in the local node_modules directory, but keeps all other IDs intact.\n';});
 
@@ -10791,7 +11135,7 @@ define('amdify',['require','exports','module','fs','path','volo/parse','volo/fil
 /*jslint */
 /*global define, console, process */
 
-define('add',['require','exports','module','fs','path','q','volo/config','volo/archive','volo/download','volo/packageJson','volo/parse','volo/unzip','volo/file','volo/tempDir','amdify','text!./add/doc.md','volo/commands'],function (require, exports, module) {
+define('add',['require','exports','module','fs','path','q','volo/config','volo/archive','volo/download','volo/packageJson','volo/parse','volo/unzip','volo/file','volo/tempDir','amdify','volo/volofile','text!./add/doc.md','volo/commands'],function (require, exports, module) {
 
 
     var fs = require('fs'),
@@ -10807,6 +11151,7 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
         file = require('volo/file'),
         tempDir = require('volo/tempDir'),
         amdify = require('amdify'),
+        volofile = require('volo/volofile'),
         makeMainAmdAdapter = amdify.util.makeMainAmdAdapter,
         jsRegExp = /\.js$/,
         add;
@@ -10830,14 +11175,22 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
             return undefined;
         },
         run: function (deferred, v, namedArgs, archiveName, specificLocalName) {
+            var pkg = packageJson('.'),
+                isAmdProject = namedArgs.amd || (pkg.data && pkg.data.amd),
+                baseUrl = pkg.data && pkg.data.amd && pkg.data.amd.baseUrl,
+                existingPath, tempDirName, linkPath, linkStat, linkTarget,
+                info, targetDirName;
 
-            q.when(archive.resolve(archiveName, namedArgs.volo.resolve), function (archiveInfo) {
+            //Function used to clean up in case of errors.
+            function errCleanUp(err) {
+                //Clean up temp area. Even though this is async,
+                //it is not important to track the completion.
+                file.asyncPlatformRm(tempDirName);
 
-                var pkg = packageJson('.'),
-                    isAmdProject = namedArgs.amd || (pkg.data && pkg.data.amd),
-                    baseUrl = pkg.data && pkg.data.amd && pkg.data.amd.baseUrl,
-                    existingPath, tempDirName, linkPath, linkStat, linkTarget,
-                    info;
+                deferred.reject(err);
+            }
+
+            archive.resolve(archiveName, namedArgs.volo.resolve).then(function (archiveInfo) {
 
                 //If no baseUrl, then look for an existing js directory
                 if (!baseUrl) {
@@ -10893,246 +11246,248 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
                                           '\nThe AMD dependency name: \'' +
                                           archiveInfo.finalLocalName :
                                           ''));
-                }
-
-                //Function used to clean up in case of errors.
-                function errCleanUp(err) {
-                    //Clean up temp area. Even though this is async,
-                    //it is not important to track the completion.
-                    file.asyncPlatformRm(tempDirName);
-
-                    deferred.reject(err);
-                }
-
-                //Function to handle moving the file(s) from temp dir to final
-                //location.
-                function moveFromTemp() {
+                } else {
                     try {
-                        //Find the directory that was unpacked in tempDirName
-                        var dirName = file.firstDir(tempDirName),
-                            completeMessage = '',
-                            ext = '',
-                            info, sourceName, targetName,
-                            listing, defaultName, mainFile, mainContents, deps;
+                        //If the baseUrl does not exist, create it.
+                        file.mkdirs(baseUrl);
 
-                        if (dirName) {
-                            info = packageJson(dirName);
-
-                            //If a main setting, read the main file. If it
-                            //calls define() and any of the dependencies
-                            //are relative, then keep the whole directory.
-                            mainFile = info.data && info.data.main;
-                            if (mainFile) {
-                                mainFile += jsRegExp.test(mainFile) ? '' : '.js';
-                                mainFile = path.join(dirName, mainFile);
-                                mainContents = fs.readFileSync(mainFile, 'utf8');
-                                deps = parse.findDependencies(mainFile,
-                                       mainContents);
-                                if (!deps || !deps.length) {
-                                    deps = parse.findCjsDependencies(mainFile,
-                                           mainContents);
-                                }
-                                if (deps && deps.some(function (dep) {
-                                    return dep.indexOf('.') === 0;
-                                })) {
-                                    sourceName = null;
-                                } else {
-                                    sourceName = mainFile;
-                                    defaultName = path.basename(mainFile);
-                                }
-                            } else {
-                                //If the directory only contains one file, then
-                                //that is the install target.
-                                listing = fs.readdirSync(dirName);
-                                if (listing.length === 1) {
-                                    sourceName = path.join(dirName, listing[0]);
-                                    defaultName = listing[0];
-                                    ext = path.extname(sourceName);
-                                } else {
-                                    //packagJson will look for one top level .js
-                                    //file, and if so, and has package data via
-                                    //a package.json comment, only install that
-                                    //file.
-                                    if (info.singleFile && info.data) {
-                                        sourceName = info.singleFile;
-                                        defaultName = path.basename(info.file);
-                                    } else {
-                                        defaultName = archiveInfo.finalLocalName + '.js';
-
-                                        sourceName = path.join(dirName, defaultName);
-                                        if (!path.existsSync(sourceName)) {
-                                            sourceName = null;
-                                        }
-                                    }
-                                }
+                        //Get the package JSON data for dependency, if it is
+                        //already on disk.
+                        existingPath = path.join(baseUrl, archiveInfo.finalLocalName);
+                        if (!path.existsSync(existingPath)) {
+                            existingPath += '.js';
+                            if (!path.existsSync(existingPath)) {
+                                existingPath = null;
                             }
-
-                            if (sourceName) {
-                                //Just move the single file into position.
-                                if (specificLocalName) {
-                                    targetName = path.join(baseUrl,
-                                                           specificLocalName + ext);
-                                } else {
-                                    targetName = path.join(baseUrl, defaultName);
-                                }
-
-                                //Check for the existence of the
-                                //singleFileName, and if it already exists,
-                                //bail out.
-                                if (path.existsSync(targetName) &&
-                                    !namedArgs.force) {
-                                    errCleanUp(targetName + ' already exists.' +
-                                        ' To install anyway, pass -f to the ' +
-                                        'command');
-                                    return;
-                                }
-                                fs.renameSync(sourceName, targetName);
-                            } else {
-                                //A complete directory install.
-                                targetName = path.join(baseUrl,
-                                                       archiveInfo.finalLocalName);
-
-                                //Found the unpacked directory, move it.
-                                fs.renameSync(dirName, targetName);
-
-                                //If directory, remove common directories not
-                                //needed for install.
-                                add.util.discard(targetName);
-
-                                if (info.data && info.data.main && isAmdProject) {
-                                    makeMainAmdAdapter(info.data.main,
-                                                       archiveInfo.finalLocalName,
-                                                       targetName + '.js');
-                                }
-                            }
-
-                            //Stamp app's package.json with the dependency??
-
-                            //Trace nested dependencies in the package.json
-                            //TODO
-
-                            q.call(function () {
-                                if (isAmdProject) {
-                                    var damd = q.defer();
-                                    amdify.run.apply(amdify, [damd, v, namedArgs, targetName]);
-                                    return damd.promise;
-                                }
-                                return undefined;
-                            }).then(function (amdMessage) {
-                                //All done.
-                                //Clean up temp area. Even though this is async,
-                                //it is not important to track the completion.
-                                file.asyncPlatformRm(tempDirName);
-
-                                if (namedArgs.amdlog && amdMessage) {
-                                    completeMessage += amdMessage + '\n';
-                                }
-                                completeMessage += 'Installed ' +
-                                    archiveInfo.url +
-                                    (archiveInfo.fragment ? '#' +
-                                     archiveInfo.fragment : '') +
-                                    ' at ' + targetName;
-
-                                if (isAmdProject) {
-                                    completeMessage += '\nAMD dependency name: ' +
-                                                        archiveInfo.finalLocalName;
-                                }
-
-                                deferred.resolve(completeMessage);
-                            }, deferred.reject);
-                        } else {
-                            errCleanUp('Unexpected zipball configuration');
                         }
+
+                        if (existingPath && !namedArgs.force) {
+                            return deferred.reject(existingPath + ' already exists. To ' +
+                                    'install anyway, pass -f to the command');
+                        }
+
                     } catch (e) {
                         errCleanUp(e);
                     }
-                }
 
-                try {
-                    //If the baseUrl does not exist, create it.
-                    file.mkdirs(baseUrl);
+                    //Create a temporary directory to download the code.
+                    tempDir.create(archiveInfo.finalLocalName).then(function (newTempDir) {
+                        tempDirName = newTempDir;
 
-                    //Get the package JSON data for dependency, if it is
-                    //already on disk.
-                    existingPath = path.join(baseUrl, archiveInfo.finalLocalName);
-                    if (!path.existsSync(existingPath)) {
-                        existingPath += '.js';
-                        if (!path.existsSync(existingPath)) {
-                            existingPath = null;
+                        var url = archiveInfo.url,
+                            localName = archiveInfo.finalLocalName,
+                            index, lastDotIndex, urlBaseName,
+                            ext, urlDir, zipName, downloadTarget, downloadPath;
+
+                        //Find extension, but only take the last part of path for it.
+                        index = url.lastIndexOf('/');
+                        if (index === -1) {
+                            index = 0;
                         }
-                    }
+                        urlBaseName = url.substring(index, url.length);
+                        lastDotIndex = urlBaseName.lastIndexOf('.');
 
-                    pkg = (existingPath && packageJson(existingPath)) || {};
+                        if (archiveInfo.isArchive) {
+                            ext = '.zip';
+                        } else if (lastDotIndex !== -1) {
+                            ext = urlBaseName.substring(lastDotIndex, urlBaseName.length);
+                        }
 
-                    if (existingPath && !namedArgs.force) {
-                        return deferred.reject(existingPath + ' already exists. To ' +
-                                'install anyway, pass -f to the command');
-                    }
+                        downloadTarget = localName + (ext || '');
 
-                } catch (e) {
-                    errCleanUp(e);
-                }
-
-                //Create a temporary directory to download the code.
-                tempDir.create(archiveInfo.finalLocalName, function (newTempDir) {
-                    tempDirName = newTempDir;
-
-                    var url = archiveInfo.url,
-                        localName = archiveInfo.finalLocalName,
-                        index, lastDotIndex, urlBaseName,
-                        ext, urlDir, zipName, downloadTarget, downloadPath;
-
-                    //Find extension, but only take the last part of path for it.
-                    index = url.lastIndexOf('/');
-                    if (index === -1) {
-                        index = 0;
-                    }
-                    urlBaseName = url.substring(index, url.length);
-                    lastDotIndex = urlBaseName.lastIndexOf('.');
-
-                    if (archiveInfo.isArchive) {
-                        ext = '.zip';
-                    } else if (lastDotIndex !== -1) {
-                        ext = urlBaseName.substring(lastDotIndex, urlBaseName.length);
-                    }
-
-                    downloadTarget = localName + (ext || '');
-
-                    if (archiveInfo.isArchive) {
-                        download(url, path.join(tempDirName, downloadTarget),
-                            function (filePath) {
-
-                            //Unpack the zip file.
-                            zipName = path.join(tempDirName, localName +
-                                                '.zip');
-                            unzip(zipName, function () {
-                                moveFromTemp();
+                        if (archiveInfo.isArchive) {
+                            return download(url, path.join(tempDirName, downloadTarget))
+                            .then(function (filePath) {
+                                //Unpack the zip file.
+                                zipName = path.join(tempDirName, localName +
+                                                    '.zip');
+                                return unzip(zipName);
                             }, errCleanUp);
-                        }, errCleanUp);
-                    } else {
-                        if (archiveInfo.isSingleFile) {
-                            //Single file install.
-                            //Create a directory inside tempDirName to receive the
-                            //file, since the zipball path has a similar setup.
-                            urlDir = path.join(tempDirName, 'download');
-                            fs.mkdirSync(urlDir);
-                            downloadPath = path.join(urlDir, downloadTarget);
                         } else {
-                            //a local directory install, it already has
-                            //a directory structure.
-                            downloadPath = path.join(tempDirName, downloadTarget);
+                            if (archiveInfo.isSingleFile) {
+                                //Single file install.
+                                //Create a directory inside tempDirName to receive the
+                                //file, since the zipball path has a similar setup.
+                                urlDir = path.join(tempDirName, 'download');
+                                fs.mkdirSync(urlDir);
+                                downloadPath = path.join(urlDir, downloadTarget);
+                            } else {
+                                //a local directory install, it already has
+                                //a directory structure.
+                                downloadPath = path.join(tempDirName, downloadTarget);
+                            }
+
+                            return download(url, downloadPath);
+                        }
+                    }).then(function () {
+                        //Move the file(s) from temp dir to final
+                        //location.
+                        try {
+                            //Find the directory that was unpacked in tempDirName
+                            var dirName = file.firstDir(tempDirName),
+                                completeMessage = '',
+                                ext = '',
+                                info, sourceName, targetName,
+                                listing, defaultName, mainFile, mainContents, deps;
+
+                            if (dirName) {
+                                info = packageJson(dirName);
+
+                                //If a main setting, read the main file. If it
+                                //calls define() and any of the dependencies
+                                //are relative, then keep the whole directory.
+                                mainFile = info.data && info.data.main;
+                                if (mainFile) {
+                                    mainFile += jsRegExp.test(mainFile) ? '' : '.js';
+                                    mainFile = path.join(dirName, mainFile);
+                                    mainContents = fs.readFileSync(mainFile, 'utf8');
+                                    deps = parse.findDependencies(mainFile,
+                                           mainContents);
+                                    if (!deps || !deps.length) {
+                                        deps = parse.findCjsDependencies(mainFile,
+                                               mainContents);
+                                    }
+                                    if (deps && deps.some(function (dep) {
+                                        return dep.indexOf('.') === 0;
+                                    })) {
+                                        sourceName = null;
+                                    } else {
+                                        sourceName = mainFile;
+                                        defaultName = path.basename(mainFile);
+                                    }
+                                } else {
+                                    //If the directory only contains one file, then
+                                    //that is the install target.
+                                    listing = fs.readdirSync(dirName);
+                                    if (listing.length === 1) {
+                                        sourceName = path.join(dirName, listing[0]);
+                                        defaultName = listing[0];
+                                        ext = path.extname(sourceName);
+                                    } else {
+                                        //packagJson will look for one top level .js
+                                        //file, and if so, and has package data via
+                                        //a package.json comment, only install that
+                                        //file.
+                                        if (info.singleFile && info.data) {
+                                            sourceName = info.singleFile;
+                                            defaultName = path.basename(info.file);
+                                        } else {
+                                            defaultName = archiveInfo.finalLocalName + '.js';
+
+                                            sourceName = path.join(dirName, defaultName);
+                                            if (!path.existsSync(sourceName)) {
+                                                sourceName = null;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (sourceName) {
+                                    //Just move the single file into position.
+                                    if (specificLocalName) {
+                                        targetName = path.join(baseUrl,
+                                                               specificLocalName + ext);
+                                    } else {
+                                        targetName = path.join(baseUrl, defaultName);
+                                    }
+
+                                    //Check for the existence of the
+                                    //singleFileName, and if it already exists,
+                                    //bail out.
+                                    if (path.existsSync(targetName) &&
+                                        !namedArgs.force) {
+                                        errCleanUp(targetName + ' already exists.' +
+                                            ' To install anyway, pass -f to the ' +
+                                            'command');
+                                        return;
+                                    }
+                                    fs.renameSync(sourceName, targetName);
+                                } else {
+                                    //A complete directory install.
+                                    targetName = targetDirName = path.join(baseUrl,
+                                                           archiveInfo.finalLocalName);
+
+                                    //Found the unpacked directory, move it.
+                                    fs.renameSync(dirName, targetName);
+
+                                    //If directory, remove common directories not
+                                    //needed for install.
+                                    add.util.discard(targetName);
+
+                                    if (info.data && info.data.main && isAmdProject) {
+                                        makeMainAmdAdapter(info.data.main,
+                                                           archiveInfo.finalLocalName,
+                                                           targetName + '.js');
+                                    }
+                                }
+
+                                q.call(function () {
+                                    if (isAmdProject) {
+                                        var damd = q.defer();
+                                        amdify.run.apply(amdify, [damd, v, namedArgs, targetName]);
+                                        return damd.promise;
+                                    }
+                                    return undefined;
+                                }).then(function (amdMessage) {
+                                    //All done.
+                                    //Clean up temp area. Even though this is async,
+                                    //it is not important to track the completion.
+                                    file.asyncPlatformRm(tempDirName);
+
+                                    if (namedArgs.amdlog && amdMessage) {
+                                        completeMessage += amdMessage + '\n';
+                                    }
+                                    completeMessage += 'Installed ' +
+                                        archiveInfo.id +
+                                        ' at ' + targetName;
+
+                                    if (isAmdProject) {
+                                        completeMessage += '\nAMD dependency name: ' +
+                                                            archiveInfo.finalLocalName;
+                                    }
+
+                                }).then(function () {
+                                    if (deps && deps.length) {
+                                        //TODO: scan all the files?
+                                        //No, just do this main file,
+                                        //rely on package.json to do
+                                        //the rest. scan dependencies: xx(?)
+                                        //and scan for volo: dependencies
+
+                                        //Stamp app's package.json with the dependency
+                                    }
+                                }).then(function () {
+                                    //If the added dependency is a directory
+                                    //with a volofile and it has an onAdd
+                                    //command, run it.
+                                    if (targetDirName) {
+                                        return volofile.run(targetDirName, 'onAdd');
+                                    }
+                                }).then(function () {
+                                    //Add this dependency to the package.json
+                                    //info, if available, and a package.json
+                                    //file, not a single JS file.
+                                    //Refresh first since it may have changed
+                                    //from other dependency installs/onAdd
+                                    //behavior.
+                                    pkg.refresh();
+                                    if (!pkg.isSingleFile && pkg.data) {
+                                        pkg.addVoloDep(archiveInfo.finalLocalName,
+                                                        archiveInfo.id);
+                                    }
+                                    pkg.save();
+                                }).then(function () {
+                                    deferred.resolve(completeMessage);
+                                }, deferred.reject);
+                            } else {
+                                errCleanUp('Unexpected zipball configuration');
+                            }
+                        } catch (e) {
+                            errCleanUp(e);
                         }
 
-                        download(url, downloadPath,
-                            function (filePath) {
-                                moveFromTemp();
-                            },
-                            errCleanUp
-                        );
-                    }
-                }, errCleanUp);
-
-                return undefined;
+                    }, errCleanUp);
+                }
             }, deferred.reject);
         },
         util: {
