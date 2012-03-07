@@ -102,6 +102,10 @@ define(function (require) {
 
     PackageInfo.prototype = {
         refresh: function () {
+            if (!this.file) {
+                return;
+            }
+
             if (this.singleFile) {
                 this.data = extractCommentData(this.file);
             } else {
@@ -110,7 +114,7 @@ define(function (require) {
         },
 
         save: function () {
-            if (this.data) {
+            if (this.file && this.data) {
                 if (this.singleFile) {
                     saveCommentData(this.file, this.data);
                 } else {
@@ -122,8 +126,10 @@ define(function (require) {
         },
 
         addVoloDep: function (id, archiveName) {
-            lang.setObject(this, 'data.volo.dependencies');
-            this.data.volo.dependencies[id] = archiveName;
+            if (this.file) {
+                lang.setObject(this, 'data.volo.dependencies');
+                this.data.volo.dependencies[id] = archiveName;
+            }
         }
     };
 
@@ -162,10 +168,6 @@ define(function (require) {
 
         return result;
     }
-
-    packageJson.getCommentIndices = getCommentIndices;
-    packageJson.extractCommentData = extractCommentData;
-    packageJson.saveCommentData = saveCommentData;
 
     return packageJson;
 });

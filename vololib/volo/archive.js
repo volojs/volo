@@ -101,6 +101,7 @@ define(function (require) {
                 }
 
                 d.resolve({
+                    id: scheme + ':' + archive + (fragment ? '#' + fragment : ''),
                     scheme: scheme,
                     url: scheme + ':' + archive,
                     isArchive: tarGzRegExp.test(archive),

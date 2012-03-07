@@ -4,11 +4,9 @@
  * see: http://github.com/volojs/volo for details
  */
 
-'use strict';
-/*jslint */
-/*global define, console */
-
 define(function (require) {
+    'use strict';
+
     var path = require('path'),
         config = require('../config'),
         archive = require('../archive'),
@@ -17,6 +15,7 @@ define(function (require) {
     function resolveGithub(archiveName, fragment, callback, errback) {
 
         var parts = archiveName.split('/'),
+            originalFragment = fragment,
             ownerPlusRepo, version, localName, override;
 
         localName = parts[1];
@@ -31,6 +30,7 @@ define(function (require) {
             .then(function (tag) {
                 var isArchive = true,
                     isSingleFile = false,
+                    scheme = 'github',
                     url;
 
                 //If there is a specific override to finding the file,
@@ -60,7 +60,9 @@ define(function (require) {
                 }
 
                 return {
-                    scheme: 'github',
+                    id: scheme + ':' + ownerPlusRepo + '/' + tag +
+                             (originalFragment ? '#' + originalFragment : ''),
+                    scheme: scheme,
                     url: url,
                     isArchive: isArchive,
                     isSingleFile: isSingleFile,

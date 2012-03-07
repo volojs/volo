@@ -134,8 +134,6 @@ define(function (require, exports, module) {
                             }
                         }
 
-                        pkg = (existingPath && packageJson(existingPath)) || {};
-
                         if (existingPath && !namedArgs.force) {
                             return deferred.reject(existingPath + ' already exists. To ' +
                                     'install anyway, pass -f to the command');
@@ -313,9 +311,7 @@ define(function (require, exports, module) {
                                         completeMessage += amdMessage + '\n';
                                     }
                                     completeMessage += 'Installed ' +
-                                        archiveInfo.url +
-                                        (archiveInfo.fragment ? '#' +
-                                         archiveInfo.fragment : '') +
+                                        archiveInfo.id +
                                         ' at ' + targetName;
 
                                     if (isAmdProject) {
@@ -331,9 +327,7 @@ define(function (require, exports, module) {
                                         //the rest. scan dependencies: xx(?)
                                         //and scan for volo: dependencies
 
-                                        //Stamp app's package.json with the dependency??
-
-                                        //HEY DO THIS WORK FOR SYMLINKS TOO!
+                                        //Stamp app's package.json with the dependency
                                     }
                                 }).then(function () {
                                     //If the added dependency is a directory
@@ -342,6 +336,19 @@ define(function (require, exports, module) {
                                     if (targetDirName) {
                                         return volofile.run(targetDirName, 'onAdd');
                                     }
+                                }).then(function () {
+                                    //Add this dependency to the package.json
+                                    //info, if available, and a package.json
+                                    //file, not a single JS file.
+                                    //Refresh first since it may have changed
+                                    //from other dependency installs/onAdd
+                                    //behavior.
+                                    pkg.refresh();
+                                    if (!pkg.isSingleFile && pkg.data) {
+                                        pkg.addVoloDep(archiveInfo.finalLocalName,
+                                                        archiveInfo.id);
+                                    }
+                                    pkg.save();
                                 }).then(function () {
                                     deferred.resolve(completeMessage);
                                 }, deferred.reject);
