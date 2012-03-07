@@ -37,6 +37,12 @@ define(function (require) {
                 "jquery/jquery": {
                     "pattern": "http://code.jquery.com/jquery-{version}.js"
                 }
+            },
+            "searchOverrides": {
+                "amd": {
+                    "underscore": "amdjs/underscore",
+                    "backbone": "amdjs/backbone"
+                }
             }
         },
 

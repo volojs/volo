@@ -49,7 +49,7 @@ define(function (require, exports, module) {
         },
         run: function (deferred, v, namedArgs, archiveName, specificLocalName) {
             var pkg = packageJson('.'),
-                isAmdProject = namedArgs.amd || (pkg.data && pkg.data.amd),
+                isAmdProject = !!(namedArgs.amd || (pkg.data && pkg.data.amd)),
                 baseUrl = pkg.data && pkg.data.amd && pkg.data.amd.baseUrl,
                 existingPath, tempDirName, linkPath, linkStat, linkTarget,
                 info, targetDirName;
@@ -63,7 +63,9 @@ define(function (require, exports, module) {
                 deferred.reject(err);
             }
 
-            archive.resolve(archiveName, namedArgs.volo.resolve).then(function (archiveInfo) {
+            archive.resolve(archiveName, namedArgs.volo.resolve, {
+                amd: isAmdProject
+            }).then(function (archiveInfo) {
 
                 //If no baseUrl, then look for an existing js directory
                 if (!baseUrl) {

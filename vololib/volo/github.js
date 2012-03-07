@@ -90,6 +90,9 @@ define(function (require) {
         });
     };
 
+    github.repo = function (ownerPlusRepo) {
+        return github('repos/' + ownerPlusRepo);
+    };
 
     github.versionTags = function (ownerPlusRepo) {
         return github.tags(ownerPlusRepo).then(function (tagNames) {

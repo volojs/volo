@@ -17,7 +17,7 @@ define(function (require) {
         q = require('q'),
         qutil = require('../qutil');
 
-    function resolveGithub(archiveName, fragment, callback, errback) {
+    function resolveGithub(archiveName, fragment, options, callback, errback) {
 
         var parts = archiveName.split('/'),
             originalFragment = fragment,
@@ -27,7 +27,7 @@ define(function (require) {
         d.resolve(q.call(function () {
             if (parts.length === 1) {
                 //Need to do a search for a repo.
-                return search.api(archiveName).then(function (results) {
+                return search.api(archiveName, options).then(function (results) {
                     var archive;
                     if (results && results.length) {
                         archive = results[0].archive;

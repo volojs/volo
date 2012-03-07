@@ -16,6 +16,10 @@ define(function (require, exports, module) {
 
         doc: require('text!./search/doc.md'),
 
+        flags: {
+            'amd': 'amd',
+        },
+
         validate: function (namedArgs, query) {
             if (!query) {
                 return new Error('Please pass a query.');
@@ -23,13 +27,13 @@ define(function (require, exports, module) {
         },
 
         run: function (d, v, namedArgs, query) {
-            d.resolve(search.api(query).then(function (results) {
+            d.resolve(search.api(query, namedArgs).then(function (results) {
                 return results ? JSON.stringify(results, null, '  ') :
                                  'No results';
             }));
         },
 
-        api: function(query, callback, errback) {
+        api: function(query, options, callback, errback) {
             var index = query.indexOf(':'),
                 scheme = 'github',
                 d = qutil.convert(callback, errback),
@@ -47,7 +51,7 @@ define(function (require, exports, module) {
             if (require.defined(searchId) ||
                 path.existsSync(require.toUrl(searchId + '.js'))) {
                 require([searchId], function (search) {
-                    d.resolve(search(query));
+                    d.resolve(search(query, options));
                 });
             } else {
                 d.reject('Do not have a volo search provider for scheme: ' + scheme);

@@ -34,6 +34,10 @@ define(function (require) {
          * @param {Function} [resolve] an optional resolve function to use
          * to resolve relative local file paths.
          *
+         * @param {Object} [options] an optional object that contains options
+         * for the resolution. An example is amd: true to indicate this is an
+         * AMD-based project.
+         *
          * Returns a promise with the properly resolved value being an
          * object with the following properties:
          *
@@ -45,7 +49,7 @@ define(function (require) {
          *              value. Useful to use when an explicit one is not
          *              specified by the user.
          */
-        resolve: function (archive, resolve) {
+        resolve: function (archive, resolve, options) {
 
             var d = q.defer(),
                 index = archive.indexOf(':'),
@@ -115,7 +119,7 @@ define(function (require) {
                 if (require.defined(resolverId) ||
                     path.existsSync(require.toUrl(resolverId + '.js'))) {
                     require([resolverId], function (resolve) {
-                        resolve(archive, fragment, d.resolve, d.reject);
+                        resolve(archive, fragment, options, d.resolve, d.reject);
                     });
                 } else {
                     d.reject('Do not have a volo resolver for scheme: ' + scheme);
