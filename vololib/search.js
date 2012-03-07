@@ -24,7 +24,8 @@ define(function (require, exports, module) {
 
         run: function (d, v, namedArgs, query) {
             d.resolve(search.api(query).then(function (results) {
-                return JSON.stringify(results, null, '  ');
+                return results ? JSON.stringify(results, null, '  ') :
+                                 'No results';
             }));
         },
 
