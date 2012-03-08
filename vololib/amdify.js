@@ -11,6 +11,7 @@ define(function (require, exports, module) {
 
     var fs = require('fs'),
         path = require('path'),
+        q = require('q'),
         parse = require('volo/parse'),
         file = require('volo/file'),
         template = require('text!./amdify/template.js'),
@@ -30,7 +31,8 @@ define(function (require, exports, module) {
         doc: require('text!./amdify/doc.md'),
 
         flags: {
-            'noConflict': 'noConflict'
+            'noConflict': 'noConflict',
+            'noprompt': 'noprompt'
         },
 
         //Validate any arguments here.
@@ -52,46 +54,116 @@ define(function (require, exports, module) {
                 noConflict = namedArgs.noConflict,
                 completeMessage = '',
                 varNames = [],
-                jsFiles;
-
-            if (depends) {
-                depends = depends.split(',').map(function (value) {
-                    var varSeparator = value.indexOf('='),
-                        varName;
-
-                    //If the dependency is id>localvar, split it apart,
-                    //and track the localvar separately.
-                    if (varSeparator !== -1) {
-                        varName = value.substring(varSeparator + 1);
-                        value = value.substring(0, varSeparator);
+                dependPrompted = false,
+                suggestions = [
+                    {
+                        re: /jquery/i,
+                        suggest: 'jquery',
+                        fullSuggest: 'jquery=jQuery'
+                    },
+                    {
+                        re: /backbone/i,
+                        suggest: 'backbone',
+                        fullSuggest: 'backbone=Backbone'
+                    },
+                    {
+                        re: /ember/i,
+                        suggest: 'ember',
+                        fullSuggest: 'ember=ember'
                     }
+                ],
+                jsFiles, dependSuggestion, dependFullSuggestion;
 
-                    if (varName) {
-                        varNames.push(varName);
-                    }
-                    return "'" + value + "'";
-                });
-            } else {
-                depends = [];
-            }
+            q.call(function () {
+                var message;
 
-            //Convert the depends and varNames to a string.
-            depends = depends.join(',');
-            varNames = varNames.join(',');
+                //If no explicit depends passed in, ask, but only if no exports
+                //either and noprompt is not in play.
+                if (!namedArgs.hasOwnProperty('depends') &&
+                    !namedArgs.hasOwnProperty('exports') && !namedArgs.noprompt) {
+                    dependPrompted = true;
 
-            if (fs.statSync(target).isDirectory()) {
-                //Find all the .js files in the directory and convert them.
-                jsFiles = file.getFilteredFileList(target, /\.js$/);
-                jsFiles.forEach(function (file) {
-                    var msg = main.util.convert(file, depends, varNames, exports, noConflict);
-                    if (msg) {
-                        completeMessage += (completeMessage ? '\n' : '') +  msg;
-                    }
-                });
-                return deferred.resolve(completeMessage);
-            } else {
-                return deferred.resolve(main.util.convert(target, depends, varNames, exports, noConflict));
-            }
+                    //Suggest a dependency for common things.
+                    suggestions.some(function (suggestion) {
+                        //If a match, but he match is not [suggest].js, which
+                        //indicates the actual suggestion is being installed,
+                        //not something that depends on it.
+                        if (suggestion.re.test(target) &&
+                            target.lastIndexOf(suggestion.suggest + '.js') !==
+                            target.length - suggestion.suggest.length - 3) {
+                            dependSuggestion = suggestion.suggest;
+                            dependFullSuggestion = suggestion.fullSuggest;
+                            return true;
+                        }
+                    });
+
+                    message = 'List any dependencies for this script, ' +
+                              'comma separated, no spaces' +
+                              (dependSuggestion ? ' [' + dependSuggestion + ']' : '') +
+                              ': ';
+                    return v.prompt(message);
+                }
+            }).then(function (promptDepends) {
+                //If no value, but there was a suggestion, the suggestion is wanted.
+                if (!promptDepends && dependFullSuggestion) {
+                    promptDepends = dependFullSuggestion;
+                }
+
+                if (promptDepends) {
+                    depends = promptDepends;
+                }
+
+                //If no explicit depends passed in, ask, but only if no depends
+                //either and noprompt is not in play.
+                if (!namedArgs.hasOwnProperty('exports') &&
+                    !namedArgs.hasOwnProperty('depends') && !namedArgs.noprompt) {
+                    return v.prompt('What global should be used for this ' +
+                                    'script\'s exported value? ');
+                }
+            }).then(function (promptExports) {
+                if (promptExports) {
+                    exports = promptExports;
+                }
+
+                if (depends) {
+                    depends = depends.split(',').map(function (value) {
+                        var varSeparator = value.indexOf('='),
+                            varName;
+
+                        //If the dependency is id>localvar, split it apart,
+                        //and track the localvar separately.
+                        if (varSeparator !== -1) {
+                            varName = value.substring(varSeparator + 1);
+                            value = value.substring(0, varSeparator);
+                        }
+
+                        if (varName) {
+                            varNames.push(varName);
+                        }
+                        return "'" + value + "'";
+                    });
+                } else {
+                    depends = [];
+                }
+
+                //Convert the depends and varNames to a string.
+                depends = depends.join(',');
+                varNames = varNames.join(',');
+
+                if (fs.statSync(target).isDirectory()) {
+                    //Find all the .js files in the directory and convert them.
+                    jsFiles = file.getFilteredFileList(target, /\.js$/);
+                    jsFiles.forEach(function (file) {
+                        var msg = main.util.convert(file, depends, varNames, exports, noConflict);
+                        if (msg) {
+                            completeMessage += (completeMessage ? '\n' : '') +  msg;
+                        }
+                    });
+                    return deferred.resolve(completeMessage);
+                } else {
+                    return deferred.resolve(main.util.convert(target, depends, varNames, exports, noConflict));
+                }
+            }).fail(deferred.reject);
         },
 
         util: {

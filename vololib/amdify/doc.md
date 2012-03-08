@@ -1,14 +1,19 @@
 ## Usage
 
-    volo amdify [-noConflict] path/to/file.js [depends=] [exports=]
+    volo amdify [flags] path/to/file.js [depends=] [exports=]
 
-where:
+where flags can be:
 
-* depends is a comma-separated list of dependencies, with no spaces
-* exports is the global value created by the file that should be treated as the
-  module's exported value.
 * -noConflict indicates that code shoud be included to call the exports
   value's noConflict method if it exists.
+* -noprompt means do not prompt for dependencies/exported value for
+  non-AMD/CommonJS files. Useful for automated processes.
+
+and:
+
+* **depends** is a comma-separated list of dependencies, with no spaces
+* **exports** is the global value created by the file that should be treated as
+  the module's exported value.
 
 ## Details
 

@@ -7,8 +7,13 @@ where the allowed flags are:
 * -f: Forces the add even if the code has already been added to the project.
 * -amd: Indicates the project is an AMD project. If the project has a
   package.json entry for "amd": {} then this flag is not needed.
+* -amdoff: Turns off AMD conversion for when the project is AMD and the
+  dependency being added is not AMD/CommonJS. Only needs to be set if the
+  project's package.json has an "amd": {} entry.
 * -amdlog: Prints out more details on files converted to AMD, if AMD conversion
   is done.
+* -noprompt: Does not prompt the user for any dependency/exports details when
+  adding a non-AMD/non-CommonJS module to an AMD project.
 
 **archive** is in one of the following formats:
 

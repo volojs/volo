@@ -25,7 +25,7 @@ define(function (require, exports, module) {
         process.chdir(testDir);
     })
     .then(function () {
-        return main(['amdify', 'plain.js'], function (result) {
+        return main(['amdify', '-noprompt', 'plain.js'], function (result) {
             console.log(result);
             doh.register("amdifyPlain",
                 [

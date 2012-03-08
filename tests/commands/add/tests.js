@@ -56,7 +56,7 @@ define(function (require, exports, module) {
         });
     })
     .then(function () {
-        return main(['add', '../support/addable'], function (result) {
+        return main(['add', '-noprompt', '../support/addable'], function (result) {
             console.log(result);
             doh.register("addOnAdd",
                 [

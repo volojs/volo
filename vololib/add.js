@@ -27,6 +27,7 @@ define(function (require, exports, module) {
         volofile = require('volo/volofile'),
         makeMainAmdAdapter = amdify.util.makeMainAmdAdapter,
         jsRegExp = /\.js$/,
+        doubleJsRegExp = /\.js\.js$/,
         add;
 
     add = {
@@ -37,7 +38,9 @@ define(function (require, exports, module) {
         flags: {
             'f': 'force',
             'amd': 'amd',
-            'amdlog': 'amdlog'
+            'amdoff': 'amdoff',
+            'amdlog': 'amdlog',
+            'noprompt': 'noprompt'
         },
 
         validate: function (namedArgs, archiveName, version) {
@@ -64,7 +67,7 @@ define(function (require, exports, module) {
             }
 
             archive.resolve(archiveName, namedArgs.volo.resolve, {
-                amd: isAmdProject
+                amd: isAmdProject && !namedArgs.amdoff
             }).then(function (archiveInfo) {
 
                 //If no baseUrl, then look for an existing js directory
@@ -274,8 +277,10 @@ define(function (require, exports, module) {
                                     //because some projects on github name
                                     //the repositories "x.js", remove the
                                     //duplicate ".js".
-                                    targetName = targetName.replace(/\.js\.js$/,
-                                                                    ".js");
+                                    if (doubleJsRegExp.test(targetName)) {
+                                        targetName = targetName.replace(doubleJsRegExp, '.js');
+                                        archiveInfo.finalLocalName = archiveInfo.finalLocalName.replace(jsRegExp, '');
+                                    }
 
                                     //Check for the existence of the
                                     //singleFileName, and if it already exists,
@@ -308,7 +313,7 @@ define(function (require, exports, module) {
                                 }
 
                                 q.call(function () {
-                                    if (isAmdProject) {
+                                    if (isAmdProject && !namedArgs.amdoff) {
                                         var damd = q.defer();
                                         amdify.run.apply(amdify, [damd, v, namedArgs, targetName]);
                                         return damd.promise;

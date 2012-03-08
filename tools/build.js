@@ -8,6 +8,7 @@
         'fs': 'empty:',
         'http': 'empty:',
         'https': 'empty:',
+        'querystring': 'empty:',
         'path': 'empty:',
         'readline': 'empty:',
         'stream': 'empty:',
