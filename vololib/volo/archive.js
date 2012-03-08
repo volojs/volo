@@ -4,15 +4,16 @@
  * see: http://github.com/volojs/volo for details
  */
 
-'use strict';
-/*jslint */
 /*global define, console */
 
 define(function (require) {
+    'use strict';
+
     var q = require('q'),
         path = require('path'),
         endSlashIndexRegExp = /[\/\\]$/,
-        tarGzRegExp = /\.tar\.gz$/,
+        jsSuffixRegExp = /\.js$/,
+        zipRegExp = /\.zip$/,
         //Regexp used to strip off file extension
         fileExtRegExp = /\.tar\.gz$|\.\w+$/,
         handledSchemes = {
@@ -20,9 +21,10 @@ define(function (require) {
             https: true,
             local: true,
             symlink: true
-        };
+        },
+        archiveLib;
 
-    return {
+    return (archiveLib = {
         /**
          * Resolves an archive value to a .tar.gz http/https URL.
          * Depends on specific resolver modules to do the work.
@@ -108,7 +110,8 @@ define(function (require) {
                     id: scheme + ':' + archive + (fragment ? '#' + fragment : ''),
                     scheme: scheme,
                     url: scheme + ':' + archive,
-                    isArchive: tarGzRegExp.test(archive),
+                    isArchive: archiveLib.isArchive(archive),
+                    isSingleFile: jsSuffixRegExp.test(archive),
                     fragment: fragment,
                     localName: localName
                 });
@@ -133,7 +136,7 @@ define(function (require) {
          * Just tests if the given URL ends in .tar.gz
          */
         isArchive: function (url) {
-            return tarGzRegExp.test(url);
+            return zipRegExp.test(url);
         }
-    };
+    });
 });

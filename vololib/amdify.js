@@ -88,7 +88,7 @@ define(function (require, exports, module) {
 
             deferred.resolve(q.call(function () {
                 var parsed = parseDepends(depends),
-                    promise = q.call();
+                    promise = q.call(function () {});
 
                 depends = parsed.depends;
                 varNames = parsed.varNames;
@@ -215,7 +215,9 @@ define(function (require, exports, module) {
                                     }
                                 });
 
-                                message = 'List any dependencies, ' +
+                                message = 'No AMD/CommonJS dependencies ' +
+                                          'detected for: ' + target + '\n' +
+                                          'List any dependencies, ' +
                                           'comma separated, no spaces' +
                                           (dependSuggestion ? ' [' + dependSuggestion + ']' : '') +
                                           ': ';
