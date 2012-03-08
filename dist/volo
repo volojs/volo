@@ -11910,7 +11910,7 @@ define('rejuvenate',['require','exports','module','q','fs','path','add','volo/ba
                 baseName = path.basename(process.argv[1]),
                 cwd = process.cwd(),
                 d = q.defer(),
-                voloFileMode = fs.statSync(baseName).mode;
+                voloFileMode = fs.statSync(path.join(dirName, baseName)).mode;
 
             from = from || config.archive;
 
