@@ -11,12 +11,18 @@ define(function (require) {
     'use strict';
     var q = require('q'),
         https = require('https'),
+        querystring = require('querystring'),
         config = require('volo/config').github,
         scheme = config.scheme,
         version = require('volo/version'),
         host = config.host,
         apiHost = config.apiHost,
         versionRegExp = /^(v)?(\d+\..+)/;
+
+    //Helper to encode the query for search as an URL-encoded value.
+    function escape(text) {
+        return querystring.escape(text);
+    }
 
     function github(path) {
         var args = {
@@ -133,7 +139,7 @@ define(function (require) {
 
         var args = {
             host: config.searchHost,
-            path: config.searchPath.replace(/\{query\}/, query)
+            path: config.searchPath.replace(/\{query\}/, escape(query))
         },
         d = q.defer();
 

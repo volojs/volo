@@ -230,6 +230,10 @@ define(function (require, exports, module) {
                                         sourceName = mainFile;
                                         defaultName = path.basename(mainFile);
                                     }
+                                } else if (archiveInfo.fragment) {
+                                    //Only one file is wanted out of the archive.
+                                    sourceName = path.join(dirName, archiveInfo.fragment);
+                                    defaultName = path.basename(sourceName);
                                 } else {
                                     //If the directory only contains one file, then
                                     //that is the install target.
@@ -265,6 +269,13 @@ define(function (require, exports, module) {
                                     } else {
                                         targetName = path.join(baseUrl, defaultName);
                                     }
+
+                                    //If the target name ends in ".js.js"
+                                    //because some projects on github name
+                                    //the repositories "x.js", remove the
+                                    //duplicate ".js".
+                                    targetName = targetName.replace(/\.js\.js$/,
+                                                                    ".js");
 
                                     //Check for the existence of the
                                     //singleFileName, and if it already exists,

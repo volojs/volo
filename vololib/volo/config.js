@@ -4,11 +4,10 @@
  * see: http://github.com/volojs/volo for details
  */
 
-'use strict';
-/*jslint */
 /*global define, process, voloPath */
 
 define(function (require) {
+    'use strict';
     var fs = require('fs'),
         path = require('path'),
         lang = require('./lang'),
@@ -39,6 +38,9 @@ define(function (require) {
                 },
                 "madrobby/zepto": {
                     "archive": "http://zeptojs.com/downloads/zepto-{version}.zip#dist/zepto.js"
+                },
+                "emberjs/ember.js": {
+                    "url": "https://github.com/downloads/emberjs/ember.js/ember-{version}.js"
                 }
             },
             "searchOverrides": {
