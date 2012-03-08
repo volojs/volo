@@ -21,7 +21,9 @@ define(function (require) {
 
     //Helper to encode the query for search as an URL-encoded value.
     function escape(text) {
-        return querystring.escape(text);
+        //The V2 search API freaks with "." in the name. So convert them
+        //just to escaped spaces (+) to get some kind of usable result.
+        return querystring.escape(text).replace(/\./g, '+');
     }
 
     function github(path) {

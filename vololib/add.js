@@ -25,7 +25,7 @@ define(function (require, exports, module) {
         tempDir = require('volo/tempDir'),
         amdify = require('amdify'),
         volofile = require('volo/volofile'),
-        makeMainAmdAdapter = amdify.util.makeMainAmdAdapter,
+        makeMainAmdAdapter = amdify.api.makeMainAmdAdapter,
         jsRegExp = /\.js$/,
         doubleJsRegExp = /\.js\.js$/,
         add;
@@ -303,7 +303,7 @@ define(function (require, exports, module) {
 
                                     //If directory, remove common directories not
                                     //needed for install.
-                                    add.util.discard(targetName);
+                                    add.api.discard(targetName);
 
                                     if (info.data && info.data.main && isAmdProject) {
                                         makeMainAmdAdapter(info.data.main,
@@ -381,7 +381,7 @@ define(function (require, exports, module) {
                 }
             }, deferred.reject);
         },
-        util: {
+        api: {
             //Discards certain directories based on the config for the add
             //comand.
             discard: function (dir) {

@@ -17,7 +17,7 @@ define(function (require, exports, module) {
         doc: require('text!./search/doc.md'),
 
         flags: {
-            'amd': 'amd',
+            'amd': 'amd'
         },
 
         validate: function (namedArgs, query) {
@@ -29,7 +29,9 @@ define(function (require, exports, module) {
         run: function (d, v, namedArgs, query) {
             d.resolve(search.api(query, namedArgs).then(function (results) {
                 return results ? JSON.stringify(results, null, '  ') :
-                                 'No results';
+                                 'No results. Trying searching with a web ' +
+                                 'browser at https://github.com,\nthen once you ' +
+                                 'find the owner/repo combination, use it in volo.';
             }));
         },
 

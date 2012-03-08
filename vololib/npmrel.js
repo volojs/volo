@@ -15,8 +15,8 @@ define(function (require, exports, module) {
         file = require('volo/file'),
         amdify = require('amdify'),
         add = require('add'),
-        makeMainAmdAdapter = amdify.util.makeMainAmdAdapter,
-        amdConvert = amdify.util.convert,
+        makeMainAmdAdapter = amdify.api.makeMainAmdAdapter,
+        amdConvert = amdify.api.convert,
         requireRegExp = /require\s*\(\s*['"]([^"']+)["']\s*\)/g,
         npmrel;
 
@@ -103,7 +103,7 @@ define(function (require, exports, module) {
                     //Clean directories/files not needed. Do this before
                     //converting modules to reduce the amount of directories
                     //and unnecessary work.
-                    add.util.discard(registry[prop]);
+                    add.api.discard(registry[prop]);
                 }
             }
 

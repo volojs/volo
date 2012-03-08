@@ -101,7 +101,7 @@ define(function (require, exports, module) {
                             if (msg) {
                                 completeMessage += (completeMessage ? '\n' : '') +  msg;
                             }
-                            return main.util.convert(file, depends, varNames, exports, {
+                            return main.api.convert(file, depends, varNames, exports, {
                                 v: v,
                                 noConflict: noConflict,
                                 noprompt: namedArgs.noprompt
@@ -117,7 +117,7 @@ define(function (require, exports, module) {
                         return completeMessage;
                     });
                 } else {
-                    return main.util.convert(target, depends, varNames, exports, {
+                    return main.api.convert(target, depends, varNames, exports, {
                         v: v,
                         noConflict: noConflict,
                         noprompt: namedArgs.noprompt
@@ -126,7 +126,7 @@ define(function (require, exports, module) {
             }));
         },
 
-        util: {
+        api: {
             makeMainAmdAdapter: function (mainValue, localName, targetFileName) {
                 //Trim off any leading dot and file
                 //extension, if they exist.
