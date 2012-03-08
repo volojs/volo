@@ -10,6 +10,7 @@ define(function (require) {
     var zip = require('./zip/zip'),
         qutil = require('./qutil'),
         path = require('path'),
+        file = require('./file'),
         fs = require('fs');
 
     function unzip(fileName, callback, errback) {
@@ -22,7 +23,9 @@ define(function (require) {
             reader = zip.Reader(data);
 
             reader.forEach(function (entry) {
-                var name = path.join(baseDir, entry.getName());
+                var name = path.join(baseDir, entry.getName()),
+                    dirName;
+
                 if (!firstDir) {
                     firstDir = name;
                 }
@@ -30,6 +33,10 @@ define(function (require) {
                 if (entry.isDirectory()) {
                     fs.mkdirSync(name);
                 } else {
+                    dirName = path.dirname(name);
+                    if (!path.existsSync(dirName)) {
+                        file.mkdirs(dirName);
+                    }
                     fs.writeFileSync(name, entry.getData());
                 }
             });

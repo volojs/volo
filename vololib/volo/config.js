@@ -35,7 +35,10 @@ define(function (require) {
             "searchPath": "/api/v2/json/repos/search/{query}?language=JavaScript",
             "overrides": {
                 "jquery/jquery": {
-                    "pattern": "http://code.jquery.com/jquery-{version}.js"
+                    "url": "http://code.jquery.com/jquery-{version}.js"
+                },
+                "madrobby/zepto": {
+                    "archive": "http://zeptojs.com/downloads/zepto-{version}.zip#dist/zepto.js"
                 }
             },
             "searchOverrides": {

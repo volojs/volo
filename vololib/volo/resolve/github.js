@@ -13,16 +13,18 @@ define(function (require) {
         config = require('../config'),
         archive = require('../archive'),
         github = require('../github'),
+        net = require('../net'),
         search = require('search'),
         q = require('q'),
-        qutil = require('../qutil');
+        qutil = require('../qutil'),
+        versionRegExp = /\{version\}/;
 
     function resolveGithub(archiveName, fragment, options, callback, errback) {
 
         var parts = archiveName.split('/'),
             originalFragment = fragment,
             d = qutil.convert(callback, errback),
-            ownerPlusRepo, version, localName, override;
+            tag, versionOnlyTag, ownerPlusRepo, version, localName, override;
 
         d.resolve(q.call(function () {
             if (parts.length === 1) {
@@ -52,16 +54,45 @@ define(function (require) {
 
             //Fetch the latest version
             return github.latestTag(ownerPlusRepo + (version ? '/' + version : ''));
-        }).then(function (tag) {
+        }).then(function (tagResult) {
+            tag = tagResult;
+
+            //Some version tags have a 'v' prefix, remove that for token
+            //replacements used below.
+            versionOnlyTag = tag.replace(/^v/, '');
+
+            //Check the repo for a package.json file that may have info on
+            //an install url or something.
+            var pkgUrl = github.rawUrl(ownerPlusRepo, tag, 'package.json'),
+                dPkg = q.defer();
+
+            net.getJson(pkgUrl).then(function (pkg) {
+                dPkg.resolve((pkg && pkg.volo) || null);
+            }, function (err) {
+                //Do not care about errors, it will be common for projects
+                //to not have a package.json.
+                dPkg.resolve();
+            });
+
+            return dPkg.promise;
+        }).then(function (voloInfo) {
+
             var isArchive = true,
                 isSingleFile = false,
                 scheme = 'github',
-                url;
+                overrideFragmentIndex, url;
+
+            //If the package.json for the project has volo info, and no
+            //explicit override, see about using the volo info from the
+            //package.json.
+            if (!override && voloInfo && (voloInfo.url || voloInfo.archive)) {
+                override = voloInfo;
+            }
 
             //If there is a specific override to finding the file,
             //for instance jQuery releases are put on a CDN and are not
             //committed to github, use the override.
-            if (fragment || (override && override.pattern)) {
+            if (fragment || (override && override.url)) {
                 //If a specific file in the repo. Do not need the full
                 //zipball, just use a raw github url to get it.
                 if (fragment) {
@@ -72,7 +103,7 @@ define(function (require) {
                     localName = localName.substring(0, localName.lastIndexOf('.'));
                 } else {
                     //An override situation.
-                    url = override.pattern.replace(/\{version\}/, tag);
+                    url = override.url.replace(versionRegExp, versionOnlyTag);
                 }
 
                 //Set fragment to null since it has already been processed.
@@ -80,6 +111,18 @@ define(function (require) {
                 isSingleFile = true;
 
                 isArchive = archive.isArchive(url);
+            } else if (override && override.archive) {
+                url = override.archive.replace(versionRegExp, versionOnlyTag);
+                overrideFragmentIndex = url.indexOf('#');
+
+                if (overrideFragmentIndex !== -1) {
+                    //If no explicit fragment specified, then use the one
+                    //in this override.
+                    if (!fragment) {
+                        fragment = url.substring(overrideFragmentIndex + 1);
+                    }
+                    url = url.substring(0, overrideFragmentIndex);
+                }
             } else {
                 url = github.zipballUrl(ownerPlusRepo, tag);
             }
