@@ -4,11 +4,11 @@
  * see: http://github.com/volojs/volo for details
  */
 
-'use strict';
-/*jslint regexp: false, plusplus: false */
+/*jslint regexp: true */
 /*global define, console, process */
 
 define(function (require, exports, module) {
+    'use strict';
     var fs = require('fs'),
         path = require('path'),
         packageJson = require('volo/packageJson'),
@@ -59,7 +59,7 @@ define(function (require, exports, module) {
 
         if (fileParts.length > 1) {
             //relative path is number of .. for fileParts, then adding pkgParts
-            for (i = 1; i < fileParts.length; i++) {
+            for (i = 1; i < fileParts.length; i += 1) {
                 pkgParts.unshift('..');
             }
         } else {
@@ -134,6 +134,9 @@ define(function (require, exports, module) {
 
                 //Convert the module to AMD, but do not freak if it fails,
                 //probably malformed JS anyway.
+                //TODO: This can/will complete async now. Ideally convert
+                //this to be promise-based. But letting it slide for now since
+                //it should still work as-is for now.
                 try {
                     amdConvert(file);
                 } catch (e) {

@@ -4,11 +4,9 @@
  * see: http://github.com/volojs/volo for details
  */
 
-'use strict';
-/*jslint */
-/*global define */
-
 define(function (require) {
+    'use strict';
+
     var q = require('q');
 
     return {
@@ -16,19 +14,6 @@ define(function (require) {
             var d = q.defer();
             q.when(d.promise, callback, errback);
             return d;
-        },
-
-        add: function (array, promise) {
-            var prevPromise = array[array.length - 1];
-            if (prevPromise) {
-
-                deferred.resolve(prevPromise);
-            }
-            array.push(deferred.promise);
-
-            return array;
         }
-    }
-
-    return callDefer;
+    };
 });

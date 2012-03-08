@@ -23,6 +23,37 @@ define(function (require, exports, module) {
         exportsRegExp = /\/\*EXPORTS\*\//g,
         main;
 
+    function parseDepends(depends) {
+        var varNames = [];
+
+        if (depends) {
+            depends = depends.split(',').map(function (value) {
+                var varSeparator = value.indexOf('='),
+                    varName;
+
+                //If the dependency is id>localvar, split it apart,
+                //and track the localvar separately.
+                if (varSeparator !== -1) {
+                    varName = value.substring(varSeparator + 1);
+                    value = value.substring(0, varSeparator);
+                }
+
+                if (varName) {
+                    varNames.push(varName);
+                }
+                return "'" + value + "'";
+            });
+        } else {
+            depends = [];
+        }
+
+        //Convert the depends and varNames to a string.
+        return {
+            depends: depends.join(','),
+            varNames: varNames.join(',')
+        };
+    }
+
     main = {
         //Text summary used when listing commands.
         summary: 'Does a simple AMD wrapping for JS libraries that use ' +
@@ -53,117 +84,46 @@ define(function (require, exports, module) {
                 exports = namedArgs.exports || '',
                 noConflict = namedArgs.noConflict,
                 completeMessage = '',
-                varNames = [],
-                dependPrompted = false,
-                suggestions = [
-                    {
-                        re: /jquery/i,
-                        suggest: 'jquery',
-                        fullSuggest: 'jquery=jQuery'
-                    },
-                    {
-                        re: /backbone/i,
-                        suggest: 'backbone',
-                        fullSuggest: 'backbone=Backbone'
-                    },
-                    {
-                        re: /ember/i,
-                        suggest: 'ember',
-                        fullSuggest: 'ember=ember'
-                    }
-                ],
-                jsFiles, dependSuggestion, dependFullSuggestion;
+                varNames, jsFiles;
 
-            q.call(function () {
-                var message;
+            deferred.resolve(q.call(function () {
+                var parsed = parseDepends(depends),
+                    promise = q.call();
 
-                //If no explicit depends passed in, ask, but only if no exports
-                //either and noprompt is not in play.
-                if (!namedArgs.hasOwnProperty('depends') &&
-                    !namedArgs.hasOwnProperty('exports') && !namedArgs.noprompt) {
-                    dependPrompted = true;
-
-                    //Suggest a dependency for common things.
-                    suggestions.some(function (suggestion) {
-                        //If a match, but he match is not [suggest].js, which
-                        //indicates the actual suggestion is being installed,
-                        //not something that depends on it.
-                        if (suggestion.re.test(target) &&
-                            target.lastIndexOf(suggestion.suggest + '.js') !==
-                            target.length - suggestion.suggest.length - 3) {
-                            dependSuggestion = suggestion.suggest;
-                            dependFullSuggestion = suggestion.fullSuggest;
-                            return true;
-                        }
-                    });
-
-                    message = 'List any dependencies for this script, ' +
-                              'comma separated, no spaces' +
-                              (dependSuggestion ? ' [' + dependSuggestion + ']' : '') +
-                              ': ';
-                    return v.prompt(message);
-                }
-            }).then(function (promptDepends) {
-                //If no value, but there was a suggestion, the suggestion is wanted.
-                if (!promptDepends && dependFullSuggestion) {
-                    promptDepends = dependFullSuggestion;
-                }
-
-                if (promptDepends) {
-                    depends = promptDepends;
-                }
-
-                //If no explicit depends passed in, ask, but only if no depends
-                //either and noprompt is not in play.
-                if (!namedArgs.hasOwnProperty('exports') &&
-                    !namedArgs.hasOwnProperty('depends') && !namedArgs.noprompt) {
-                    return v.prompt('What global should be used for this ' +
-                                    'script\'s exported value? ');
-                }
-            }).then(function (promptExports) {
-                if (promptExports) {
-                    exports = promptExports;
-                }
-
-                if (depends) {
-                    depends = depends.split(',').map(function (value) {
-                        var varSeparator = value.indexOf('='),
-                            varName;
-
-                        //If the dependency is id>localvar, split it apart,
-                        //and track the localvar separately.
-                        if (varSeparator !== -1) {
-                            varName = value.substring(varSeparator + 1);
-                            value = value.substring(0, varSeparator);
-                        }
-
-                        if (varName) {
-                            varNames.push(varName);
-                        }
-                        return "'" + value + "'";
-                    });
-                } else {
-                    depends = [];
-                }
-
-                //Convert the depends and varNames to a string.
-                depends = depends.join(',');
-                varNames = varNames.join(',');
+                depends = parsed.depends;
+                varNames = parsed.varNames;
 
                 if (fs.statSync(target).isDirectory()) {
                     //Find all the .js files in the directory and convert them.
                     jsFiles = file.getFilteredFileList(target, /\.js$/);
                     jsFiles.forEach(function (file) {
-                        var msg = main.util.convert(file, depends, varNames, exports, noConflict);
+                        promise = promise.then(function (msg) {
+                            if (msg) {
+                                completeMessage += (completeMessage ? '\n' : '') +  msg;
+                            }
+                            return main.util.convert(file, depends, varNames, exports, {
+                                v: v,
+                                noConflict: noConflict,
+                                noprompt: namedArgs.noprompt
+                            });
+                        });
+                    });
+
+                    //Catch the final conversion message
+                    return promise.then(function (msg) {
                         if (msg) {
                             completeMessage += (completeMessage ? '\n' : '') +  msg;
                         }
+                        return completeMessage;
                     });
-                    return deferred.resolve(completeMessage);
                 } else {
-                    return deferred.resolve(main.util.convert(target, depends, varNames, exports, noConflict));
+                    return main.util.convert(target, depends, varNames, exports, {
+                        v: v,
+                        noConflict: noConflict,
+                        noprompt: namedArgs.noprompt
+                    });
                 }
-            }).fail(deferred.reject);
+            }));
         },
 
         util: {
@@ -184,14 +144,31 @@ define(function (require, exports, module) {
                 fs.writeFileSync(targetFileName, contents, 'utf8');
             },
 
-            convert: function (target, depends, varNames, exports, noConflict) {
+            //Returns a promise, since it can prompt the user for info
+            convert: function (target, depends, varNames, exports, options) {
                 var contents = fs.readFileSync(target, 'utf8'),
                     prelude = '',
-                    temp, commentIndex, cjsProps, amdProps;
+                    d = q.defer(),
+                    v = options.v,
+                    dependPrompted = false,
+                    suggestions = [
+                        {
+                            re: /jquery/i,
+                            suggest: 'jquery',
+                            fullSuggest: 'jquery=jQuery'
+                        },
+                        {
+                            re: /backbone/i,
+                            suggest: 'backbone',
+                            fullSuggest: 'backbone=Backbone'
+                        }
+                    ],
+                    temp, commentIndex, cjsProps, amdProps, dependSuggestion,
+                    dependFullSuggestion;
 
                 if (contents.charAt(0) === '#') {
                     //This is probably an executable file for node, skip it.
-                    return 'SKIP: ' + target + ': node executable script.';
+                    d.resolve('SKIP: ' + target + ': node executable script.');
                 }
 
                 amdProps = parse.usesAmdOrRequireJs(target, contents);
@@ -199,7 +176,7 @@ define(function (require, exports, module) {
                                 (amdProps.declaresDefine && amdProps.defineAmd))) {
                     //AMD in use, and it is not a file that declares a define()
                     //or if it does, does not declare define.amd.
-                    return 'SKIP: ' + target + ': already uses AMD.';
+                    d.resolve('SKIP: ' + target + ': already uses AMD.');
                 } else {
                     cjsProps = parse.usesCommonJs(target, contents);
                     //If no exports or depends and it looks like a cjs module convert
@@ -213,39 +190,98 @@ define(function (require, exports, module) {
                                     contents +
                                     '\n});';
                         fs.writeFileSync(target, contents, 'utf8');
-                        return 'CONVERTED: ' + target + ': wrapped define().';
+                        d.resolve('CONVERTED: ' + target + ': wrapped define().');
                     } else {
-                        //Get the export boilerplate ready.
-                        if (exports) {
-                            exports = noConflict ?
-                                        exportsNoConflictTemplate.replace(exportsRegExp, exports) :
-                                        exportsTemplate.replace(exportsRegExp, exports);
-                        }
+                        //May need to prompt the user for input so use promises.
+                        d.resolve(q.call(function () {
+                            var message;
 
-                        //Create the main wrapping. Do depends and exports replacement
-                        //before inserting the main contents, to avoid problems with
-                        //a possibly undesirable regexp replacement.
-                        temp = template
-                                .replace(dependsRegExp, depends)
-                                .replace(varNamesRegExp, varNames)
-                                .replace(exportsRegExp, exports);
+                            //If no explicit depends passed in, ask, but only if no exports
+                            //either and noprompt is not in play.
+                            if (v && !depends && !exports && !options.noprompt) {
+                                dependPrompted = true;
 
-                        //Cannot use a regexp replacement for comment, because if
-                        //the contents contain funky regexp associated markers, like
-                        //a `$`, then get double content insertion.
-                        commentIndex = temp.indexOf(contentsComment);
-                        contents = temp.substring(0, commentIndex) +
-                                   contents +
-                                   temp.substring(commentIndex + contentsComment.length, temp.length);
+                                //Suggest a dependency for common things.
+                                suggestions.some(function (suggestion) {
+                                    //If a match, but he match is not [suggest].js, which
+                                    //indicates the actual suggestion is being installed,
+                                    //not something that depends on it.
+                                    if (suggestion.re.test(target) &&
+                                        target.lastIndexOf(suggestion.suggest + '.js') !==
+                                        target.length - suggestion.suggest.length - 3) {
+                                        dependSuggestion = suggestion.suggest;
+                                        dependFullSuggestion = suggestion.fullSuggest;
+                                        return true;
+                                    }
+                                });
 
-                        fs.writeFileSync(target, contents, 'utf8');
+                                message = 'List any dependencies, ' +
+                                          'comma separated, no spaces' +
+                                          (dependSuggestion ? ' [' + dependSuggestion + ']' : '') +
+                                          ': ';
+                                return v.prompt(message);
+                            }
+                        }).then(function (promptDepends) {
+                            //If no value, but there was a suggestion, the suggestion is wanted.
+                            if (!promptDepends && dependFullSuggestion) {
+                                promptDepends = dependFullSuggestion;
+                            }
 
-                        return 'CONVERTED: ' + target +
-                               (depends ? ': depends: ' + depends.trim() : '') +
-                               (varNames ? ': localvars: ' + varNames : '') +
-                               (exports ? ': exports: ' + exports.trim() : '');
+                            if (promptDepends) {
+                                depends = promptDepends;
+                            }
+
+                            //If no explicit depends passed in, ask, but only if no depends
+                            //either and noprompt is not in play.
+                            if (v && !exports && dependPrompted && !options.noprompt) {
+                                return v.prompt('What global to use for exported value []: ');
+                            }
+                        }).then(function (promptExports) {
+                            var parsed;
+
+                            if (promptExports) {
+                                exports = promptExports;
+                            }
+
+                            if (dependPrompted) {
+                                parsed = parseDepends(depends);
+                                depends = parsed.depends;
+                                varNames = parsed.varNames;
+                            }
+
+                            //Get the export boilerplate ready.
+                            if (exports) {
+                                exports = options.noConflict ?
+                                            exportsNoConflictTemplate.replace(exportsRegExp, exports) :
+                                            exportsTemplate.replace(exportsRegExp, exports);
+                            }
+
+                            //Create the main wrapping. Do depends and exports replacement
+                            //before inserting the main contents, to avoid problems with
+                            //a possibly undesirable regexp replacement.
+                            temp = template
+                                    .replace(dependsRegExp, depends)
+                                    .replace(varNamesRegExp, varNames)
+                                    .replace(exportsRegExp, exports);
+
+                            //Cannot use a regexp replacement for comment, because if
+                            //the contents contain funky regexp associated markers, like
+                            //a `$`, then get double content insertion.
+                            commentIndex = temp.indexOf(contentsComment);
+                            contents = temp.substring(0, commentIndex) +
+                                       contents +
+                                       temp.substring(commentIndex + contentsComment.length, temp.length);
+
+                            fs.writeFileSync(target, contents, 'utf8');
+
+                            return 'CONVERTED: ' + target +
+                                   (depends ? ': depends: ' + depends.trim() : '') +
+                                   (varNames ? ': localvars: ' + varNames : '') +
+                                   (exports ? ': exports: ' + exports.trim() : '');
+                        }));
                     }
                 }
+                return d.promise;
             }
         }
     };
