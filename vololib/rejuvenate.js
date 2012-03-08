@@ -32,7 +32,7 @@ define(function (require, exports, module) {
                 baseName = path.basename(process.argv[1]),
                 cwd = process.cwd(),
                 d = q.defer(),
-                voloFileMode = fs.statSync(baseName).mode;
+                voloFileMode = fs.statSync(path.join(dirName, baseName)).mode;
 
             from = from || config.archive;
 
