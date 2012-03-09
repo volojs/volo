@@ -206,16 +206,35 @@ define(function (require, exports, module) {
                                 completeMessage = '',
                                 ext = '',
                                 info, sourceName, targetName,
-                                listing, defaultName, mainFile, mainContents, deps;
+                                listing, defaultName, mainFile, mainContents,
+                                deps, pkgType, overrideTypeName;
 
                             if (dirName) {
                                 info = packageJson(dirName);
 
-                                //If a main setting, read the main file. If it
-                                //calls define() and any of the dependencies
-                                //are relative, then keep the whole directory.
-                                mainFile = info.data && info.data.main;
-                                if (mainFile) {
+                                if (info.data) {
+                                    mainFile = info.data && info.data.main;
+                                    pkgType = info.data.volo && info.data.volo.type;
+                                }
+
+                                if (!pkgType && archiveInfo.scheme === 'github') {
+                                    //Check for an override, just pull off the
+                                    //owner/repo from the archive ID
+                                    overrideTypeName = /github:([^\/]+\/[^\/]+)/.exec(archiveInfo.id)[1];
+                                    pkgType = (config.github &&
+                                               config.github.typeOverrides &&
+                                               config.github.typeOverrides[overrideTypeName]) ||
+                                              null;
+                                }
+
+                                if (pkgType === 'directory') {
+                                    //The whole directory should be kept,
+                                    //not an individual source file.
+                                    sourceName = null;
+                                } else if (mainFile) {
+                                    //Read the main file. If it
+                                    //calls define() and any of the dependencies
+                                    //are relative, then keep the whole directory.
                                     mainFile += jsRegExp.test(mainFile) ? '' : '.js';
                                     mainFile = path.join(dirName, mainFile);
                                     mainContents = fs.readFileSync(mainFile, 'utf8');

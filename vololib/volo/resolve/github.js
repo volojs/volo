@@ -33,7 +33,7 @@ define(function (require) {
                     var archive;
                     if (results && results.length) {
                         archive = results[0].archive;
-                        console.log('Using search result "' + archive +
+                        console.log('Using github repo "' + archive +
                                     '" for "' + archiveName + '"...');
                         return archive;
                     } else {

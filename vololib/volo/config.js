@@ -48,6 +48,9 @@ define(function (require) {
                     "underscore": "amdjs/underscore",
                     "backbone": "amdjs/backbone"
                 }
+            },
+            "typeOverrides": {
+                "dojo/dijit": "directory"
             }
         },
 
