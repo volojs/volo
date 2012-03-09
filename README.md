@@ -74,16 +74,19 @@ info on the types of archive names to use.
 To set up an AMD/RequireJS-based project called **fast** that uses AMD versions of
 Backbone, jQuery and underscore:
 
-    > volo create fast
+    > volo create fast (uses [volojs/create-template](https://github.com/volojs/create-template) for project template)
     > cd fast
-    > volo add jquery
-    > volo add underscore
-    > volo add backbone
+    > volo add jquery (uses jquery/jquery as the repo)
+    > volo add underscore (uses amdjs/underscore as repo since an AMD project)
+    > volo add backbone (uses amdjs/backbone as repo since an AMD project)
 
-Then modify www/js/app.js to require the modules you need and add your app logic.
+Then modify `www/js/app.js` to require the modules you need and add your app
+logic.
 
-The above example uses the amdjs/underscore and amdjs/backbone versions of
-those libraries, which include integrated AMD support.
+The above example uses the
+[amdjs/underscore](https://github.com/amdjs/underscore) and
+[amdjs/backbone](https://github.com/amdjs/backbone) versions of those libraries,
+which include integrated AMD support.
 
 ### Browser globals project example
 
@@ -91,10 +94,10 @@ To set up an HTML5 Boilerplate project that does not use AMD/RequireJS, but does
 use documentcloud repos of Backbone and Underscore (the Boilerplate already has
 jQuery):
 
-    > volo create html5fast h5bp/html5-boilerplate
+    > volo create html5fast h5bp/html5-boilerplate (pulls down latest tag of that repo)
     > cd html5fast
-    > volo add underscore
-    > volo add backbone
+    > volo add underscore (uses documentcloud/underscore as repo)
+    > volo add backbone (uses documentcloud/backbone as repo)
 
 ## Library Best Practices
 
