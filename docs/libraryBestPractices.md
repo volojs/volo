@@ -95,9 +95,9 @@ For a collection of modules:
   in the package.json.
 * If there is a main module that serves as the entry point into the collection
   of modules, name it `main.js` and place it at the top level of the repo.
-  Support modules can go in a `lib` directory or just stay top level.
-* If the repo is just a collection of modules with no main, place all the
-  scripts at the top level of the repo.
+* Any modules that are to be used by others (public modules), should be placed
+  at the top level of the repo. Any private modules can be in a `lib` directory
+  that is in the top level.
 
 If your library has specific dependencies it needs, specify them in the
 package.json file. See the [package.json](#packagejson) for more details.
@@ -108,8 +108,134 @@ where to find the built sources.
 
 ### Main Module Example <a name="collectionmainexample"></a>
 
+A collection of modules that form a library called "bar". bar itself is a
+function, and it has some utility functions off of it that are provided by
+modules that are only for internal consumption by "bar". This project is
+constructed as AMD and/or CommonJS/Node modules.
+
+* bar/
+    * main.js
+    * package.json
+    * lib/
+        * zap.js
+        * zip.js
+    * docs/
+    * tests/
+    * README.md
+
+main.js looks like this:
+
+```javascript
+/*! license here */
+
+//An AMD module.
+define(function (require) {
+    var $ = require('jquery');
+
+    function bar() {
+    }
+
+    bar.zip = require('./lib/zip');
+    bar.zap = require('./lib/zap');
+
+    return bar;
+});
+```
+
+The package.json looks like this:
+
+```javascript
+{
+    "main": "main",
+    "volo": {
+        "dependencies": {
+            "jquery": "jquery/jquery"
+        }
+    }
+}
+```
+
+When volo installs "bar" it will install it like so:
+
+    * js/
+        * bar/
+        * bar.js
+
+Where bar.js is an adapter module that just returns the "main" module:
+
+```javascript
+//bar.js
+define(['bar/main'], function (main) {
+    return main;
+});
+```
+
+In this way, the project using bar can just require('bar') and get the correct
+module exports.
 
 ### Independent Module Example <a name="collectionindependentexample"></a>
+
+A collection of modules that form a library called "bar". bar itself is a
+function, and it has some utility functions off of it that are provided by
+modules that are only for internal consumption by "bar".
+
+This project is constructed as AMD and/or CommonJS/Node modules. You could use
+this kind of layout, but output a built, single JS file. In that case, the
+layout would be similar, but you would specify a `volo.archive` in the
+[package.json](#packagejson).
+
+* bar/
+    * array.js
+    * fn.js
+    * object.js
+    * package.json
+    * docs/
+    * tests/
+    * README.md
+
+where object.js may look something like this:
+
+```javascript
+/*! license here */
+
+//An AMD module.
+define(function (require) {
+    var $ = require('jquery');
+
+    function object() {
+    }
+
+    object.mixin = function () {};
+
+    return object;
+});
+```
+
+The package.json looks like this:
+
+```javascript
+{
+    "volo": {
+        "dependencies": {
+            "jquery": "jquery/jquery"
+        }
+    }
+}
+```
+
+When volo installs "baz" it will install it like so:
+
+    * js/
+        * baz/
+            * array.js
+            * fn.js
+            * object.js
+
+The project using baz can get the modules by doing these kinds of calls:
+
+* require('baz/array')
+* require('baz/fn')
+* require('baz/object')
 
 
 ## package.json <a name="packagejson"></a>
