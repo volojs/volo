@@ -11260,6 +11260,8 @@ define('amdify',['require','exports','module','fs','path','q','volo/parse','volo
 
             //Returns a promise, since it can prompt the user for info
             convert: function (target, depends, varNames, exports, options) {
+                options = options || {};
+
                 var contents = fs.readFileSync(target, 'utf8'),
                     prelude = '',
                     d = q.defer(),
@@ -11950,10 +11952,11 @@ define('rejuvenate',['require','exports','module','q','fs','path','add','volo/ba
 /*jslint regexp: true */
 /*global define, console, process */
 
-define('npmrel',['require','exports','module','fs','path','volo/packageJson','volo/file','amdify','add','text!./npmrel/doc.md','volo/commands'],function (require, exports, module) {
+define('npmrel',['require','exports','module','fs','path','q','volo/packageJson','volo/file','amdify','add','text!./npmrel/doc.md','volo/commands'],function (require, exports, module) {
     
     var fs = require('fs'),
         path = require('path'),
+        q = require('q'),
         packageJson = require('volo/packageJson'),
         file = require('volo/file'),
         amdify = require('amdify'),
@@ -12029,6 +12032,7 @@ define('npmrel',['require','exports','module','fs','path','volo/packageJson','vo
             targetDir = path.resolve(targetDir).replace(/\\/g, '/');
 
             var registry = {},
+                promise = q.call(function () {}),
                 pkg, prop, pkgPath, targetId, lastSegment;
 
             //Include the targetDir in the registry.
@@ -12077,14 +12081,22 @@ define('npmrel',['require','exports','module','fs','path','volo/packageJson','vo
 
                 //Convert the module to AMD, but do not freak if it fails,
                 //probably malformed JS anyway.
-                //TODO: This can/will complete async now. Ideally convert
-                //this to be promise-based. But letting it slide for now since
-                //it should still work as-is for now.
-                try {
-                    amdConvert(file);
-                } catch (e) {
 
-                }
+                promise = promise.then(function (msg) {
+                    var dconvert = q.defer();
+                    try {
+                        amdConvert(file).then(function () {
+                            dconvert.resolve('AMD conversion finished for: ' + file);
+                        }, function (err) {
+                            //Do not care if it errors out, probably
+                            //malformed to start.
+                            dconvert.resolve('AMD conversion failed for: ' + file + '. Skipping. ' + err);
+                        });
+                    } catch (e) {
+                        dconvert.resolve('AMD conversion failed for: ' + file + '. Skipping. ' + e);
+                    }
+                    return dconvert.promise;
+                });
             });
 
             //For each package, make sure there is a top level adapter module
@@ -12101,7 +12113,7 @@ define('npmrel',['require','exports','module','fs','path','volo/packageJson','vo
                 }
             }
 
-            d.resolve();
+            d.resolve(promise);
         }
     };
 
