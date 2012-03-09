@@ -11,6 +11,7 @@ define(function (require, exports, module) {
     'use strict';
     var fs = require('fs'),
         path = require('path'),
+        q = require('q'),
         packageJson = require('volo/packageJson'),
         file = require('volo/file'),
         amdify = require('amdify'),
@@ -86,6 +87,7 @@ define(function (require, exports, module) {
             targetDir = path.resolve(targetDir).replace(/\\/g, '/');
 
             var registry = {},
+                promise = q.call(function () {}),
                 pkg, prop, pkgPath, targetId, lastSegment;
 
             //Include the targetDir in the registry.
@@ -134,14 +136,22 @@ define(function (require, exports, module) {
 
                 //Convert the module to AMD, but do not freak if it fails,
                 //probably malformed JS anyway.
-                //TODO: This can/will complete async now. Ideally convert
-                //this to be promise-based. But letting it slide for now since
-                //it should still work as-is for now.
-                try {
-                    amdConvert(file);
-                } catch (e) {
 
-                }
+                promise = promise.then(function (msg) {
+                    var dconvert = q.defer();
+                    try {
+                        amdConvert(file).then(function () {
+                            dconvert.resolve();
+                        }, function (err) {
+                            //Do not care if it errors out, probably
+                            //malformed to start.
+                            dconvert.resolve();
+                        });
+                    } catch (e) {
+                        dconvert.resolve();
+                    }
+                    return dconvert.promise;
+                });
             });
 
             //For each package, make sure there is a top level adapter module
@@ -158,7 +168,7 @@ define(function (require, exports, module) {
                 }
             }
 
-            d.resolve();
+            d.resolve(promise);
         }
     };
 

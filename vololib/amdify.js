@@ -146,6 +146,8 @@ define(function (require, exports, module) {
 
             //Returns a promise, since it can prompt the user for info
             convert: function (target, depends, varNames, exports, options) {
+                options = options || {};
+
                 var contents = fs.readFileSync(target, 'utf8'),
                     prelude = '',
                     d = q.defer(),
