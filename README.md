@@ -1,7 +1,7 @@
 # volo
 
-A command line JavaScript tool for JavaScript-based projects. It likes
-GitHub.
+A JavaScript dependency manager and project creation tool that favors GitHub
+for the package repository. Written in JavaScript for JavaScript.
 
 The basic tool is a generic command completion tool -- you can create new
 commands for volo, and you can use commands others have created.
@@ -10,9 +10,12 @@ By default, volo knows how to:
 
 * [create a new web project](https://github.com/volojs/volo/blob/master/vololib/create/doc.md)
 * [add scripts for a web project from the command line](https://github.com/volojs/volo/blob/master/vololib/add/doc.md)
+* [convert some scripts to AMD format](https://github.com/volojs/volo/blob/master/vololib/amdify/doc.md)
+
+Some commands that help manage volo:
+
 * [acquire new commands for volo](https://github.com/volojs/volo/blob/master/vololib/acquire/doc.md)
 * [update volo](https://github.com/volojs/volo/blob/master/vololib/rejuvenate/doc.md)
-* [convert some scripts to AMD format](https://github.com/volojs/volo/blob/master/vololib/amdify/doc.md)
 
 It is still very early in development. Lots may change and it has some sharp
 corners, but it is already fun to use. It is just one file, so it is
@@ -20,7 +23,7 @@ easy to try out and discard.
 
 ### Prerequisites
 
-* Node 0.6.5 or later installed.
+* [Node](http://nodejs.org) 0.6.5 or later installed.
 
 ## Install
 
@@ -66,54 +69,43 @@ it is understanding **user/repo** for archive names. See the
 [add doc](https://github.com/volojs/volo/blob/master/vololib/add/doc.md) for more
 info on the types of archive names to use.
 
+### AMD project example
+
 To set up an AMD/RequireJS-based project called **fast** that uses AMD versions of
 Backbone, jQuery and underscore:
 
     > volo create fast
     > cd fast
-    > volo add jquery/jquery
-    > volo add amdjs/underscore  (fetches most recent version tag with AMD)
-    > volo add amdjs/backbone    (fetches most recent version tag with AMD)
+    > volo add jquery
+    > volo add underscore
+    > volo add backbone
 
 Then modify www/js/app.js to require the modules you need and add your app logic.
 
-If you want to indicate your desire to see the AMD changes integrated directly
-into underscore or backbone, please watch the
-[amdjs/underscore](https://github.com/amdjs/underscore) and
-[amdjs/backbone](https://github.com/amdjs/backbone)
-repositories. By doing so, it will hopefully give the library authors an
-indication of how many people would benefit from the code integration.
+The above example uses the amdjs/underscore and amdjs/backbone versions of
+those libraries, which include integrated AMD support.
 
-If you prefer to use underscore and backbone from their sources, instead of
-using the amdjs forks that include nice AMD registration, you can use amdify
-to convert the files fetched from the documentcloud repos:
-
-    > volo create fast2
-    > cd fast2
-    > volo add jquery/jquery
-    > volo add -amd documentcloud/underscore exports=_
-    > volo add -amd documentcloud/backbone depends=underscore,jquery exports=Backbone
-
-The amdify conversions are not as pretty as the amdjs handmade ones. However,
-it can be useful to use the documentcloud sources particularly if you want to
-use older releases of underscore and backbone.
-
-If you would prefer to have the documentcloud repos include native AMD registration,
-click the **Watch** button for the amdjs forks of [underscore](https://github.com/amdjs/underscore)
-and [backbone](https://github.com/amdjs/backbone), so we can help give the
-documentcloud group real data on how many people find would find it useful.
+### Browser globals project example
 
 To set up an HTML5 Boilerplate project that does not use AMD/RequireJS, but does
-use Backbone and underscore (the Boilerplate already has jQuery):
+use documentcloud repos of Backbone and Underscore (the Boilerplate already has
+jQuery):
 
     > volo create html5fast h5bp/html5-boilerplate
     > cd html5fast
-    > volo add documentcloud/underscore
-    > volo add documentcloud/backbone
+    > volo add underscore
+    > volo add backbone
+
+## Library Best Practices
+
+To work well with volo, here are some tips on how to structure your library code:
+
+* [Library Best Practices](https://github.com/volojs/volo/blob/master/docs/libraryBestPractices.md)
 
 ## Details
 
 * [Design goals](https://github.com/volojs/volo/blob/master/docs/designGoals.md)
+* [Prior Art](https://github.com/volojs/volo/blob/master/docs/priorArt.md): npm, cpm, bpm.
 * [Create a volo command](https://github.com/volojs/volo/blob/master/docs/createCommand.md)
 * License: [MIT and new BSD](https://github.com/volojs/volo/blob/master/LICENSE).
 

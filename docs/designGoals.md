@@ -3,14 +3,16 @@
 * Written in JavaScript
 * One .js file
 * Know how to use GitHub
-* Work with plain URLs to single JS files or tar.gz archives
+* Work with plain URLs to single JS files or zip/tar.gz archives
 * Treat AMD as first class, but don't be annoying about it
 * Extensible
 
 ## Written in JavaScript
 
 This is a tool to work with JavaScript-based projects. JavaScript with node is
-sufficient and awesome to build tools.
+sufficient and awesome to build tools. Besides, a front end engineer needs to
+understand callbacks, and there are tools like [promises]() that can help
+give it a more linear flow.
 
 ## One JS file
 
@@ -34,12 +36,14 @@ Open, social code is great, and the JS community has really taken to GitHub.
 GitHub is effectively a registry of JS code. While it cannot serve all the
 code registry needs of all JS projects, it is a great place to start.
 
-## Work with plain URLs to single JS files or tar.gz archives
+## Work with plain URLs to single JS files or zip/tar.gz archives
 
 GitHub is awesome, but some code is just as easy to get via a
-simple http/https URL to a single JS file or a tar.gz archive. The GitHub
+simple http/https URL to a single JS file or a zip/tar.gz archive. The GitHub
 support just boils down to converting a GitHub reference to an archive of
 a GitHub project at a particular version tag/branch name.
+
+(Current volo only supports zip, but wants to support tar.gz)
 
 ## Treat AMD as first class, but don't be annoying about it
 

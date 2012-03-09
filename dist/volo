@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
 /**
- * @license volo 0.0.8+ Copyright (c) 2012, The Dojo Foundation All Rights Reserved.
+ * @license volo 0.0.9 Copyright (c) 2012, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
  * see: http://github.com/volojs/volo for details
  */
 
-var voloVersion = '0.0.8+';
+var voloVersion = '0.0.9';
 
 //Wipe out the exports object since some node-converted modules look for it.
 var exports = undefined;
@@ -12086,14 +12086,14 @@ define('npmrel',['require','exports','module','fs','path','q','volo/packageJson'
                     var dconvert = q.defer();
                     try {
                         amdConvert(file).then(function () {
-                            dconvert.resolve('AMD conversion finished for: ' + file);
+                            dconvert.resolve();
                         }, function (err) {
                             //Do not care if it errors out, probably
                             //malformed to start.
-                            dconvert.resolve('AMD conversion failed for: ' + file + '. Skipping. ' + err);
+                            dconvert.resolve();
                         });
                     } catch (e) {
-                        dconvert.resolve('AMD conversion failed for: ' + file + '. Skipping. ' + e);
+                        dconvert.resolve();
                     }
                     return dconvert.promise;
                 });
