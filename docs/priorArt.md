@@ -1,3 +1,0 @@
-# Prior Art
-
-TODO
