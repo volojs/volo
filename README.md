@@ -21,7 +21,7 @@ It is still very early in development. Lots may change and it has some sharp
 corners, but it is already fun to use. It is just one file, so it is
 easy to try out and discard.
 
-### Prerequisites
+## Prerequisites
 
 * [Node](http://nodejs.org) 0.6.5 or later installed.
 
