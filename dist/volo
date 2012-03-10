@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
 /**
- * @license volo 0.0.9 Copyright (c) 2012, The Dojo Foundation All Rights Reserved.
+ * @license volo 0.1.0 Copyright (c) 2012, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
  * see: http://github.com/volojs/volo for details
  */
 
-var voloVersion = '0.0.9';
+var voloVersion = '0.1.0';
 
 //Wipe out the exports object since some node-converted modules look for it.
 var exports = undefined;
@@ -2376,6 +2376,9 @@ define('volo/config',['require','fs','path','./lang','./baseUrl'],function (requ
                     "underscore": "amdjs/underscore",
                     "backbone": "amdjs/backbone"
                 }
+            },
+            "typeOverrides": {
+                "dojo/dijit": "directory"
             }
         },
 
@@ -8051,7 +8054,7 @@ define('volo/resolve/github',['require','path','../config','../archive','../gith
                     var archive;
                     if (results && results.length) {
                         archive = results[0].archive;
-                        console.log('Using search result "' + archive +
+                        console.log('Using github repo "' + archive +
                                     '" for "' + archiveName + '"...');
                         return archive;
                     } else {
@@ -11615,16 +11618,35 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
                                 completeMessage = '',
                                 ext = '',
                                 info, sourceName, targetName,
-                                listing, defaultName, mainFile, mainContents, deps;
+                                listing, defaultName, mainFile, mainContents,
+                                deps, pkgType, overrideTypeName;
 
                             if (dirName) {
                                 info = packageJson(dirName);
 
-                                //If a main setting, read the main file. If it
-                                //calls define() and any of the dependencies
-                                //are relative, then keep the whole directory.
-                                mainFile = info.data && info.data.main;
-                                if (mainFile) {
+                                if (info.data) {
+                                    mainFile = info.data && info.data.main;
+                                    pkgType = info.data.volo && info.data.volo.type;
+                                }
+
+                                if (!pkgType && archiveInfo.scheme === 'github') {
+                                    //Check for an override, just pull off the
+                                    //owner/repo from the archive ID
+                                    overrideTypeName = /github:([^\/]+\/[^\/]+)/.exec(archiveInfo.id)[1];
+                                    pkgType = (config.github &&
+                                               config.github.typeOverrides &&
+                                               config.github.typeOverrides[overrideTypeName]) ||
+                                              null;
+                                }
+
+                                if (pkgType === 'directory') {
+                                    //The whole directory should be kept,
+                                    //not an individual source file.
+                                    sourceName = null;
+                                } else if (mainFile) {
+                                    //Read the main file. If it
+                                    //calls define() and any of the dependencies
+                                    //are relative, then keep the whole directory.
                                     mainFile += jsRegExp.test(mainFile) ? '' : '.js';
                                     mainFile = path.join(dirName, mainFile);
                                     mainContents = fs.readFileSync(mainFile, 'utf8');

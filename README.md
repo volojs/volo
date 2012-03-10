@@ -94,7 +94,7 @@ To set up an HTML5 Boilerplate project that does not use AMD/RequireJS, but does
 use documentcloud repos of Backbone and Underscore (the Boilerplate already has
 jQuery):
 
-    > volo create html5fast h5bp/html5-boilerplate (pulls down latest tag of that repo)
+    > volo create html5fast html5-boilerplate (pulls down latest tag of that repo)
     > cd html5fast
     > volo add underscore (uses documentcloud/underscore as repo)
     > volo add backbone (uses documentcloud/backbone as repo)
