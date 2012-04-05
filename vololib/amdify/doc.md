@@ -8,6 +8,10 @@ where flags can be:
   value's noConflict method if it exists.
 * -noprompt means do not prompt for dependencies/exported value for
   non-AMD/CommonJS files. Useful for automated processes.
+* -commonJs indicates that the code should use the "convert CommonJS to AMD"
+  path, intead of trying to detect it via require('') use in the file. Useful
+  if the modules just uses `this` property assignments, and does not use
+  `require` or `exports`.
 
 and:
 

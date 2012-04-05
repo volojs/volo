@@ -10,6 +10,7 @@ define(function (require, exports, module) {
         fs = require('fs'),
         path = require('path'),
         file = require('volo/file'),
+        amdifyConvert = require('amdify').api.convert,
         cwd = process.cwd(),
         dir = path.dirname(module.uri),
         supportDir = path.join(dir, 'support'),
@@ -96,6 +97,24 @@ define(function (require, exports, module) {
                     function amdifyLibExports(t) {
                         var output = fs.readFileSync('libExports.js', 'utf8'),
                             expected = fs.readFileSync('../expected/libExports.js', 'utf8');
+
+                        t.is(expected, output);
+                    }
+                ]
+            );
+            doh.run();
+        });
+    })
+    .then(function () {
+        return amdifyConvert('thisExports.js', null, null, null, {
+            commonJs: true
+        }).then(function (result) {
+            console.log(result);
+            doh.register("thisExports",
+                [
+                    function thisExports(t) {
+                        var output = fs.readFileSync('thisExports.js', 'utf8'),
+                            expected = fs.readFileSync('../expected/thisExports.js', 'utf8');
 
                         t.is(expected, output);
                     }

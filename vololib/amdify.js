@@ -63,7 +63,8 @@ define(function (require, exports, module) {
 
         flags: {
             'noConflict': 'noConflict',
-            'noprompt': 'noprompt'
+            'noprompt': 'noprompt',
+            'commonJs': 'commonJs'
         },
 
         //Validate any arguments here.
@@ -104,7 +105,8 @@ define(function (require, exports, module) {
                             return main.api.convert(file, depends, varNames, exports, {
                                 v: v,
                                 noConflict: noConflict,
-                                noprompt: namedArgs.noprompt
+                                noprompt: namedArgs.noprompt,
+                                commonJs: namedArgs.commonJs
                             });
                         });
                     });
@@ -147,6 +149,9 @@ define(function (require, exports, module) {
             //Returns a promise, since it can prompt the user for info
             convert: function (target, depends, varNames, exports, options) {
                 options = options || {};
+                depends = depends || '';
+                varNames = varNames || '';
+                exports = exports || '';
 
                 var contents = fs.readFileSync(target, 'utf8'),
                     prelude = '',
@@ -181,6 +186,11 @@ define(function (require, exports, module) {
                     d.resolve('SKIP: ' + target + ': already uses AMD.');
                 } else {
                     cjsProps = parse.usesCommonJs(target, contents);
+
+                    if (!cjsProps && options.commonJs) {
+                        cjsProps = {};
+                    }
+
                     //If no exports or depends and it looks like a cjs module convert
                     if (!exports && !depends && cjsProps) {
                         if (cjsProps.filename || cjsProps.dirname) {

@@ -140,7 +140,9 @@ define(function (require, exports, module) {
                 promise = promise.then(function (msg) {
                     var dconvert = q.defer();
                     try {
-                        amdConvert(file).then(function () {
+                        amdConvert(file, null, null, null, {
+                            commonJs: true
+                        }).then(function () {
                             dconvert.resolve();
                         }, function (err) {
                             //Do not care if it errors out, probably
