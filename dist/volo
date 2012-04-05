@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
 /**
- * @license volo 0.1.0 Copyright (c) 2012, The Dojo Foundation All Rights Reserved.
+ * @license volo 0.1.0+ Copyright (c) 2012, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
  * see: http://github.com/volojs/volo for details
  */
 
-var voloVersion = '0.1.0';
+var voloVersion = '0.1.0+';
 
 //Wipe out the exports object since some node-converted modules look for it.
 var exports = undefined;
@@ -7948,7 +7948,7 @@ define('text!amdify/exportsTemplate.js',[],function () { return 'return /*EXPORT
 
 define('text!amdify/exportsNoConflictTemplate.js',[],function () { return 'if (/*EXPORTS*/.noConflict) {\n    /*EXPORTS*/.noConflict(true);\n}\nreturn /*EXPORTS*/;\n';});
 
-define('text!amdify/doc.md',[],function () { return '## Usage\n\n    volo amdify [flags] path/to/file.js [depends=] [exports=]\n\nwhere flags can be:\n\n* -noConflict indicates that code shoud be included to call the exports\n  value\'s noConflict method if it exists.\n* -noprompt means do not prompt for dependencies/exported value for\n  non-AMD/CommonJS files. Useful for automated processes.\n\nand:\n\n* **depends** is a comma-separated list of dependencies, with no spaces\n* **exports** is the global value created by the file that should be treated as\n  the module\'s exported value.\n\n## Details\n\nThe file.js will be modified to include a define() wrapper with the given\ndependency names.\n\nThis example:\n\n    volo amdify www/js/aplugin.jquery.js depends=jquery\n\nWill result in modifying the www/js/aplugin.jquery.js contents to have a\nfunction wrapping that includes:\n\n    define([\'jquery\'], function () {\n        //original contents in here.\n    });\n\nIf a dependency calls AMD\'s define(), then it may not create a global when\nloaded by an AMD loader. In that case, you may need to give the dependency\nas specific name to act as the "global" in the script. you can do this by\npassing `=localvarname` for the dependency. Here is an example for a "ko"\ndependency that does not export a global "ko" as a global if AMD is in use,\nso this amdify command will make sure to create a `kolocal` for use by\nthe wrapped code. It will also create a local `beta` for `beta.1.7.2`:\n\n    volo amdify www/js/ko.plugin.js depends=ko=kolocal,beta.1.7.2=beta\n\nResults in:\n\n    define([\'ko\', \'beta.1.7.2\'], function (kolocal, beta) {\n        //original contents in here.\n    });\n\nThis example sets dependencies, but then also specifies the export value to\nbe used. If the export object has a \'noConflict\' method on it, then it will\nbe called as part of exporting the module value:\n\n    volo amdify www/js/lib.js depends=jquery exports=lib\n\nresults in a transform that looks roughly like:\n\n    define([\'jquery\'], function () {\n\n        //original contents in here.\n\n        return lib;\n    });\n\nIf you want "-noConflict" called on the exports value:\n\n    volo amdify -noConflict www/js/lib.js depends=jquery exports=lib\n\nresults in a transform that looks roughly like:\n\n    define([\'jquery\'], function () {\n\n        //original contents in here.\n\n        if (lib.noConflict)) {\n            lib.noConflict(true);\n        }\n        return lib;\n    });\n\n**Be careful with -noConflict**. You most likely do not want to use it if\nyou have other code that has been amdify\'d that depends on this amdify\'d code.\nFor instance, using amdify on underscore.js with -noConflict is bad since\nbackbone.js depends on underscore, and it looks for a global _ value.\n\namdify will set the "this" value for the original contents to be the global\nobject.\n\nIdeally the target file would optionally call define() itself, and use\nthe local dependency references instead of browser globals. However, for\nbootstrapping existing projects to use an AMD loader, amdify can be useful to\nget started.\n\nUsing amdify will produce code that is uglier than doing a proper code change\nto add optional an optional define() call. For better code examples, see:\nhttps://github.com/umdjs/umd\n';});
+define('text!amdify/doc.md',[],function () { return '## Usage\n\n    volo amdify [flags] path/to/file.js [depends=] [exports=]\n\nwhere flags can be:\n\n* -noConflict indicates that code shoud be included to call the exports\n  value\'s noConflict method if it exists.\n* -noprompt means do not prompt for dependencies/exported value for\n  non-AMD/CommonJS files. Useful for automated processes.\n* -commonJs indicates that the code should use the "convert CommonJS to AMD"\n  path, intead of trying to detect it via require(\'\') use in the file. Useful\n  if the modules just uses `this` property assignments, and does not use\n  `require` or `exports`.\n\nand:\n\n* **depends** is a comma-separated list of dependencies, with no spaces\n* **exports** is the global value created by the file that should be treated as\n  the module\'s exported value.\n\n## Details\n\nThe file.js will be modified to include a define() wrapper with the given\ndependency names.\n\nThis example:\n\n    volo amdify www/js/aplugin.jquery.js depends=jquery\n\nWill result in modifying the www/js/aplugin.jquery.js contents to have a\nfunction wrapping that includes:\n\n    define([\'jquery\'], function () {\n        //original contents in here.\n    });\n\nIf a dependency calls AMD\'s define(), then it may not create a global when\nloaded by an AMD loader. In that case, you may need to give the dependency\nas specific name to act as the "global" in the script. you can do this by\npassing `=localvarname` for the dependency. Here is an example for a "ko"\ndependency that does not export a global "ko" as a global if AMD is in use,\nso this amdify command will make sure to create a `kolocal` for use by\nthe wrapped code. It will also create a local `beta` for `beta.1.7.2`:\n\n    volo amdify www/js/ko.plugin.js depends=ko=kolocal,beta.1.7.2=beta\n\nResults in:\n\n    define([\'ko\', \'beta.1.7.2\'], function (kolocal, beta) {\n        //original contents in here.\n    });\n\nThis example sets dependencies, but then also specifies the export value to\nbe used. If the export object has a \'noConflict\' method on it, then it will\nbe called as part of exporting the module value:\n\n    volo amdify www/js/lib.js depends=jquery exports=lib\n\nresults in a transform that looks roughly like:\n\n    define([\'jquery\'], function () {\n\n        //original contents in here.\n\n        return lib;\n    });\n\nIf you want "-noConflict" called on the exports value:\n\n    volo amdify -noConflict www/js/lib.js depends=jquery exports=lib\n\nresults in a transform that looks roughly like:\n\n    define([\'jquery\'], function () {\n\n        //original contents in here.\n\n        if (lib.noConflict)) {\n            lib.noConflict(true);\n        }\n        return lib;\n    });\n\n**Be careful with -noConflict**. You most likely do not want to use it if\nyou have other code that has been amdify\'d that depends on this amdify\'d code.\nFor instance, using amdify on underscore.js with -noConflict is bad since\nbackbone.js depends on underscore, and it looks for a global _ value.\n\namdify will set the "this" value for the original contents to be the global\nobject.\n\nIdeally the target file would optionally call define() itself, and use\nthe local dependency references instead of browser globals. However, for\nbootstrapping existing projects to use an AMD loader, amdify can be useful to\nget started.\n\nUsing amdify will produce code that is uglier than doing a proper code change\nto add optional an optional define() call. For better code examples, see:\nhttps://github.com/umdjs/umd\n';});
 
 define('text!search/doc.md',[],function () { return '## Usage\n\n    volo search [flags] query\n\nwhere the allowed flags are:\n\n* -amd: Indicates an AMD version, if available, is prefered. This means using\nsome AMD overrides from the volo config, if there is one that matches the\nquery, and gives that override first result status.\n\nand **query** is a string used for the search. The query can have a scheme on it,\nto specify what type of search module to use. For example:\n\n    volo search foo:bar\n\nuses the foo search module to get search results on \'bar\'.\n\nThe default query scheme is \'github\', so to search for the right repo to use\nfor installing \'jquery\':\n\n    volo search jquery\n';});
 
@@ -11180,7 +11180,8 @@ define('amdify',['require','exports','module','fs','path','q','volo/parse','volo
 
         flags: {
             'noConflict': 'noConflict',
-            'noprompt': 'noprompt'
+            'noprompt': 'noprompt',
+            'commonJs': 'commonJs'
         },
 
         //Validate any arguments here.
@@ -11221,7 +11222,8 @@ define('amdify',['require','exports','module','fs','path','q','volo/parse','volo
                             return main.api.convert(file, depends, varNames, exports, {
                                 v: v,
                                 noConflict: noConflict,
-                                noprompt: namedArgs.noprompt
+                                noprompt: namedArgs.noprompt,
+                                commonJs: namedArgs.commonJs
                             });
                         });
                     });
@@ -11264,6 +11266,9 @@ define('amdify',['require','exports','module','fs','path','q','volo/parse','volo
             //Returns a promise, since it can prompt the user for info
             convert: function (target, depends, varNames, exports, options) {
                 options = options || {};
+                depends = depends || '';
+                varNames = varNames || '';
+                exports = exports || '';
 
                 var contents = fs.readFileSync(target, 'utf8'),
                     prelude = '',
@@ -11298,6 +11303,11 @@ define('amdify',['require','exports','module','fs','path','q','volo/parse','volo
                     d.resolve('SKIP: ' + target + ': already uses AMD.');
                 } else {
                     cjsProps = parse.usesCommonJs(target, contents);
+
+                    if (!cjsProps && options.commonJs) {
+                        cjsProps = {};
+                    }
+
                     //If no exports or depends and it looks like a cjs module convert
                     if (!exports && !depends && cjsProps) {
                         if (cjsProps.filename || cjsProps.dirname) {
@@ -12107,7 +12117,9 @@ define('npmrel',['require','exports','module','fs','path','q','volo/packageJson'
                 promise = promise.then(function (msg) {
                     var dconvert = q.defer();
                     try {
-                        amdConvert(file).then(function () {
+                        amdConvert(file, null, null, null, {
+                            commonJs: true
+                        }).then(function () {
                             dconvert.resolve();
                         }, function (err) {
                             //Do not care if it errors out, probably
