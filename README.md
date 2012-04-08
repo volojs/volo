@@ -103,7 +103,7 @@ jQuery):
 
 To work well with volo, here are some tips on how to structure your library code:
 
-* [Library Best Practices](https://github.com/volojs/volo/blob/master/docs/libraryBestPractices.md)
+* [Library Best Practices](https://github.com/volojs/volo/wiki/Library-best-practices)
 
 ## Details
 
