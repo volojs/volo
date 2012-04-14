@@ -75,7 +75,10 @@ define(function (require, exports, module) {
                 var dirName = file.firstDir(tempDirName);
                 if (dirName) {
                     //Move the unpacked template to appName
-                    fs.renameSync(dirName, appName);
+                    //Doing a copy instead of a rename since
+                    //that does not work across partitions.
+                    file.copyDir(dirName, appName);
+                    file.rm(dirName);
 
                     //Clean up temp area. Even though this is async,
                     //it is not important to track the completion.

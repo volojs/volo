@@ -311,14 +311,20 @@ define(function (require, exports, module) {
                                             'command');
                                         return;
                                     }
-                                    fs.renameSync(sourceName, targetName);
+                                    //Doing a copy instead of a rename since
+                                    //that does not work across partitions.
+                                    file.copyFile(sourceName, targetName);
+                                    file.rm(sourceName);
                                 } else {
                                     //A complete directory install.
                                     targetName = targetDirName = path.join(baseUrl,
                                                            archiveInfo.finalLocalName);
 
                                     //Found the unpacked directory, move it.
-                                    fs.renameSync(dirName, targetName);
+                                    //Doing a copy instead of a rename since
+                                    //that does not work across partitions.
+                                    file.copyDir(dirName, targetName);
+                                    file.rm(dirName);
 
                                     //If directory, remove common directories not
                                     //needed for install.
