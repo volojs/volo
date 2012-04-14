@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
 /**
- * @license volo 0.1.0+ Copyright (c) 2012, The Dojo Foundation All Rights Reserved.
+ * @license volo 0.1.1 Copyright (c) 2012, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
  * see: http://github.com/volojs/volo for details
  */
 
-var voloVersion = '0.1.0+';
+var voloVersion = '0.1.1';
 
 //Wipe out the exports object since some node-converted modules look for it.
 var exports = undefined;
@@ -7907,7 +7907,10 @@ define('create',['require','exports','module','fs','path','q','volo/tempDir','vo
                 var dirName = file.firstDir(tempDirName);
                 if (dirName) {
                     //Move the unpacked template to appName
-                    fs.renameSync(dirName, appName);
+                    //Doing a copy instead of a rename since
+                    //that does not work across partitions.
+                    file.copyDir(dirName, appName);
+                    file.rm(dirName);
 
                     //Clean up temp area. Even though this is async,
                     //it is not important to track the completion.
@@ -11733,14 +11736,20 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
                                             'command');
                                         return;
                                     }
-                                    fs.renameSync(sourceName, targetName);
+                                    //Doing a copy instead of a rename since
+                                    //that does not work across partitions.
+                                    file.copyFile(sourceName, targetName);
+                                    file.rm(sourceName);
                                 } else {
                                     //A complete directory install.
                                     targetName = targetDirName = path.join(baseUrl,
                                                            archiveInfo.finalLocalName);
 
                                     //Found the unpacked directory, move it.
-                                    fs.renameSync(dirName, targetName);
+                                    //Doing a copy instead of a rename since
+                                    //that does not work across partitions.
+                                    file.copyDir(dirName, targetName);
+                                    file.rm(dirName);
 
                                     //If directory, remove common directories not
                                     //needed for install.
