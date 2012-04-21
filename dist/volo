@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
 /**
- * @license volo 0.1.1 Copyright (c) 2012, The Dojo Foundation All Rights Reserved.
+ * @license volo 0.1.1+ Copyright (c) 2012, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
  * see: http://github.com/volojs/volo for details
  */
 
-var voloVersion = '0.1.1';
+var voloVersion = '0.1.1+';
 
 //Wipe out the exports object since some node-converted modules look for it.
 var exports = undefined;
@@ -3454,7 +3454,7 @@ define('volo/file',['require','fs','path','./qutil','child_process'],function (r
             copiedFiles = [], i, srcFileName, destFileName;
 
             for (i = 0; i < fileNames.length; i++) {
-                srcFileName = fileNames[i];
+                srcFileName = frontSlash(fileNames[i]);
                 destFileName = srcFileName.replace(srcDir, destDir);
 
                 if (file.copyFile(srcFileName, destFileName, onlyCopyNew)) {
