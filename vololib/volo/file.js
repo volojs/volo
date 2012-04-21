@@ -204,7 +204,7 @@ define(function (require) {
             copiedFiles = [], i, srcFileName, destFileName;
 
             for (i = 0; i < fileNames.length; i++) {
-                srcFileName = fileNames[i];
+                srcFileName = frontSlash(fileNames[i]);
                 destFileName = srcFileName.replace(srcDir, destDir);
 
                 if (file.copyFile(srcFileName, destFileName, onlyCopyNew)) {
