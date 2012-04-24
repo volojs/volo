@@ -29,9 +29,9 @@ define(function (require) {
             "scheme": "https",
             "host": "github.com",
             "apiHost": "api.github.com",
-            "searchHost": "github.com",
+            "searchHost": "api.github.com",
             "rawUrlPattern": "https://raw.github.com/{owner}/{repo}/{version}/{file}",
-            "searchPath": "/api/v2/json/repos/search/{query}?language=JavaScript",
+            "searchPath": "/legacy/repos/search/{query}?language=JavaScript",
             "overrides": {
                 "jquery/jquery": {
                     "url": "http://code.jquery.com/jquery-{version}.js"
