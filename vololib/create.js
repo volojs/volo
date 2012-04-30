@@ -27,8 +27,8 @@ define(function (require, exports, module) {
         doc: require('text!./create/doc.md'),
 
         validate: function (namedArgs, appName) {
-            if (!appName || !(/^[A-Za-z\d\-]+$/.test(appName))) {
-                return new Error('appName can only contain alphanumeric and dash characters.');
+            if (!appName) {
+                return new Error('Please specify a name to use for the created project.');
             } else if (path.existsSync(appName)) {
                 return new Error(appName + ' already exists.');
             }
