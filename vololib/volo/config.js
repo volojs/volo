@@ -4,17 +4,18 @@
  * see: http://github.com/volojs/volo for details
  */
 
-/*global define, process, voloPath */
+/*global define, process, voloPath, console */
 
 define(function (require) {
     'use strict';
     var fs = require('fs'),
         path = require('path'),
         lang = require('./lang'),
+        file = require('./file'),
         //volo/baseUrl is set up in tools/requirejsVars.js
         baseUrl = require('./baseUrl'),
-        overrideConfigUrl = path.join(baseUrl, '.config.js'),
-        localConfigUrl = path.join(baseUrl, '.configLocal.js'),
+        overrideConfigUrl = path.join(baseUrl, '.config.json'),
+        localConfigUrl = path.join(baseUrl, '.configLocal.json'),
 
         data, overrideConfig, localConfig, contents;
 
@@ -124,7 +125,13 @@ define(function (require) {
         },
 
         saveLocal: function () {
-            fs.writeFileSync(localConfigUrl, JSON.stringify(localConfig, null, '  '));
+            //Make sure the directory exists
+            try {
+                file.mkdirs(path.dirname(localConfigUrl));
+                fs.writeFileSync(localConfigUrl, JSON.stringify(localConfig, null, '  '));
+            } catch (e) {
+                console.error('Cannot save local config, continuing without saving.');
+            }
         }
     };
 });

@@ -12,6 +12,7 @@
         'path': 'empty:',
         'readline': 'empty:',
         'stream': 'empty:',
+        'tty': 'empty:',
         'url': 'empty:',
         'zlib': 'empty:'
     },

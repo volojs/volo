@@ -18,6 +18,7 @@ define(function (require) {
         file = require('volo/file'),
         template = require('volo/template'),
         qutil = require('volo/qutil'),
+        tty = require('tty'),
         defaultEncoding = 'utf8',
         lineRegExp = /(\r)?\n$/;
 
@@ -80,6 +81,39 @@ define(function (require) {
                     }
 
                     process.stdin.once('data', onData);
+                    process.stdin.resume();
+
+                    process.stdout.write(message + ' ', 'utf8');
+
+                    return d.promise;
+                },
+                promptHidden: function (message, callback) {
+                    var d = qutil.convert(callback),
+                        value = '';
+
+                    function onKeyPress(c, key) {
+                        if (key && key.ctrl && c === 'c') {
+                            process.exit();
+                        } else if (c === '\r' ||
+                                   c === '\n' ||
+                                   c === '\u0004') {
+                            //End of input, finish up.
+                            process.stdin.removeListener('keypress', onKeyPress);
+                            tty.setRawMode(false);
+                            process.stdin.pause();
+                            d.resolve(value);
+                        } else if (c === '\x7f' ||
+                                 c === '\x08') {
+                            //A backspace/delete character, remove a char
+                            //from the value.
+                            value = value.slice(0, -1);
+                        } else {
+                            value += c;
+                        }
+                    }
+
+                    tty.setRawMode(true);
+                    process.stdin.on('keypress', onKeyPress);
                     process.stdin.resume();
 
                     process.stdout.write(message + ' ', 'utf8');

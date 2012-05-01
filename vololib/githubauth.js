@@ -33,16 +33,29 @@ define(function (require, exports, module) {
         },
 
         api: {
+            //Returns github token if it is available in the read/write local
+            //config.
+            getToken: function () {
+                var config = voloConfig.getLocal();
+                return (config.githubauth && config.githubauth.token) || null;
+            },
+
+            //Does the user interaction for name/pw and GitHub network dance
+            //to get OAuth token.
             getAuth: function(options, callback, errback) {
                 var d = qutil.convert(callback, errback),
                     v = options.v,
                     name;
 
+                console.log('Log in to GitHub to complete action ' +
+                            '(your password is not saved. It is sent over ' +
+                            'SSL to GitHub and converted to an OAuth token)');
                 v.prompt('GitHub user name: ')
                     .then(function (promptName) {
                         name = promptName;
-                        return v.prompt('GitHub password: ');
+                        return v.promptHidden('GitHub password: ');
                     }).then(function (pw) {
+                        console.log('\nContacting GitHub...');
                         var basicAuth = new Buffer(name + ':' + pw)
                                         .toString('base64'),
                             requestBody = JSON.stringify({
@@ -59,7 +72,10 @@ define(function (require, exports, module) {
                             var body = '',
                                 hasError;
 
-                            if (res.statusCode !== 201) {
+                            if (res.statusCode === 401) {
+                                d.reject('Incorrect GitHub user name or password.');
+                                return;
+                            } else if (res.statusCode !== 201) {
                                 d.reject('GitHub responded with error status: ' +
                                          res.statusCode);
                                 return;
@@ -80,12 +96,20 @@ define(function (require, exports, module) {
                             res.on('end', function () {
                                 var config = voloConfig.getLocal();
                                 if (!hasError) {
-            console.log('BODY response: ' + body);
-
                                     body = JSON.parse(body);
-                                    config.token = body.token;
-                                    voloConfig.saveLocal();
-                                    d.resolve('Auth token successfully retrieved.');
+                                    if (!config.githubauth) {
+                                        config.githubauth = {};
+                                    }
+                                    config.githubauth.token = body.token;
+
+                                    v.prompt('Save OAuth token for later use [y]? ')
+                                    .then(function (save) {
+                                        save = save && save.toLowerCase();
+                                        if (!save || save === 'y' || save === 'yes') {
+                                            voloConfig.saveLocal();
+                                        }
+                                        d.resolve();
+                                    }).then(d.resolve, d.reject);
                                 }
                             });
 
