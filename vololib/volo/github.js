@@ -12,7 +12,7 @@ define(function (require) {
     var q = require('q'),
         https = require('https'),
         querystring = require('querystring'),
-        config = require('volo/config').github,
+        config = require('volo/config').get().github,
         scheme = config.scheme,
         version = require('volo/version'),
         host = config.host,

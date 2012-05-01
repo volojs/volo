@@ -10,7 +10,7 @@ define(function (require) {
     'use strict';
 
     var path = require('path'),
-        config = require('../config'),
+        config = require('../config').get(),
         archive = require('../archive'),
         github = require('../github'),
         net = require('../net'),

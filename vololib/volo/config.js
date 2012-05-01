@@ -13,11 +13,13 @@ define(function (require) {
         lang = require('./lang'),
         //volo/baseUrl is set up in tools/requirejsVars.js
         baseUrl = require('./baseUrl'),
-        localConfigUrl = path.join(baseUrl, '.config.js'),
-        localConfig, config, contents;
+        overrideConfigUrl = path.join(baseUrl, '.config.js'),
+        localConfigUrl = path.join(baseUrl, '.configLocal.js'),
+
+        data, overrideConfig, localConfig, contents;
 
     // The defaults to use.
-    config = {
+    data = lang.delegate({
         "volo": {
             //Hold on to the name of the script
             "path": typeof voloPath === 'undefined' ? process.argv[1] : voloPath
@@ -54,6 +56,14 @@ define(function (require) {
             }
         },
 
+        "githubauth": {
+            "domain": "https://api.github.com",
+            "authPath": "/authorizations",
+            "scopes": ["public_repo"],
+            "note": "Allow volo to interact with your repos.",
+            "noteUrl": "https://github.com/volojs/volo"
+        },
+
         "command": {
             "add": {
                 "discard": {
@@ -73,17 +83,48 @@ define(function (require) {
                 archive: 'volojs/volo#dist/volo'
             }
         }
-    };
+    });
 
     //Allow a local config at baseUrl + '.config.js'
-    if (path.existsSync(localConfigUrl)) {
-        contents = (fs.readFileSync(localConfigUrl, 'utf8') || '').trim();
+    if (path.existsSync(overrideConfigUrl)) {
+        contents = (fs.readFileSync(overrideConfigUrl, 'utf8') || '').trim();
 
         if (contents) {
-            localConfig = JSON.parse(contents);
-            lang.mixin(config, localConfig, true);
+            overrideConfig = JSON.parse(contents);
+            lang.mixin(data, overrideConfig, true);
         }
     }
 
-    return config;
+    return {
+        get: function () {
+            return data;
+        },
+
+        //Simple local config. No fancy JSON object merging just plain mixing
+        //of top level properties.
+        getLocal: function () {
+            var contents;
+
+            if (!localConfig) {
+                if (path.existsSync(localConfigUrl)) {
+
+                    contents = (fs.readFileSync(overrideConfigUrl, 'utf8') || '').trim();
+
+                    if (contents) {
+                        localConfig = JSON.parse(contents);
+                    }
+                }
+
+                if (!localConfig) {
+                    localConfig = {};
+                }
+            }
+
+            return localConfig;
+        },
+
+        saveLocal: function () {
+            fs.writeFileSync(localConfigUrl, JSON.stringify(localConfig, null, '  '));
+        }
+    };
 });

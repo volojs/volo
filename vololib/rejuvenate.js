@@ -14,7 +14,7 @@ define(function (require, exports, module) {
         path = require('path'),
         add = require('add'),
         baseUrl = require('volo/baseUrl'),
-        config = require('volo/config').command.rejuvenate,
+        config = require('volo/config').get().command.rejuvenate,
         rejuvenate;
 
     rejuvenate = {

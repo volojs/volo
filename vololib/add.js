@@ -14,7 +14,7 @@ define(function (require, exports, module) {
     var fs = require('fs'),
         path = require('path'),
         q = require('q'),
-        config = require('volo/config'),
+        config = require('volo/config').get(),
         myConfig = config.command.add,
         archive = require('volo/archive'),
         download = require('volo/download'),

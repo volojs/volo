@@ -13,7 +13,7 @@ define(function (require) {
         qutil = require('../qutil'),
         lang = require('../lang'),
         github = require('../github'),
-        config = require('../config').github,
+        config = require('../config').get().github,
         defaultOptions = {
             amd: false,
             max: 5

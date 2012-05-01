@@ -29,6 +29,7 @@
         'help',
         'acquire',
         'rejuvenate',
+        'githubauth',
         'create',
         'add',
         'amdify',
