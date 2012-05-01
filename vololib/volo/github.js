@@ -26,14 +26,32 @@ define(function (require) {
         return querystring.escape(text).replace(/\./g, '+');
     }
 
-    function github(path) {
+    /**
+     * Sends a request to GitHub. Valid options:
+     * method: the HTTP method to use.
+     * content: the content to send in the body. Can be an object that will
+     * be converted to JSON, or a string.
+     * contentType: the content-type to use for the body content. JSON is the
+     * default one used if there is content specified.
+     */
+    function github(path, options) {
+        options = options || {};
+        options.contentType = options.contentType ||
+                            'application/json';
+
+        if (options.content && typeof options.content !== 'string') {
+            options.content = JSON.stringify(options.content);
+        }
+
         var args = {
             host: apiHost,
-            path: '/' + path
+            path: '/' + path,
+            method: options.method || 'GET'
         },
-        d = q.defer();
+        d = q.defer(),
+        req;
 
-        https.get(args, function (response) {
+        req = https.request(args, function (response) {
             //console.log("statusCode: ", response.statusCode);
             //console.log("headers: ", response.headers);
             var body = '';
@@ -56,6 +74,14 @@ define(function (require) {
         }).on('error', function (e) {
             d.reject(e);
         });
+
+        if (options.content) {
+            req.setHeader('Content-Type', options.contentType);
+            req.setHeader('Content-Length', options.content.length);
+            req.write(options.content);
+        }
+
+        req.end();
 
         return d.promise;
     }

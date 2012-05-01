@@ -189,6 +189,17 @@ define(function (require) {
 
                     return d.promise;
                 },
+
+                spawnSequence: function (list, options) {
+                    var result = q.resolve();
+                    list.forEach(function (item) {
+                        result = result.then(function () {
+                            return instance.env.spawn(item[0], item[2], options);
+                        });
+                    });
+                    return result;
+                },
+
                 //Executes the text in the shell via child_process.exec.
                 exec: function (text) {
                     var d = q.defer();

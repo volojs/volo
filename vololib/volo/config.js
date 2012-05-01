@@ -54,15 +54,15 @@ define(function (require) {
             },
             "typeOverrides": {
                 "dojo/dijit": "directory"
-            }
-        },
+            },
 
-        "githubauth": {
-            "domain": "https://api.github.com",
-            "authPath": "/authorizations",
-            "scopes": ["public_repo"],
-            "note": "Allow volo to interact with your repos.",
-            "noteUrl": "https://github.com/volojs/volo"
+            "auth": {
+                "domain": "https://api.github.com",
+                "authPath": "/authorizations",
+                "scopes": ["public_repo"],
+                "note": "Allow volo to interact with your repos.",
+                "noteUrl": "https://github.com/volojs/volo"
+            }
         },
 
         "command": {
@@ -131,7 +131,10 @@ define(function (require) {
                 fs.writeFileSync(localConfigUrl, JSON.stringify(localConfig, null, '  '));
             } catch (e) {
                 console.error('Cannot save local config, continuing without saving.');
+                return '';
             }
+
+            return localConfigUrl;
         }
     };
 });
