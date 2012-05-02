@@ -190,6 +190,9 @@ define(function (require) {
                     return d.promise;
                 },
 
+                //Call spawn for each item in the list array in sequence.
+                //Each item in the array should be the first to arguments to
+                //spawn.
                 spawnSequence: function (list, options) {
                     var result = q.resolve();
                     list.forEach(function (item) {
@@ -213,7 +216,29 @@ define(function (require) {
                     });
 
                     return d.promise;
+                },
+
+                //Do an action in the specified directory as the current
+                //directory, restoring the current directory after the fn
+                //completes. fn should return a promise
+                withDir: function (dirName, fn) {
+                    var currDir = process.cwd();
+
+                    function restoreDir() {
+                        process.chdir(currDir);
+                    }
+
+                    process.chdir(dirName);
+
+                    return fn.then(function (value) {
+                        restoreDir();
+                        return value;
+                    }, function (err) {
+                        restoreDir();
+                        return err;
+                    });
                 }
+
             }
         };
 

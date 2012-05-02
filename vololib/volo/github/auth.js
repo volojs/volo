@@ -28,8 +28,8 @@ define(function (require, exports, module) {
                 name;
 
             //If already have a token, wrap it up.
-            if (localConfig[configKey] && localConfig[configKey].token) {
-                d.resolve(localConfig[configKey].token);
+            if (localConfig[configKey] && localConfig[configKey]) {
+                d.resolve(localConfig[configKey]);
                 return;
             }
 
@@ -115,7 +115,8 @@ define(function (require, exports, module) {
                                         }
                                     }
                                     return config[configKey];
-                                }).then(d.resolve, d.reject);
+                                })
+                                .then(d.resolve, d.reject);
                             }
                         });
 

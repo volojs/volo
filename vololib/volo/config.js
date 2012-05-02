@@ -109,7 +109,7 @@ define(function (require) {
             if (!localConfig) {
                 if (path.existsSync(localConfigUrl)) {
 
-                    contents = (fs.readFileSync(overrideConfigUrl, 'utf8') || '').trim();
+                    contents = (fs.readFileSync(localConfigUrl, 'utf8') || '').trim();
 
                     if (contents) {
                         localConfig = JSON.parse(contents);
