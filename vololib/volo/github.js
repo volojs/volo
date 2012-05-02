@@ -33,6 +33,7 @@ define(function (require) {
      * be converted to JSON, or a string.
      * contentType: the content-type to use for the body content. JSON is the
      * default one used if there is content specified.
+     * token: the auth token to use for the request.
      */
     function github(path, options) {
         options = options || {};
@@ -63,7 +64,8 @@ define(function (require) {
             response.on('end', function () {
                 if (response.statusCode === 404) {
                     d.reject(args.host + args.path + ' does not exist');
-                } else if (response.statusCode === 200) {
+                } else if (response.statusCode === 200 ||
+                           response.statusCode === 201) {
                     //Convert the response into an object
                     d.resolve(JSON.parse(body));
                 } else {
@@ -74,6 +76,10 @@ define(function (require) {
         }).on('error', function (e) {
             d.reject(e);
         });
+
+        if (options.token) {
+            req.setHeader('Authorization', 'token ' + options.token);
+        }
 
         if (options.content) {
             req.setHeader('Content-Type', options.contentType);

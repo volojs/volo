@@ -59,7 +59,7 @@ define(function (require) {
             "auth": {
                 "domain": "https://api.github.com",
                 "authPath": "/authorizations",
-                "scopes": ["public_repo"],
+                "scopes": ["repo"],
                 "note": "Allow volo to interact with your repos.",
                 "noteUrl": "https://github.com/volojs/volo"
             }

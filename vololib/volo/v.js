@@ -197,7 +197,7 @@ define(function (require) {
                     var result = q.resolve();
                     list.forEach(function (item) {
                         result = result.then(function () {
-                            return instance.env.spawn(item[0], item[2], options);
+                            return instance.env.spawn(item[0], item[1], options);
                         });
                     });
                     return result;
@@ -230,7 +230,7 @@ define(function (require) {
 
                     process.chdir(dirName);
 
-                    return fn.then(function (value) {
+                    return fn().then(function (value) {
                         restoreDir();
                         return value;
                     }, function (err) {

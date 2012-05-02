@@ -28,9 +28,9 @@ define(function (require, exports, module) {
                 name;
 
             //If already have a token, wrap it up.
-            if (localConfig[configKey] && localConfig[configKey]) {
+            if (localConfig[configKey]) {
                 d.resolve(localConfig[configKey]);
-                return;
+                return d.promise;
             }
 
             function log(msg) {
@@ -101,8 +101,9 @@ define(function (require, exports, module) {
                                 body = JSON.parse(body);
 
                                 config[configKey] = {
-                                    name: name,
-                                    token: body.token
+                                    user: name,
+                                    token: body.token,
+                                    scopes: authConfig.scopes
                                 };
 
                                 v.prompt('Save OAuth token for later use [y]?')
