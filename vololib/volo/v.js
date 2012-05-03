@@ -190,14 +190,29 @@ define(function (require) {
                     return d.promise;
                 },
 
-                //Call spawn for each item in the list array in sequence.
-                //Each item in the array should be the first to arguments to
-                //spawn.
-                spawnSequence: function (list, options) {
+                //Processes a set of deferred actions in sequence.
+                //Uses spawn if the first array value in an entry in the action
+                //list is a string, otherwise, assumes it is an object where
+                //the second array value is a method name and the rest of the
+                //array values are arguments. Example:
+                //v.sequence([
+                //   ['git', 'init'], //ends up with v.sequence('git', ['init'], options)
+                //   [v, 'rm', 'README.md'] //ends up calling v.rm.apply(v, ['README.md']);
+                //], options);
+                sequence: function (list, options) {
                     var result = q.resolve();
                     list.forEach(function (item) {
                         result = result.then(function () {
-                            return instance.env.spawn(item[0], item[1], options);
+                            var start = item[0],
+                                action = item[1],
+                                useSpawn = typeof start === 'string',
+                                args = item.splice(useSpawn ? 1 : 2);
+
+                            if (useSpawn) {
+                                return instance.env.spawn(start, args, options);
+                            } else {
+                                return start[action].apply(start, args);
+                            }
                         });
                     });
                     return result;
