@@ -65,8 +65,8 @@ define(function (require) {
                 getFilteredFileList: function (startDir, regExpInclude, regExpExclude, dirRegExpExclude) {
                     return file.getFilteredFileList(resolve(startDir), regExpInclude, regExpExclude, dirRegExpExclude);
                 },
-                copyDir: function (srcDir, destDir, regExpFilter, onlyCopyNew) {
-                    return file.copyDir(resolve(srcDir), resolve(destDir), regExpFilter, onlyCopyNew);
+                copyDir: function (srcDir, destDir, regExpFilter, onlyCopyNew, regExpExclude, dirRegExpExclude) {
+                    return file.copyDir(resolve(srcDir), resolve(destDir), regExpFilter, onlyCopyNew, regExpExclude, dirRegExpExclude);
                 },
                 copyFile: function (srcFileName, destFileName, onlyCopyNew) {
                     return file.copyFile(resolve(srcFileName), resolve(destFileName), onlyCopyNew);
