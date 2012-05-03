@@ -136,6 +136,10 @@ define(function (require, exports, module) {
                                .replace(/^\.\//, '')
                                .replace(/\.js$/, ''),
                 contents;
+                //Some packages use a main of "." to mean "index.js" in this
+                //directory.
+                if (mainName === '.')
+                  mainName = "index";
 
                 //Add in adapter module for AMD code
                 contents = "define(['" + localName + "/" + mainName +
