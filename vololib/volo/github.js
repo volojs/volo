@@ -62,15 +62,20 @@ define(function (require) {
             });
 
             response.on('end', function () {
+                var err;
                 if (response.statusCode === 404) {
-                    d.reject(args.host + args.path + ' does not exist');
+                    err = new Error(args.host + args.path + ' does not exist');
+                    err.response = response;
+                    d.reject(err);
                 } else if (response.statusCode === 200 ||
                            response.statusCode === 201) {
                     //Convert the response into an object
                     d.resolve(JSON.parse(body));
                 } else {
-                    d.reject(args.host + args.path + ' returned status: ' +
+                    err = new Error(args.host + args.path + ' returned status: ' +
                              response.statusCode + '. ' + body);
+                    err.response = response;
+                    d.reject(err);
                 }
             });
         }).on('error', function (e) {
