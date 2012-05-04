@@ -12,6 +12,7 @@
         'path': 'empty:',
         'readline': 'empty:',
         'stream': 'empty:',
+        'tty': 'empty:',
         'url': 'empty:',
         'zlib': 'empty:'
     },
@@ -23,6 +24,7 @@
         '../tools/node',
         'volo/main',
         'volo/github',
+        'volo/github/auth',
         'volo/resolve/github',
         'volo/search/github',
         'volo/template',

@@ -18,6 +18,7 @@ define(function (require) {
         file = require('volo/file'),
         template = require('volo/template'),
         qutil = require('volo/qutil'),
+        tty = require('tty'),
         defaultEncoding = 'utf8',
         lineRegExp = /(\r)?\n$/;
 
@@ -64,8 +65,8 @@ define(function (require) {
                 getFilteredFileList: function (startDir, regExpInclude, regExpExclude, dirRegExpExclude) {
                     return file.getFilteredFileList(resolve(startDir), regExpInclude, regExpExclude, dirRegExpExclude);
                 },
-                copyDir: function (srcDir, destDir, regExpFilter, onlyCopyNew) {
-                    return file.copyDir(resolve(srcDir), resolve(destDir), regExpFilter, onlyCopyNew);
+                copyDir: function (srcDir, destDir, regExpFilter, onlyCopyNew, regExpExclude, dirRegExpExclude) {
+                    return file.copyDir(resolve(srcDir), resolve(destDir), regExpFilter, onlyCopyNew, regExpExclude, dirRegExpExclude);
                 },
                 copyFile: function (srcFileName, destFileName, onlyCopyNew) {
                     return file.copyFile(resolve(srcFileName), resolve(destFileName), onlyCopyNew);
@@ -80,6 +81,39 @@ define(function (require) {
                     }
 
                     process.stdin.once('data', onData);
+                    process.stdin.resume();
+
+                    process.stdout.write(message + ' ', 'utf8');
+
+                    return d.promise;
+                },
+                promptHidden: function (message, callback) {
+                    var d = qutil.convert(callback),
+                        value = '';
+
+                    function onKeyPress(c, key) {
+                        if (key && key.ctrl && c === 'c') {
+                            process.exit();
+                        } else if (c === '\r' ||
+                                   c === '\n' ||
+                                   c === '\u0004') {
+                            //End of input, finish up.
+                            process.stdin.removeListener('keypress', onKeyPress);
+                            tty.setRawMode(false);
+                            process.stdin.pause();
+                            d.resolve(value);
+                        } else if (c === '\x7f' ||
+                                 c === '\x08') {
+                            //A backspace/delete character, remove a char
+                            //from the value.
+                            value = value.slice(0, -1);
+                        } else {
+                            value += c;
+                        }
+                    }
+
+                    tty.setRawMode(true);
+                    process.stdin.on('keypress', onKeyPress);
                     process.stdin.resume();
 
                     process.stdout.write(message + ' ', 'utf8');
@@ -155,6 +189,35 @@ define(function (require) {
 
                     return d.promise;
                 },
+
+                //Processes a set of deferred actions in sequence.
+                //Uses spawn if the first array value in an entry in the action
+                //list is a string, otherwise, assumes it is an object where
+                //the second array value is a method name and the rest of the
+                //array values are arguments. Example:
+                //v.sequence([
+                //   ['git', 'init'], //ends up with v.sequence('git', ['init'], options)
+                //   [v, 'rm', 'README.md'] //ends up calling v.rm.apply(v, ['README.md']);
+                //], options);
+                sequence: function (list, options) {
+                    var result = q.resolve();
+                    list.forEach(function (item) {
+                        result = result.then(function () {
+                            var start = item[0],
+                                action = item[1],
+                                useSpawn = typeof start === 'string',
+                                args = item.splice(useSpawn ? 1 : 2);
+
+                            if (useSpawn) {
+                                return instance.env.spawn(start, args, options);
+                            } else {
+                                return start[action].apply(start, args);
+                            }
+                        });
+                    });
+                    return result;
+                },
+
                 //Executes the text in the shell via child_process.exec.
                 exec: function (text) {
                     var d = q.defer();
@@ -168,7 +231,29 @@ define(function (require) {
                     });
 
                     return d.promise;
+                },
+
+                //Do an action in the specified directory as the current
+                //directory, restoring the current directory after the fn
+                //completes. fn should return a promise
+                withDir: function (dirName, fn) {
+                    var currDir = process.cwd();
+
+                    function restoreDir() {
+                        process.chdir(currDir);
+                    }
+
+                    process.chdir(dirName);
+
+                    return fn().then(function (value) {
+                        restoreDir();
+                        return value;
+                    }, function (err) {
+                        restoreDir();
+                        return err;
+                    });
                 }
+
             }
         };
 

@@ -34,7 +34,7 @@ define(function (require) {
                         if (ok) {
                             matches.push(filePath);
                         }
-                    } else if (stat.isDirectory() && !dirRegExpExclude.test(filePath)) {
+                    } else if (stat.isDirectory() && (!dirRegExpExclude || !dirRegExpExclude.test(filePath))) {
                         findMatches(matches, filePath, regExpInclude, regExpExclude, dirRegExpExclude);
                     }
                 }
@@ -43,6 +43,9 @@ define(function (require) {
     }
 
     file = {
+        //Default exclusion regexp used by getFilteredFileList
+        dirRegExpExclude: /\.git|\.hg|\.svn|CVS/,
+
         /**
          * Recurses startDir and finds matches to the files that match
          * regExpFilters.include and do not match regExpFilters.exclude.
@@ -61,8 +64,8 @@ define(function (require) {
             var files = [];
 
             //By default avoid source control directories
-            if (!dirRegExpExclude) {
-                dirRegExpExclude = /\.git|\.hg|\.svn|CVS/;
+            if (dirRegExpExclude === undefined) {
+                dirRegExpExclude = file.dirRegExpExclude;
             }
 
             findMatches(files, startDir, regExpInclude, regExpExclude, dirRegExpExclude);
@@ -190,7 +193,12 @@ define(function (require) {
             return firstDir;
         },
 
-        copyDir: function (/*String*/srcDir, /*String*/destDir, /*RegExp?*/regExpFilter, /*boolean?*/onlyCopyNew) {
+        copyDir: function (/*String*/srcDir,
+                           /*String*/destDir,
+                           /*RegExp?*/regExpFilter,
+                           /*boolean?*/onlyCopyNew,
+                           /*RegExp?*/regExpExclude,
+                           /*RegExp?*/dirRegExpExclude) {
             //summary: copies files from srcDir to destDir using the regExpFilter to determine if the
             //file should be copied. Returns a list file name strings of the destinations that were copied.
             regExpFilter = regExpFilter || /\w/;
@@ -200,7 +208,7 @@ define(function (require) {
             srcDir = frontSlash(path.normalize(srcDir));
             destDir = frontSlash(path.normalize(destDir));
 
-            var fileNames = file.getFilteredFileList(srcDir, regExpFilter, true),
+            var fileNames = file.getFilteredFileList(srcDir, regExpFilter, regExpExclude, dirRegExpExclude),
             copiedFiles = [], i, srcFileName, destFileName;
 
             for (i = 0; i < fileNames.length; i++) {

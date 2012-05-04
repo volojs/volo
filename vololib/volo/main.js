@@ -11,7 +11,7 @@ define(function (require) {
     'use strict';
 
     var commands = require('./commands'),
-        config = require('./config'),
+        config = require('./config').get(),
         volofile = require('./volofile'),
         path = require('path'),
         q = require('q');
