@@ -42,7 +42,8 @@ define(function (require) {
                 //If passed a flag like -f, convert to named
                 //argument based on the command's configuration.
                 if (arg.indexOf('-') === 0) {
-                    flags.push(arg.substring(1));
+                    //Allow --flags too, just trim off both dashes
+                    flags.push(arg.substring(arg.charAt(1) === '-' ? 2 : 1));
                 } else {
                     //Regular array arg.
                     aryArgs.push(arg);
