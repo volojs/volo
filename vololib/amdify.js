@@ -138,8 +138,9 @@ define(function (require, exports, module) {
                 contents;
                 //Some packages use a main of "." to mean "index.js" in this
                 //directory.
-                if (mainName === '.')
-                  mainName = "index";
+                if (mainName === '.') {
+                    mainName = "index";
+                }
 
                 //Add in adapter module for AMD code
                 contents = "define(['" + localName + "/" + mainName +
