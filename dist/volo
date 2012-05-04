@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
 /**
- * @license volo 0.1.1+ Mon, 30 Apr 2012 23:23:33 GMT Copyright (c) 2012, The Dojo Foundation All Rights Reserved.
+ * @license volo 0.1.2 Copyright (c) 2012, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
  * see: http://github.com/volojs/volo for details
  */
 
-var voloVersion = '0.1.1+ Mon, 30 Apr 2012 23:23:33 GMT';
+var voloVersion = '0.1.2';
 
 //Wipe out the exports object since some node-converted modules look for it.
 var exports = undefined;
@@ -2336,96 +2336,6 @@ define('volo/lang',[],function () {
     return lang;
 });
 
-/**
- * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
- * Available via the MIT or new BSD license.
- * see: http://github.com/volojs/volo for details
- */
-
-/*global define, process, voloPath */
-
-define('volo/config',['require','fs','path','./lang','./baseUrl'],function (require) {
-    
-    var fs = require('fs'),
-        path = require('path'),
-        lang = require('./lang'),
-        //volo/baseUrl is set up in tools/requirejsVars.js
-        baseUrl = require('./baseUrl'),
-        localConfigUrl = path.join(baseUrl, '.config.js'),
-        localConfig, config, contents;
-
-    // The defaults to use.
-    config = {
-        "volo": {
-            //Hold on to the name of the script
-            "path": typeof voloPath === 'undefined' ? process.argv[1] : voloPath
-        },
-
-        "registry": "https://registry.npmjs.org/",
-
-        "github": {
-            "scheme": "https",
-            "host": "github.com",
-            "apiHost": "api.github.com",
-            "searchHost": "api.github.com",
-            "rawUrlPattern": "https://raw.github.com/{owner}/{repo}/{version}/{file}",
-            "searchPath": "/legacy/repos/search/{query}?language=JavaScript",
-            "overrides": {
-                "jquery/jquery": {
-                    "url": "http://code.jquery.com/jquery-{version}.js"
-                },
-                "madrobby/zepto": {
-                    "archive": "http://zeptojs.com/downloads/zepto-{version}.zip#dist/zepto.js"
-                },
-                "emberjs/ember.js": {
-                    "url": "https://github.com/downloads/emberjs/ember.js/ember-{version}.js"
-                }
-            },
-            "searchOverrides": {
-                "amd": {
-                    "underscore": "amdjs/underscore",
-                    "backbone": "amdjs/backbone"
-                }
-            },
-            "typeOverrides": {
-                "dojo/dijit": "directory"
-            }
-        },
-
-        "command": {
-            "add": {
-                "discard": {
-                    ".gitignore": true,
-                    "test": true,
-                    "tests": true,
-                    "doc": true,
-                    "docs": true,
-                    "example": true,
-                    "examples": true,
-                    "demo": true,
-                    "demos": true
-                }
-            },
-
-            "rejuvenate":  {
-                archive: 'volojs/volo#dist/volo'
-            }
-        }
-    };
-
-    //Allow a local config at baseUrl + '.config.js'
-    if (path.existsSync(localConfigUrl)) {
-        contents = (fs.readFileSync(localConfigUrl, 'utf8') || '').trim();
-
-        if (contents) {
-            localConfig = JSON.parse(contents);
-            lang.mixin(config, localConfig, true);
-        }
-    }
-
-    return config;
-});
-
 // vim:ts=4:sts=4:sw=4:
 /*jshint browser: true, node: true,
   curly: true, eqeqeq: true, noarg: true, nonew: true, trailing: true, undef: true
@@ -3480,7 +3390,7 @@ define('volo/file',['require','fs','path','./qutil','child_process'],function (r
                         if (ok) {
                             matches.push(filePath);
                         }
-                    } else if (stat.isDirectory() && !dirRegExpExclude.test(filePath)) {
+                    } else if (stat.isDirectory() && (!dirRegExpExclude || !dirRegExpExclude.test(filePath))) {
                         findMatches(matches, filePath, regExpInclude, regExpExclude, dirRegExpExclude);
                     }
                 }
@@ -3489,6 +3399,9 @@ define('volo/file',['require','fs','path','./qutil','child_process'],function (r
     }
 
     file = {
+        //Default exclusion regexp used by getFilteredFileList
+        dirRegExpExclude: /\.git|\.hg|\.svn|CVS/,
+
         /**
          * Recurses startDir and finds matches to the files that match
          * regExpFilters.include and do not match regExpFilters.exclude.
@@ -3507,8 +3420,8 @@ define('volo/file',['require','fs','path','./qutil','child_process'],function (r
             var files = [];
 
             //By default avoid source control directories
-            if (!dirRegExpExclude) {
-                dirRegExpExclude = /\.git|\.hg|\.svn|CVS/;
+            if (dirRegExpExclude === undefined) {
+                dirRegExpExclude = file.dirRegExpExclude;
             }
 
             findMatches(files, startDir, regExpInclude, regExpExclude, dirRegExpExclude);
@@ -3636,7 +3549,12 @@ define('volo/file',['require','fs','path','./qutil','child_process'],function (r
             return firstDir;
         },
 
-        copyDir: function (/*String*/srcDir, /*String*/destDir, /*RegExp?*/regExpFilter, /*boolean?*/onlyCopyNew) {
+        copyDir: function (/*String*/srcDir,
+                           /*String*/destDir,
+                           /*RegExp?*/regExpFilter,
+                           /*boolean?*/onlyCopyNew,
+                           /*RegExp?*/regExpExclude,
+                           /*RegExp?*/dirRegExpExclude) {
             //summary: copies files from srcDir to destDir using the regExpFilter to determine if the
             //file should be copied. Returns a list file name strings of the destinations that were copied.
             regExpFilter = regExpFilter || /\w/;
@@ -3646,7 +3564,7 @@ define('volo/file',['require','fs','path','./qutil','child_process'],function (r
             srcDir = frontSlash(path.normalize(srcDir));
             destDir = frontSlash(path.normalize(destDir));
 
-            var fileNames = file.getFilteredFileList(srcDir, regExpFilter, true),
+            var fileNames = file.getFilteredFileList(srcDir, regExpFilter, regExpExclude, dirRegExpExclude),
             copiedFiles = [], i, srcFileName, destFileName;
 
             for (i = 0; i < fileNames.length; i++) {
@@ -3691,6 +3609,154 @@ define('volo/file',['require','fs','path','./qutil','child_process'],function (r
     };
 
     return file;
+});
+
+/**
+ * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
+ * Available via the MIT or new BSD license.
+ * see: http://github.com/volojs/volo for details
+ */
+
+/*global define, process, voloPath, console */
+
+define('volo/config',['require','fs','path','./lang','./file','./baseUrl'],function (require) {
+    
+    var fs = require('fs'),
+        path = require('path'),
+        lang = require('./lang'),
+        file = require('./file'),
+        //volo/baseUrl is set up in tools/requirejsVars.js
+        baseUrl = require('./baseUrl'),
+        overrideConfigUrl = path.join(baseUrl, '.config.json'),
+        localConfigUrl = path.join(baseUrl, '.configLocal.json'),
+
+        data, overrideConfig, localConfig, contents;
+
+    // The defaults to use.
+    data = lang.delegate({
+        "volo": {
+            //Hold on to the name of the script
+            "path": typeof voloPath === 'undefined' ? process.argv[1] : voloPath
+        },
+
+        "registry": "https://registry.npmjs.org/",
+
+        "github": {
+            "scheme": "https",
+            "host": "github.com",
+            "apiHost": "api.github.com",
+            "searchHost": "api.github.com",
+            "rawUrlPattern": "https://raw.github.com/{owner}/{repo}/{version}/{file}",
+            "searchPath": "/legacy/repos/search/{query}?language=JavaScript",
+            "overrides": {
+                "jquery/jquery": {
+                    "url": "http://code.jquery.com/jquery-{version}.js"
+                },
+                "madrobby/zepto": {
+                    "archive": "http://zeptojs.com/downloads/zepto-{version}.zip#dist/zepto.js"
+                },
+                "emberjs/ember.js": {
+                    "url": "https://github.com/downloads/emberjs/ember.js/ember-{version}.js"
+                }
+            },
+            "searchOverrides": {
+                "amd": {
+                    "underscore": "amdjs/underscore",
+                    "backbone": "amdjs/backbone"
+                }
+            },
+            "typeOverrides": {
+                "dojo/dijit": "directory"
+            },
+
+            "auth": {
+                "domain": "https://api.github.com",
+                "authPath": "/authorizations",
+                "scopes": ["repo"],
+                "note": "Allow volo to interact with your repos.",
+                "noteUrl": "https://github.com/volojs/volo"
+            }
+        },
+
+        "command": {
+            "add": {
+                "discard": {
+                    ".gitignore": true,
+                    "test": true,
+                    "tests": true,
+                    "doc": true,
+                    "docs": true,
+                    "example": true,
+                    "examples": true,
+                    "demo": true,
+                    "demos": true
+                }
+            },
+
+            "rejuvenate":  {
+                archive: 'volojs/volo#dist/volo'
+            }
+        },
+
+        "amdify": {
+            "notCommonJs": {
+                "backbone": true,
+                "underscore": true
+            }
+        }
+    });
+
+    //Allow a local config at baseUrl + '.config.js'
+    if (path.existsSync(overrideConfigUrl)) {
+        contents = (fs.readFileSync(overrideConfigUrl, 'utf8') || '').trim();
+
+        if (contents) {
+            overrideConfig = JSON.parse(contents);
+            lang.mixin(data, overrideConfig, true);
+        }
+    }
+
+    return {
+        get: function () {
+            return data;
+        },
+
+        //Simple local config. No fancy JSON object merging just plain mixing
+        //of top level properties.
+        getLocal: function () {
+            var contents;
+
+            if (!localConfig) {
+                if (path.existsSync(localConfigUrl)) {
+
+                    contents = (fs.readFileSync(localConfigUrl, 'utf8') || '').trim();
+
+                    if (contents) {
+                        localConfig = JSON.parse(contents);
+                    }
+                }
+
+                if (!localConfig) {
+                    localConfig = {};
+                }
+            }
+
+            return localConfig;
+        },
+
+        saveLocal: function () {
+            //Make sure the directory exists
+            try {
+                file.mkdirs(path.dirname(localConfigUrl));
+                fs.writeFileSync(localConfigUrl, JSON.stringify(localConfig, null, '  '));
+            } catch (e) {
+                console.error('Cannot save local config, continuing without saving.');
+                return '';
+            }
+
+            return localConfigUrl;
+        }
+    };
 });
 
 /**
@@ -3790,7 +3856,7 @@ define('volo/github',['require','q','https','querystring','volo/config','volo/ve
     var q = require('q'),
         https = require('https'),
         querystring = require('querystring'),
-        config = require('volo/config').github,
+        config = require('volo/config').get().github,
         scheme = config.scheme,
         version = require('volo/version'),
         host = config.host,
@@ -3804,14 +3870,33 @@ define('volo/github',['require','q','https','querystring','volo/config','volo/ve
         return querystring.escape(text).replace(/\./g, '+');
     }
 
-    function github(path) {
+    /**
+     * Sends a request to GitHub. Valid options:
+     * method: the HTTP method to use.
+     * content: the content to send in the body. Can be an object that will
+     * be converted to JSON, or a string.
+     * contentType: the content-type to use for the body content. JSON is the
+     * default one used if there is content specified.
+     * token: the auth token to use for the request.
+     */
+    function github(path, options) {
+        options = options || {};
+        options.contentType = options.contentType ||
+                            'application/json';
+
+        if (options.content && typeof options.content !== 'string') {
+            options.content = JSON.stringify(options.content);
+        }
+
         var args = {
             host: apiHost,
-            path: '/' + path
+            path: '/' + path,
+            method: options.method || 'GET'
         },
-        d = q.defer();
+        d = q.defer(),
+        req;
 
-        https.get(args, function (response) {
+        req = https.request(args, function (response) {
             //console.log("statusCode: ", response.statusCode);
             //console.log("headers: ", response.headers);
             var body = '';
@@ -3821,19 +3906,37 @@ define('volo/github',['require','q','https','querystring','volo/config','volo/ve
             });
 
             response.on('end', function () {
+                var err;
                 if (response.statusCode === 404) {
-                    d.reject(args.host + args.path + ' does not exist');
-                } else if (response.statusCode === 200) {
+                    err = new Error(args.host + args.path + ' does not exist');
+                    err.response = response;
+                    d.reject(err);
+                } else if (response.statusCode === 200 ||
+                           response.statusCode === 201) {
                     //Convert the response into an object
                     d.resolve(JSON.parse(body));
                 } else {
-                    d.reject(args.host + args.path + ' returned status: ' +
+                    err = new Error(args.host + args.path + ' returned status: ' +
                              response.statusCode + '. ' + body);
+                    err.response = response;
+                    d.reject(err);
                 }
             });
         }).on('error', function (e) {
             d.reject(e);
         });
+
+        if (options.token) {
+            req.setHeader('Authorization', 'token ' + options.token);
+        }
+
+        if (options.content) {
+            req.setHeader('Content-Type', options.contentType);
+            req.setHeader('Content-Length', options.content.length);
+            req.write(options.content);
+        }
+
+        req.end();
 
         return d.promise;
     }
@@ -3953,6 +4056,143 @@ define('volo/github',['require','q','https','querystring','volo/config','volo/ve
     return github;
 });
 
+/**
+ * @license Copyright (c) 2011-2012, The Dojo Foundation All Rights Reserved.
+ * Available via the MIT or new BSD license.
+ * see: http://github.com/volojs/volo for details
+ */
+
+/*global console */
+
+define('volo/github/auth',['require','exports','module','volo/qutil','volo/config','buffer','https','url'],function (require, exports, module) {
+    
+
+    var qutil = require('volo/qutil'),
+        voloConfig = require('volo/config'),
+        authConfig = voloConfig.get().github.auth,
+        Buffer = require('buffer').Buffer,
+        https = require('https'),
+        url = require('url'),
+        configKey = module.id,
+        auth;
+
+    return (auth = {
+        //Does the user interaction for name/pw and GitHub network dance
+        //to get OAuth token.
+        fetch: function(options, callback, errback) {
+            var d = qutil.convert(callback, errback),
+                v = options.v,
+                localConfig = voloConfig.getLocal(),
+                name;
+
+            //If already have a token, wrap it up.
+            if (localConfig[configKey]) {
+                d.resolve(localConfig[configKey]);
+                return d.promise;
+            }
+
+            function log(msg) {
+                if (!options.silent) {
+                    console.log(msg);
+                }
+            }
+
+            log('Log in to GitHub to complete action ' +
+                        '(your password is not saved. It is sent over ' +
+                        'SSL to GitHub and converted to an OAuth token)');
+            v.prompt('GitHub user name:')
+                .then(function (promptName) {
+                    name = promptName;
+                    return v.promptHidden('GitHub password:');
+                }).then(function (pw) {
+                    log('\nContacting GitHub...');
+                    var basicAuth = new Buffer(name + ':' + pw)
+                                    .toString('base64'),
+                        requestBody = JSON.stringify({
+                            scopes: authConfig.scopes,
+                            note: authConfig.note,
+                            note_url: authConfig.noteUrl
+                        }),
+                        urlParts = url.parse(authConfig.domain + authConfig.authPath),
+                        req;
+
+                    urlParts.method = 'POST';
+
+                    req = https.request(urlParts, function (res) {
+                        var body = '',
+                            hasError;
+
+                        if (res.statusCode === 401) {
+                            v.prompt('Incorrect GitHub user name or password. Retry [y]?')
+                            .then(function (answer) {
+                                answer = answer && answer.toLowerCase();
+                                if (!answer || answer.indexOf('y') === 0) {
+                                    d.resolve(auth.fetch(options));
+                                } else {
+                                    d.resolve();
+                                }
+                            })
+                            .fail(d);
+                            return;
+                        } else if (res.statusCode !== 201) {
+                            log('GitHub responded with error status: ' +
+                                     res.statusCode);
+                            d.resolve();
+                            return;
+                        }
+
+                        res.setEncoding('utf8');
+
+                        res.on('data', function (chunk) {
+                            body += chunk;
+                        });
+
+                        res.on('error', function (err) {
+                            hasError = true;
+                            log('GitHub responded with error: ' + err.toString());
+                            d.resolve();
+                        });
+
+                        res.on('end', function () {
+                            var config = voloConfig.getLocal();
+                            if (!hasError) {
+                                body = JSON.parse(body);
+
+                                config[configKey] = {
+                                    user: name,
+                                    token: body.token,
+                                    scopes: authConfig.scopes
+                                };
+
+                                v.prompt('Save OAuth token for later use [y]?')
+                                .then(function (save) {
+                                    save = save && save.toLowerCase();
+                                    if (!save || save === 'y' || save === 'yes') {
+                                        var saveLocation = voloConfig.saveLocal();
+                                        if (saveLocation) {
+                                            log('Token saved in ' + saveLocation);
+                                        }
+                                    }
+                                    return config[configKey];
+                                })
+                                .then(d.resolve, d.reject);
+                            }
+                        });
+
+                    });
+
+                    req.setHeader('Authorization', 'Basic ' + basicAuth);
+                    req.setHeader('Content-Type',
+                                  'application/json; charset=UTF-8');
+                    req.setHeader('Content-Length', requestBody.length);
+                    req.end(requestBody);
+
+                }).fail(d);
+
+            return d.promise;
+        }
+    });
+});
 /**
  * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
@@ -4161,7 +4401,7 @@ define('volo/search/github',['require','q','../qutil','../lang','../github','../
         qutil = require('../qutil'),
         lang = require('../lang'),
         github = require('../github'),
-        config = require('../config').github,
+        config = require('../config').get().github,
         defaultOptions = {
             amd: false,
             max: 5
@@ -4288,7 +4528,7 @@ define('volo/template',['require'],function (require) {
 /*jslint */
 /*global define, console, process */
 
-define('volo/v',['require','path','fs','q','child_process','child_process','volo/file','volo/template','volo/qutil'],function (require) {
+define('volo/v',['require','path','fs','q','child_process','child_process','volo/file','volo/template','volo/qutil','tty'],function (require) {
     
 
     var path = require('path'),
@@ -4299,6 +4539,7 @@ define('volo/v',['require','path','fs','q','child_process','child_process','volo
         file = require('volo/file'),
         template = require('volo/template'),
         qutil = require('volo/qutil'),
+        tty = require('tty'),
         defaultEncoding = 'utf8',
         lineRegExp = /(\r)?\n$/;
 
@@ -4345,8 +4586,8 @@ define('volo/v',['require','path','fs','q','child_process','child_process','volo
                 getFilteredFileList: function (startDir, regExpInclude, regExpExclude, dirRegExpExclude) {
                     return file.getFilteredFileList(resolve(startDir), regExpInclude, regExpExclude, dirRegExpExclude);
                 },
-                copyDir: function (srcDir, destDir, regExpFilter, onlyCopyNew) {
-                    return file.copyDir(resolve(srcDir), resolve(destDir), regExpFilter, onlyCopyNew);
+                copyDir: function (srcDir, destDir, regExpFilter, onlyCopyNew, regExpExclude, dirRegExpExclude) {
+                    return file.copyDir(resolve(srcDir), resolve(destDir), regExpFilter, onlyCopyNew, regExpExclude, dirRegExpExclude);
                 },
                 copyFile: function (srcFileName, destFileName, onlyCopyNew) {
                     return file.copyFile(resolve(srcFileName), resolve(destFileName), onlyCopyNew);
@@ -4361,6 +4602,39 @@ define('volo/v',['require','path','fs','q','child_process','child_process','volo
                     }
 
                     process.stdin.once('data', onData);
+                    process.stdin.resume();
+
+                    process.stdout.write(message + ' ', 'utf8');
+
+                    return d.promise;
+                },
+                promptHidden: function (message, callback) {
+                    var d = qutil.convert(callback),
+                        value = '';
+
+                    function onKeyPress(c, key) {
+                        if (key && key.ctrl && c === 'c') {
+                            process.exit();
+                        } else if (c === '\r' ||
+                                   c === '\n' ||
+                                   c === '\u0004') {
+                            //End of input, finish up.
+                            process.stdin.removeListener('keypress', onKeyPress);
+                            tty.setRawMode(false);
+                            process.stdin.pause();
+                            d.resolve(value);
+                        } else if (c === '\x7f' ||
+                                 c === '\x08') {
+                            //A backspace/delete character, remove a char
+                            //from the value.
+                            value = value.slice(0, -1);
+                        } else {
+                            value += c;
+                        }
+                    }
+
+                    tty.setRawMode(true);
+                    process.stdin.on('keypress', onKeyPress);
                     process.stdin.resume();
 
                     process.stdout.write(message + ' ', 'utf8');
@@ -4436,6 +4710,35 @@ define('volo/v',['require','path','fs','q','child_process','child_process','volo
 
                     return d.promise;
                 },
+
+                //Processes a set of deferred actions in sequence.
+                //Uses spawn if the first array value in an entry in the action
+                //list is a string, otherwise, assumes it is an object where
+                //the second array value is a method name and the rest of the
+                //array values are arguments. Example:
+                //v.sequence([
+                //   ['git', 'init'], //ends up with v.sequence('git', ['init'], options)
+                //   [v, 'rm', 'README.md'] //ends up calling v.rm.apply(v, ['README.md']);
+                //], options);
+                sequence: function (list, options) {
+                    var result = q.resolve();
+                    list.forEach(function (item) {
+                        result = result.then(function () {
+                            var start = item[0],
+                                action = item[1],
+                                useSpawn = typeof start === 'string',
+                                args = item.splice(useSpawn ? 1 : 2);
+
+                            if (useSpawn) {
+                                return instance.env.spawn(start, args, options);
+                            } else {
+                                return start[action].apply(start, args);
+                            }
+                        });
+                    });
+                    return result;
+                },
+
                 //Executes the text in the shell via child_process.exec.
                 exec: function (text) {
                     var d = q.defer();
@@ -4449,7 +4752,29 @@ define('volo/v',['require','path','fs','q','child_process','child_process','volo
                     });
 
                     return d.promise;
+                },
+
+                //Do an action in the specified directory as the current
+                //directory, restoring the current directory after the fn
+                //completes. fn should return a promise
+                withDir: function (dirName, fn) {
+                    var currDir = process.cwd();
+
+                    function restoreDir() {
+                        process.chdir(currDir);
+                    }
+
+                    process.chdir(dirName);
+
+                    return fn().then(function (value) {
+                        restoreDir();
+                        return value;
+                    }, function (err) {
+                        restoreDir();
+                        return err;
+                    });
                 }
+
             }
         };
 
@@ -4658,7 +4983,7 @@ define('volo/main',['require','./commands','./config','./volofile','path','q'],f
     
 
     var commands = require('./commands'),
-        config = require('./config'),
+        config = require('./config').get(),
         volofile = require('./volofile'),
         path = require('path'),
         q = require('q');
@@ -4689,7 +5014,8 @@ define('volo/main',['require','./commands','./config','./volofile','path','q'],f
                 //If passed a flag like -f, convert to named
                 //argument based on the command's configuration.
                 if (arg.indexOf('-') === 0) {
-                    flags.push(arg.substring(1));
+                    //Allow --flags too, just trim off both dashes
+                    flags.push(arg.substring(arg.charAt(1) === '-' ? 2 : 1));
                 } else {
                     //Regular array arg.
                     aryArgs.push(arg);
@@ -8230,7 +8556,7 @@ define('volo/resolve/github',['require','path','../config','../archive','../gith
     
 
     var path = require('path'),
-        config = require('../config'),
+        config = require('../config').get(),
         archive = require('../archive'),
         github = require('../github'),
         net = require('../net'),
@@ -11322,12 +11648,13 @@ define('volo/parse',['./uglifyjs/index'], function (uglify) {
 
 /*global define */
 
-define('amdify',['require','exports','module','fs','path','q','volo/parse','volo/file','text!./amdify/template.js','text!./amdify/exportsTemplate.js','text!./amdify/exportsNoConflictTemplate.js','text!./amdify/doc.md','volo/commands'],function (require, exports, module) {
+define('amdify',['require','exports','module','fs','path','q','volo/config','volo/parse','volo/file','text!./amdify/template.js','text!./amdify/exportsTemplate.js','text!./amdify/exportsNoConflictTemplate.js','text!./amdify/doc.md','volo/commands'],function (require, exports, module) {
     
 
     var fs = require('fs'),
         path = require('path'),
         q = require('q'),
+        config = require('volo/config').get()[module.id] || {},
         parse = require('volo/parse'),
         file = require('volo/file'),
         template = require('text!./amdify/template.js'),
@@ -11452,6 +11779,11 @@ define('amdify',['require','exports','module','fs','path','q','volo/parse','volo
                                .replace(/^\.\//, '')
                                .replace(/\.js$/, ''),
                 contents;
+                //Some packages use a main of "." to mean "index.js" in this
+                //directory.
+                if (mainName === '.') {
+                    mainName = "index";
+                }
 
                 //Add in adapter module for AMD code
                 contents = "define(['" + localName + "/" + mainName +
@@ -11474,6 +11806,7 @@ define('amdify',['require','exports','module','fs','path','q','volo/parse','volo
                     d = q.defer(),
                     v = options.v,
                     dependPrompted = false,
+                    baseName = path.basename(target, '.js'),
                     suggestions = [
                         {
                             re: /jquery/i,
@@ -11508,7 +11841,8 @@ define('amdify',['require','exports','module','fs','path','q','volo/parse','volo
                     }
 
                     //If no exports or depends and it looks like a cjs module convert
-                    if (!exports && !depends && cjsProps) {
+                    if (!exports && !depends && cjsProps &&
+                        (!config.notCommonJs || !config.notCommonJs[baseName])) {
                         if (cjsProps.filename || cjsProps.dirname) {
                             prelude = "var __filename = module.uri, " +
                                       "__dirname = __filename.substring(0, __filename.lastIndexOf('/');";
@@ -11635,7 +11969,7 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
     var fs = require('fs'),
         path = require('path'),
         q = require('q'),
-        config = require('volo/config'),
+        config = require('volo/config').get(),
         myConfig = config.command.add,
         archive = require('volo/archive'),
         download = require('volo/download'),
@@ -12131,7 +12465,7 @@ define('rejuvenate',['require','exports','module','q','fs','path','add','volo/ba
         path = require('path'),
         add = require('add'),
         baseUrl = require('volo/baseUrl'),
-        config = require('volo/config').command.rejuvenate,
+        config = require('volo/config').get().command.rejuvenate,
         rejuvenate;
 
     rejuvenate = {
