@@ -83,6 +83,13 @@ define(function (require) {
             "rejuvenate":  {
                 archive: 'volojs/volo#dist/volo'
             }
+        },
+
+        "amdify": {
+            "notCommonJs": {
+                "backbone": true,
+                "underscore": true
+            }
         }
     });
 

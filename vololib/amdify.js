@@ -12,6 +12,7 @@ define(function (require, exports, module) {
     var fs = require('fs'),
         path = require('path'),
         q = require('q'),
+        config = require('volo/config').get()[module.id] || {},
         parse = require('volo/parse'),
         file = require('volo/file'),
         template = require('text!./amdify/template.js'),
@@ -163,6 +164,7 @@ define(function (require, exports, module) {
                     d = q.defer(),
                     v = options.v,
                     dependPrompted = false,
+                    baseName = path.basename(target, '.js'),
                     suggestions = [
                         {
                             re: /jquery/i,
@@ -197,7 +199,8 @@ define(function (require, exports, module) {
                     }
 
                     //If no exports or depends and it looks like a cjs module convert
-                    if (!exports && !depends && cjsProps) {
+                    if (!exports && !depends && cjsProps &&
+                        (!config.notCommonJs || !config.notCommonJs[baseName])) {
                         if (cjsProps.filename || cjsProps.dirname) {
                             prelude = "var __filename = module.uri, " +
                                       "__dirname = __filename.substring(0, __filename.lastIndexOf('/');";
