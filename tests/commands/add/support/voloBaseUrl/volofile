@@ -1,0 +1,11 @@
+/*jslint */
+/*global define */
+
+define(function (require) {
+    'use strict';
+    return {
+        onCreate: function (d, v) {
+            d.resolve(v.command('add', '../../support/simple'));
+        }
+    };
+});

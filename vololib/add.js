@@ -53,7 +53,10 @@ define(function (require, exports, module) {
         run: function (deferred, v, namedArgs, archiveName, specificLocalName) {
             var pkg = packageJson('.'),
                 isAmdProject = !!(namedArgs.amd || (pkg.data && pkg.data.amd)),
-                baseUrl = pkg.data && pkg.data.amd && pkg.data.amd.baseUrl,
+                baseUrl = pkg.data &&
+                        //Favor volo.baseUrl over amd.baseUrl
+                        ((pkg.data.volo && pkg.data.volo.baseUrl) ||
+                         (pkg.data.amd && pkg.data.amd.baseUrl)),
                 existingPath, tempDirName, linkPath, linkStat, linkTarget,
                 info, targetDirName;
 
