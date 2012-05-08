@@ -16,7 +16,9 @@ define(function (require) {
         net;
 
     return (net = {
-        getJson: function (url) {
+        getJson: function (url, options) {
+            options = options || {};
+
             var d = q.defer(),
                 args = urlLib.parse(url),
                 lib = args.protocol === 'https:' ? https : http;
@@ -30,7 +32,11 @@ define(function (require) {
 
                 response.on('end', function () {
                     if (response.statusCode === 404) {
-                        d.reject(args.host + args.path + ' does not exist');
+                        if (options.ignore404) {
+                            d.resolve(null);
+                        } else {
+                            d.reject(args.host + args.path + ' does not exist');
+                        }
                     } else if (response.statusCode === 200) {
                         //Convert the response into an object
                         d.resolve(JSON.parse(body));

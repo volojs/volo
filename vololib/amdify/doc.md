@@ -1,6 +1,6 @@
 ## Usage
 
-    volo amdify [flags] path/to/file.js [depends=] [exports=]
+    volo amdify [flags] path/to/file.js [depends=] [exports=] [github=]
 
 where flags can be:
 
@@ -18,6 +18,10 @@ and:
 * **depends** is a comma-separated list of dependencies, with no spaces
 * **exports** is the global value created by the file that should be treated as
   the module's exported value.
+* **github** is the "user/repo" that is the origin of the file. Used in AMD
+projects to look for depends/exports override arguments to use from the
+volojs/repos project. Example value: "jrburke/almond" for the almond repo
+under the jrburke user.
 
 ## Details
 

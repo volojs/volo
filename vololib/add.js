@@ -230,16 +230,20 @@ define(function (require, exports, module) {
                                               null;
                                 }
 
+                                if (mainFile) {
+                                    //Construct full path to the main file.
+                                    mainFile += jsRegExp.test(mainFile) ? '' : '.js';
+                                    mainFile = path.join(dirName, mainFile);
+                                }
+
                                 if (pkgType === 'directory') {
                                     //The whole directory should be kept,
                                     //not an individual source file.
                                     sourceName = null;
-                                } else if (mainFile) {
+                                } else if (mainFile && v.exists(mainFile)) {
                                     //Read the main file. If it
                                     //calls define() and any of the dependencies
                                     //are relative, then keep the whole directory.
-                                    mainFile += jsRegExp.test(mainFile) ? '' : '.js';
-                                    mainFile = path.join(dirName, mainFile);
                                     mainContents = fs.readFileSync(mainFile, 'utf8');
                                     deps = parse.findDependencies(mainFile,
                                            mainContents);
@@ -343,6 +347,15 @@ define(function (require, exports, module) {
                                 q.call(function () {
                                     if (isAmdProject && !namedArgs.amdoff) {
                                         var damd = q.defer();
+
+                                        //Add owner/repo info to the amdify call,
+                                        //to help it look up overrides for the
+                                        //depends/exports so the user is not
+                                        //prompted for them.
+                                        if (archiveInfo.ownerPlusRepo) {
+                                            namedArgs.github = archiveInfo.ownerPlusRepo;
+                                        }
+
                                         amdify.run.apply(amdify, [damd, v, namedArgs, targetName]);
                                         return damd.promise;
                                     }

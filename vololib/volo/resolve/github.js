@@ -155,7 +155,8 @@ define(function (require) {
                 isArchive: isArchive,
                 isSingleFile: isSingleFile,
                 fragment: fragment,
-                localName: localName
+                localName: localName,
+                ownerPlusRepo: ownerPlusRepo
             };
         }));
 

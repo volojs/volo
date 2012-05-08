@@ -26,7 +26,7 @@ define(function (require) {
             "path": typeof voloPath === 'undefined' ? process.argv[1] : voloPath
         },
 
-        "registry": "https://registry.npmjs.org/",
+        "npmRegistry": "https://registry.npmjs.org/",
 
         "github": {
             "scheme": "https",
@@ -35,17 +35,7 @@ define(function (require) {
             "searchHost": "api.github.com",
             "rawUrlPattern": "https://raw.github.com/{owner}/{repo}/{version}/{file}",
             "searchPath": "/legacy/repos/search/{query}?language=JavaScript",
-            "overrides": {
-                "jquery/jquery": {
-                    "url": "http://code.jquery.com/jquery-{version}.js"
-                },
-                "madrobby/zepto": {
-                    "archive": "http://zeptojs.com/downloads/zepto-{version}.zip#dist/zepto.js"
-                },
-                "emberjs/ember.js": {
-                    "url": "https://github.com/downloads/emberjs/ember.js/ember-{version}.js"
-                }
-            },
+            "overrides": {},
             "searchOverrides": {
                 "amd": {
                     "underscore": "amdjs/underscore",
@@ -82,13 +72,6 @@ define(function (require) {
 
             "rejuvenate":  {
                 archive: 'volojs/volo#dist/volo'
-            }
-        },
-
-        "amdify": {
-            "notCommonJs": {
-                "backbone": true,
-                "underscore": true
             }
         }
     });

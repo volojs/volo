@@ -12,9 +12,10 @@ define(function (require, exports, module) {
     var fs = require('fs'),
         path = require('path'),
         q = require('q'),
-        config = require('volo/config').get()[module.id] || {},
         parse = require('volo/parse'),
         file = require('volo/file'),
+        net = require('volo/net'),
+        github = require('volo/github'),
         template = require('text!./amdify/template.js'),
         exportsTemplate = require('text!./amdify/exportsTemplate.js'),
         exportsNoConflictTemplate = require('text!./amdify/exportsNoConflictTemplate.js'),
@@ -107,7 +108,8 @@ define(function (require, exports, module) {
                                 v: v,
                                 noConflict: noConflict,
                                 noprompt: namedArgs.noprompt,
-                                commonJs: namedArgs.commonJs
+                                commonJs: namedArgs.commonJs,
+                                github: namedArgs.github
                             });
                         });
                     });
@@ -123,7 +125,8 @@ define(function (require, exports, module) {
                     return main.api.convert(target, depends, varNames, exports, {
                         v: v,
                         noConflict: noConflict,
-                        noprompt: namedArgs.noprompt
+                        noprompt: namedArgs.noprompt,
+                        github: namedArgs.github
                     });
                 }
             }));
@@ -164,7 +167,6 @@ define(function (require, exports, module) {
                     d = q.defer(),
                     v = options.v,
                     dependPrompted = false,
-                    baseName = path.basename(target, '.js'),
                     suggestions = [
                         {
                             re: /jquery/i,
@@ -200,7 +202,31 @@ define(function (require, exports, module) {
                     //AMD in use, and it is not a file that declares a define()
                     //or if it does, does not declare define.amd.
                     d.resolve('SKIP: ' + target + ': already uses AMD.');
-                } else {
+                    return;
+                }
+
+                q.call(function () {
+                    if (options.github) {
+                        return net.getJson(github.rawUrl('volojs/repos',
+                                                         'master',
+                                                         options.github +
+                                                         '/amd.json'),
+                            { ignore404: true }
+                        );
+                    }
+                }).then(function (override) {
+                    if (override) {
+                        if (override.deps && override.deps.length) {
+                            var overrideParsed = parseDepends(override.deps.join(','));
+                            depends = overrideParsed.depends;
+                            varNames = overrideParsed.varNames;
+                        }
+                        if (override.exports) {
+                            exports = override.exports;
+                        }
+                    }
+
+                    //Not already AMD, try for override file.
                     try {
                         cjsProps = parse.usesCommonJs(target, contents);
                     } catch (e2) {
@@ -215,8 +241,7 @@ define(function (require, exports, module) {
                     }
 
                     //If no exports or depends and it looks like a cjs module convert
-                    if (!exports && !depends && cjsProps &&
-                        (!config.notCommonJs || !config.notCommonJs[baseName])) {
+                    if (!exports && !depends && cjsProps) {
                         if (cjsProps.filename || cjsProps.dirname) {
                             prelude = "var __filename = module.uri, " +
                                       "__dirname = __filename.substring(0, __filename.lastIndexOf('/');";
@@ -318,7 +343,9 @@ define(function (require, exports, module) {
                                    (exports ? ': exports: ' + exports.trim() : '');
                         }));
                     }
-                }
+                })
+                .fail(d.reject);
+
                 return d.promise;
             }
         }
