@@ -75,7 +75,27 @@ define(function (require) {
             });
 
             return dPkg.promise;
-        }).then(function (voloInfo) {
+        })
+        .then(function (voloInfo) {
+            //If no voloInfo, see if there is an override in the volojs/repos
+            //repo.
+            if (!voloInfo) {
+                var pkgDeferred = q.defer(),
+                    pkgUrl = github.rawUrl('volojs/repos', 'master',
+                                            ownerPlusRepo + '/package.json');
+
+                net.getJson(pkgUrl).then(function (pkg) {
+                    pkgDeferred.resolve(pkg && pkg.volo);
+                }, function (err) {
+                    //Do not care about errors, it will be common for projects
+                    //to not have a package.json.
+                    pkgDeferred.resolve();
+                });
+                return pkgDeferred.promise;
+            }
+            return voloInfo;
+        })
+        .then(function (voloInfo) {
 
             var isArchive = true,
                 isSingleFile = false,

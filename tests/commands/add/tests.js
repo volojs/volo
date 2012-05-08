@@ -73,6 +73,20 @@ define(function (require, exports, module) {
         });
     })
     .then(function () {
+        //Test using volojs/repos-provided package.json override.
+        return main(['add', 'three.js'], function (result) {
+            console.log(result);
+            doh.register("addRepoPackageJsonOverride",
+                [
+                    function addOnAdd(t) {
+                        t.is(true, path.existsSync('three.js'));
+                    }
+                ]
+            );
+            doh.run();
+        });
+    })
+    .then(function () {
         return main(['create', 'voloBaseUrl', '../support/voloBaseUrl'], function (result) {
             console.log(result);
             doh.register("voloBaseUrl",
