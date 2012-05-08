@@ -114,7 +114,7 @@ define(function (require) {
                 try {
                     data = JSON.parse(fs.readFileSync(this.file, 'utf8'));
                 } catch (e) {
-                    throw new Error(this.file + ' is malformed JSON: ' + e);
+                    throw new Error('Malformed JSON in: ' + this.file + ': ' + e);
                 }
                 this.data = data;
             }

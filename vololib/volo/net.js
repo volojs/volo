@@ -31,6 +31,7 @@ define(function (require) {
                 });
 
                 response.on('end', function () {
+                    var data;
                     if (response.statusCode === 404) {
                         if (options.ignore404) {
                             d.resolve(null);
@@ -39,7 +40,14 @@ define(function (require) {
                         }
                     } else if (response.statusCode === 200) {
                         //Convert the response into an object
-                        d.resolve(JSON.parse(body));
+                        try {
+                            data = JSON.parse(body);
+                        } catch (e) {
+                            d.reject('Malformed JSON in : ' + url + ': ' + e);
+                            return;
+                        }
+
+                        d.resolve(data);
                     } else {
                         d.reject(args.host + args.path + ' returned status: ' +
                                  response.statusCode + '. ' + body);
