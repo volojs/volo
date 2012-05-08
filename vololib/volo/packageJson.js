@@ -102,6 +102,8 @@ define(function (require) {
 
     PackageInfo.prototype = {
         refresh: function () {
+            var data;
+
             if (!this.file) {
                 return;
             }
@@ -109,7 +111,12 @@ define(function (require) {
             if (this.singleFile) {
                 this.data = extractCommentData(this.file);
             } else {
-                this.data = JSON.parse(fs.readFileSync(this.file, 'utf8'));
+                try {
+                    data = JSON.parse(fs.readFileSync(this.file, 'utf8'));
+                } catch (e) {
+                    throw new Error(this.file + ' is malformed JSON: ' + e);
+                }
+                this.data = data;
             }
         },
 
