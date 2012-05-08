@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
 /**
- * @license volo 0.1.3 Copyright (c) 2012, The Dojo Foundation All Rights Reserved.
+ * @license volo 0.1.3+ Tue, 08 May 2012 19:32:17 GMT Copyright (c) 2012, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
  * see: http://github.com/volojs/volo for details
  */
 
-var voloVersion = '0.1.3';
+var voloVersion = '0.1.3+ Tue, 08 May 2012 19:32:17 GMT';
 
 //Wipe out the exports object since some node-converted modules look for it.
 var exports = undefined;
@@ -8621,7 +8621,27 @@ define('volo/resolve/github',['require','path','../config','../archive','../gith
             });
 
             return dPkg.promise;
-        }).then(function (voloInfo) {
+        })
+        .then(function (voloInfo) {
+            //If no voloInfo, see if there is an override in the volojs/repos
+            //repo.
+            if (!voloInfo) {
+                var pkgDeferred = q.defer(),
+                    pkgUrl = github.rawUrl('volojs/repos', 'master',
+                                            ownerPlusRepo + '/package.json');
+
+                net.getJson(pkgUrl).then(function (pkg) {
+                    pkgDeferred.resolve(pkg && pkg.volo);
+                }, function (err) {
+                    //Do not care about errors, it will be common for projects
+                    //to not have a package.json.
+                    pkgDeferred.resolve();
+                });
+                return pkgDeferred.promise;
+            }
+            return voloInfo;
+        })
+        .then(function (voloInfo) {
 
             var isArchive = true,
                 isSingleFile = false,
@@ -11825,16 +11845,32 @@ define('amdify',['require','exports','module','fs','path','q','volo/config','vol
                 if (contents.charAt(0) === '#') {
                     //This is probably an executable file for node, skip it.
                     d.resolve('SKIP: ' + target + ': node executable script.');
+                    return;
                 }
 
-                amdProps = parse.usesAmdOrRequireJs(target, contents);
+                try {
+                    amdProps = parse.usesAmdOrRequireJs(target, contents);
+                } catch (e) {
+                    //Some JS files are just malformed, parts. Just ignore
+                    //errors.
+                    d.resolve('SKIP: ' + target + ': Parse error for AMD check: ' + e);
+                    return;
+                }
+
                 if (amdProps && (!amdProps.declaresDefine ||
                                 (amdProps.declaresDefine && amdProps.defineAmd))) {
                     //AMD in use, and it is not a file that declares a define()
                     //or if it does, does not declare define.amd.
                     d.resolve('SKIP: ' + target + ': already uses AMD.');
                 } else {
-                    cjsProps = parse.usesCommonJs(target, contents);
+                    try {
+                        cjsProps = parse.usesCommonJs(target, contents);
+                    } catch (e2) {
+                        //Some JS files are just malformed, parts. Just ignore
+                        //errors.
+                        d.resolve('SKIP: ' + target + ': Parse error for CommonJS check: ' + e2);
+                        return;
+                    }
 
                     if (!cjsProps && options.commonJs) {
                         cjsProps = {};
