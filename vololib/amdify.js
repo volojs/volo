@@ -183,16 +183,32 @@ define(function (require, exports, module) {
                 if (contents.charAt(0) === '#') {
                     //This is probably an executable file for node, skip it.
                     d.resolve('SKIP: ' + target + ': node executable script.');
+                    return;
                 }
 
-                amdProps = parse.usesAmdOrRequireJs(target, contents);
+                try {
+                    amdProps = parse.usesAmdOrRequireJs(target, contents);
+                } catch (e) {
+                    //Some JS files are just malformed, parts. Just ignore
+                    //errors.
+                    d.resolve('SKIP: ' + target + ': Parse error for AMD check: ' + e);
+                    return;
+                }
+
                 if (amdProps && (!amdProps.declaresDefine ||
                                 (amdProps.declaresDefine && amdProps.defineAmd))) {
                     //AMD in use, and it is not a file that declares a define()
                     //or if it does, does not declare define.amd.
                     d.resolve('SKIP: ' + target + ': already uses AMD.');
                 } else {
-                    cjsProps = parse.usesCommonJs(target, contents);
+                    try {
+                        cjsProps = parse.usesCommonJs(target, contents);
+                    } catch (e2) {
+                        //Some JS files are just malformed, parts. Just ignore
+                        //errors.
+                        d.resolve('SKIP: ' + target + ': Parse error for CommonJS check: ' + e2);
+                        return;
+                    }
 
                     if (!cjsProps && options.commonJs) {
                         cjsProps = {};
