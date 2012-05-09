@@ -13,6 +13,7 @@ define(function (require) {
     var path = require('path'),
         fs = require('fs'),
         lang = require('./lang'),
+        jsonlib = require('./json'),
         commentStartRegExp = /\/\*\s*package\.json\s*/,
         commentEndRegExp = /\s*\*\//,
         endsInJsRegExp = /\.js$/,
@@ -112,7 +113,7 @@ define(function (require) {
                 this.data = extractCommentData(this.file);
             } else {
                 try {
-                    data = JSON.parse(fs.readFileSync(this.file, 'utf8'));
+                    data = jsonlib.parse(fs.readFileSync(this.file, 'utf8'));
                 } catch (e) {
                     throw new Error('Malformed JSON in: ' + this.file + ': ' + e);
                 }

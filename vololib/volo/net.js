@@ -13,6 +13,7 @@ define(function (require) {
         urlLib = require('url'),
         https = require('https'),
         http = require('http'),
+        json = require('volo/json'),
         net;
 
     return (net = {
@@ -25,6 +26,8 @@ define(function (require) {
 
             lib.get(args, function (response) {
                 var body = '';
+
+                response.setEncoding('utf8');
 
                 response.on('data', function (data) {
                     body += data;
@@ -41,7 +44,7 @@ define(function (require) {
                     } else if (response.statusCode === 200) {
                         //Convert the response into an object
                         try {
-                            data = JSON.parse(body);
+                            data = json.parse(body);
                         } catch (e) {
                             d.reject('Malformed JSON in : ' + url + ': ' + e);
                             return;
