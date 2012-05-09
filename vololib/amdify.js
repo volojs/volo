@@ -23,6 +23,7 @@ define(function (require, exports, module) {
         varNamesRegExp = /\/\*VARNAMES\*\//g,
         contentsComment = '/*CONTENTS*/',
         exportsRegExp = /\/\*EXPORTS\*\//g,
+        jsSuffixRegExp = /\.js$/,
         main;
 
     function parseDepends(depends) {
@@ -138,21 +139,28 @@ define(function (require, exports, module) {
                 //extension, if they exist.
                 var mainName = mainValue
                                .replace(/^\.\//, '')
-                               .replace(/\.js$/, ''),
-                contents;
+                               .replace(jsSuffixRegExp, ''),
+                mainPath, contents;
+
                 //Some packages use a main of "." to mean "index.js" in this
                 //directory.
                 if (mainName === '.') {
                     mainName = "index";
                 }
 
-                //Add in adapter module for AMD code
-                contents = "define(['" + localName + "/" + mainName +
-                           "'], function (main) {\n" +
-                            "    return main;\n" +
-                            "});";
+                //Make sure the main file exists.
+                mainPath = path.join(targetFileName.replace(jsSuffixRegExp, ''),
+                                     mainName + '.js');
 
-                fs.writeFileSync(targetFileName, contents, 'utf8');
+                if (path.existsSync(mainPath)) {
+                    //Add in adapter module for AMD code
+                    contents = "define(['" + localName + "/" + mainName +
+                               "'], function (main) {\n" +
+                                "    return main;\n" +
+                                "});";
+
+                    fs.writeFileSync(targetFileName, contents, 'utf8');
+                }
             },
 
             //Returns a promise, since it can prompt the user for info
