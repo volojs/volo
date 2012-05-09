@@ -1,5 +1,5 @@
 //Wrapped in an outer function to preserve global this
-(function (root) { define(['jquery','underscore'], function ($) { (function () {
+(function (root) { var amdExports; define(['jquery','underscore'], function ($) { (function () {
 
 
 $(function () {
@@ -7,7 +7,7 @@ $(function () {
 });
 
 
+
 }.call(root));
-
-
+    return amdExports;
 }); }(this));

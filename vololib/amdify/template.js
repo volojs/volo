@@ -1,9 +1,9 @@
 //Wrapped in an outer function to preserve global this
-(function (root) { define([/*DEPENDENCIES*/], function (/*VARNAMES*/) { (function () {
+(function (root) { var amdExports; define([/*DEPENDENCIES*/], function (/*VARNAMES*/) { (function () {
 
 /*CONTENTS*/
 
-}.call(root));
-
 /*EXPORTS*/
+}.call(root));
+    return amdExports;
 }); }(this));

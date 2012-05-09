@@ -1,5 +1,5 @@
 //Wrapped in an outer function to preserve global this
-(function (root) { define(['alpha','beta'], function () { (function () {
+(function (root) { var amdExports; define(['alpha','beta'], function () { (function () {
 
 
 (function () {
@@ -10,7 +10,7 @@
 }).call(this);
 
 
+
 }.call(root));
-
-
+    return amdExports;
 }); }(this));

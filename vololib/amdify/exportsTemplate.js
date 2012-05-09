@@ -1,1 +1,1 @@
-return /*EXPORTS*/;
+amdExports = /*EXPORTS*/;
