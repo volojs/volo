@@ -17,6 +17,7 @@ define(function (require) {
         search = require('search'),
         q = require('q'),
         qutil = require('../qutil'),
+        jsSuffixRegExp = /\.js$/,
         versionRegExp = /\{version\}/;
 
     function resolveGithub(archiveName, fragment, options, callback, errback) {
@@ -135,6 +136,10 @@ define(function (require) {
                 url = override.archive.replace(versionRegExp, versionOnlyTag);
                 overrideFragmentIndex = url.indexOf('#');
 
+                //Remove any ".js" from the name since it can conflict
+                //with AMD loading.
+                localName = localName.replace(jsSuffixRegExp, '');
+
                 if (overrideFragmentIndex !== -1) {
                     //If no explicit fragment specified, then use the one
                     //in this override.
@@ -145,6 +150,10 @@ define(function (require) {
                 }
             } else {
                 url = github.zipballUrl(ownerPlusRepo, tag);
+
+                //Remove any ".js" from the name since it can conflict
+                //with AMD loading.
+                localName = localName.replace(jsSuffixRegExp, '');
             }
 
             return {
