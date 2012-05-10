@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
 /**
- * @license volo 0.1.4 Copyright (c) 2012, The Dojo Foundation All Rights Reserved.
+ * @license volo 0.1.5 Copyright (c) 2012, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
  * see: http://github.com/volojs/volo for details
  */
 
-var voloVersion = '0.1.4';
+var voloVersion = '0.1.5';
 
 //Wipe out the exports object since some node-converted modules look for it.
 var exports = undefined;
@@ -3648,7 +3648,6 @@ define('volo/config',['require','fs','path','./lang','./file','./baseUrl'],funct
             "searchHost": "api.github.com",
             "rawUrlPattern": "https://raw.github.com/{owner}/{repo}/{version}/{file}",
             "searchPath": "/legacy/repos/search/{query}?language=JavaScript",
-            "overrides": {},
             "searchOverrides": {
                 "amd": {
                     "underscore": "amdjs/underscore",
@@ -4402,6 +4401,24 @@ define('volo/net',['require','q','url','https','http','volo/json'],function (req
                         d.reject(args.host + args.path + ' returned status: ' +
                                  response.statusCode + '. ' + body);
                     }
+                });
+            }).on('error', function (e) {
+                d.reject(e);
+            });
+
+            return d.promise;
+        },
+        head: function (url) {
+            var d = q.defer(),
+                args = urlLib.parse(url),
+                lib = args.protocol === 'https:' ? https : http;
+
+            lib.get(args, function (response) {
+
+                response.setEncoding('utf8');
+
+                response.on('end', function () {
+                    d.resolve(response);
                 });
             }).on('error', function (e) {
                 d.reject(e);
@@ -8586,12 +8603,10 @@ define('search',['require','exports','module','volo/qutil','path','text!./search
 
 /*global console */
 
-define('volo/resolve/github',['require','path','../config','../archive','../github','../net','search','q','../qutil'],function (require) {
+define('volo/resolve/github',['require','../archive','../github','../net','search','q','../qutil'],function (require) {
     
 
-    var path = require('path'),
-        config = require('../config').get(),
-        archive = require('../archive'),
+    var archive = require('../archive'),
         github = require('../github'),
         net = require('../net'),
         search = require('search'),
@@ -8605,7 +8620,12 @@ define('volo/resolve/github',['require','path','../config','../archive','../gith
         var parts = archiveName.split('/'),
             originalFragment = fragment,
             d = qutil.convert(callback, errback),
-            tag, versionOnlyTag, ownerPlusRepo, version, localName, override;
+            isArchive = true,
+            isSingleFile = false,
+            possibleSingleFile = false,
+            scheme = 'github',
+            overrideFragmentIndex, url, tag, versionOnlyTag, ownerPlusRepo,
+            version, localName, override;
 
         d.resolve(q.call(function () {
             if (parts.length === 1) {
@@ -8630,8 +8650,6 @@ define('volo/resolve/github',['require','path','../config','../archive','../gith
 
             ownerPlusRepo = parts[0] + '/'  + parts[1];
             version = parts[2];
-
-            override = config.github.overrides[ownerPlusRepo];
 
             //Fetch the latest version
             return github.latestTag(ownerPlusRepo + (version ? '/' + version : ''));
@@ -8677,12 +8695,6 @@ define('volo/resolve/github',['require','path','../config','../archive','../gith
             return voloInfo;
         })
         .then(function (voloInfo) {
-
-            var isArchive = true,
-                isSingleFile = false,
-                scheme = 'github',
-                overrideFragmentIndex, url;
-
             //If the package.json for the project has volo info, and no
             //explicit override, see about using the volo info from the
             //package.json.
@@ -8694,46 +8706,81 @@ define('volo/resolve/github',['require','path','../config','../archive','../gith
             //for instance jQuery releases are put on a CDN and are not
             //committed to github, use the override.
             if (fragment || (override && override.url)) {
-                //If a specific file in the repo. Do not need the full
-                //zipball, just use a raw github url to get it.
+                //If a specific file in the repo, do not need the full
+                //zipball, just use a raw github url to get it. However,
+                //it may just be a directory, so check github first.
+                possibleSingleFile = true;
                 if (fragment) {
                     url = github.rawUrl(ownerPlusRepo, tag, fragment);
-                    //Adjust local name to be the fragment name.
-                    localName = path.basename(fragment);
-                    //Strip off extension name.
-                    localName = localName.substring(0, localName.lastIndexOf('.'));
+
+                    //Confirm it is for a single file. If get a 200, then
+                    //it is a real single file (probably .js file). Otherwise
+                    //the fragment is
+                    return net.head(url).then(function (response) {
+                        var index;
+
+                        //Remove any trailing slash for local name.
+                        localName = fragment.replace(/\/$/, '');
+
+                        //Adjust local name to be the last segment of a path.
+                        index = localName.lastIndexOf('/');
+                        if (index !== -1) {
+                            localName = localName.substring(index + 1);
+                        }
+
+                        //Strip off extension name.
+                        index = localName.lastIndexOf('.');
+                        if (index !== -1) {
+                            localName = localName.substring(0, index);
+                        }
+
+                        if (response.statusCode >= 200 &&
+                            response.statusCode < 300) {
+
+                            fragment = null;
+                            isSingleFile = true;
+                        } else {
+                            //Not a single js file
+                            possibleSingleFile = false;
+                        }
+                    });
                 } else {
                     //An override situation.
                     url = override.url.replace(versionRegExp, versionOnlyTag);
+                    fragment = null;
+                    isSingleFile = true;
                 }
+            }
 
-                //Set fragment to null since it has already been processed.
-                fragment = null;
-                isSingleFile = true;
+        })
+        .then(function () {
 
+            if (possibleSingleFile) {
                 isArchive = archive.isArchive(url);
-            } else if (override && override.archive) {
-                url = override.archive.replace(versionRegExp, versionOnlyTag);
-                overrideFragmentIndex = url.indexOf('#');
-
-                //Remove any ".js" from the name since it can conflict
-                //with AMD loading.
-                localName = localName.replace(jsSuffixRegExp, '');
-
-                if (overrideFragmentIndex !== -1) {
-                    //If no explicit fragment specified, then use the one
-                    //in this override.
-                    if (!fragment) {
-                        fragment = url.substring(overrideFragmentIndex + 1);
-                    }
-                    url = url.substring(0, overrideFragmentIndex);
-                }
             } else {
-                url = github.zipballUrl(ownerPlusRepo, tag);
+                if (override && override.archive) {
+                    url = override.archive.replace(versionRegExp, versionOnlyTag);
+                    overrideFragmentIndex = url.indexOf('#');
 
-                //Remove any ".js" from the name since it can conflict
-                //with AMD loading.
-                localName = localName.replace(jsSuffixRegExp, '');
+                    //Remove any ".js" from the name since it can conflict
+                    //with AMD loading.
+                    localName = localName.replace(jsSuffixRegExp, '');
+
+                    if (overrideFragmentIndex !== -1) {
+                        //If no explicit fragment specified, then use the one
+                        //in this override.
+                        if (!fragment) {
+                            fragment = url.substring(overrideFragmentIndex + 1);
+                        }
+                        url = url.substring(0, overrideFragmentIndex);
+                    }
+                } else {
+                    url = github.zipballUrl(ownerPlusRepo, tag);
+
+                    //Remove any ".js" from the name since it can conflict
+                    //with AMD loading.
+                    localName = localName.replace(jsSuffixRegExp, '');
+                }
             }
 
             return {
@@ -12390,7 +12437,12 @@ define('add',['require','exports','module','fs','path','q','volo/config','volo/a
                                     }
                                     //Doing a copy instead of a rename since
                                     //that does not work across partitions.
-                                    file.copyFile(sourceName, targetName);
+                                    if (fs.statSync(sourceName).isDirectory()) {
+                                        file.copyDir(sourceName, targetName);
+                                    } else {
+                                        file.copyFile(sourceName, targetName);
+                                    }
+
                                     file.rm(sourceName);
                                 } else {
                                     //A complete directory install.
