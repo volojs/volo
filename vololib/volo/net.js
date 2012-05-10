@@ -61,6 +61,24 @@ define(function (require) {
             });
 
             return d.promise;
+        },
+        head: function (url) {
+            var d = q.defer(),
+                args = urlLib.parse(url),
+                lib = args.protocol === 'https:' ? https : http;
+
+            lib.get(args, function (response) {
+
+                response.setEncoding('utf8');
+
+                response.on('end', function () {
+                    d.resolve(response);
+                });
+            }).on('error', function (e) {
+                d.reject(e);
+            });
+
+            return d.promise;
         }
     });
 });

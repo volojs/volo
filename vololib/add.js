@@ -320,7 +320,12 @@ define(function (require, exports, module) {
                                     }
                                     //Doing a copy instead of a rename since
                                     //that does not work across partitions.
-                                    file.copyFile(sourceName, targetName);
+                                    if (fs.statSync(sourceName).isDirectory()) {
+                                        file.copyDir(sourceName, targetName);
+                                    } else {
+                                        file.copyFile(sourceName, targetName);
+                                    }
+
                                     file.rm(sourceName);
                                 } else {
                                     //A complete directory install.

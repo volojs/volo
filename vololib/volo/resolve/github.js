@@ -9,9 +9,7 @@
 define(function (require) {
     'use strict';
 
-    var path = require('path'),
-        config = require('../config').get(),
-        archive = require('../archive'),
+    var archive = require('../archive'),
         github = require('../github'),
         net = require('../net'),
         search = require('search'),
@@ -25,7 +23,12 @@ define(function (require) {
         var parts = archiveName.split('/'),
             originalFragment = fragment,
             d = qutil.convert(callback, errback),
-            tag, versionOnlyTag, ownerPlusRepo, version, localName, override;
+            isArchive = true,
+            isSingleFile = false,
+            possibleSingleFile = false,
+            scheme = 'github',
+            overrideFragmentIndex, url, tag, versionOnlyTag, ownerPlusRepo,
+            version, localName, override;
 
         d.resolve(q.call(function () {
             if (parts.length === 1) {
@@ -50,8 +53,6 @@ define(function (require) {
 
             ownerPlusRepo = parts[0] + '/'  + parts[1];
             version = parts[2];
-
-            override = config.github.overrides[ownerPlusRepo];
 
             //Fetch the latest version
             return github.latestTag(ownerPlusRepo + (version ? '/' + version : ''));
@@ -97,12 +98,6 @@ define(function (require) {
             return voloInfo;
         })
         .then(function (voloInfo) {
-
-            var isArchive = true,
-                isSingleFile = false,
-                scheme = 'github',
-                overrideFragmentIndex, url;
-
             //If the package.json for the project has volo info, and no
             //explicit override, see about using the volo info from the
             //package.json.
@@ -114,46 +109,81 @@ define(function (require) {
             //for instance jQuery releases are put on a CDN and are not
             //committed to github, use the override.
             if (fragment || (override && override.url)) {
-                //If a specific file in the repo. Do not need the full
-                //zipball, just use a raw github url to get it.
+                //If a specific file in the repo, do not need the full
+                //zipball, just use a raw github url to get it. However,
+                //it may just be a directory, so check github first.
+                possibleSingleFile = true;
                 if (fragment) {
                     url = github.rawUrl(ownerPlusRepo, tag, fragment);
-                    //Adjust local name to be the fragment name.
-                    localName = path.basename(fragment);
-                    //Strip off extension name.
-                    localName = localName.substring(0, localName.lastIndexOf('.'));
+
+                    //Confirm it is for a single file. If get a 200, then
+                    //it is a real single file (probably .js file). Otherwise
+                    //the fragment is
+                    return net.head(url).then(function (response) {
+                        var index;
+
+                        //Remove any trailing slash for local name.
+                        localName = fragment.replace(/\/$/, '');
+
+                        //Adjust local name to be the last segment of a path.
+                        index = localName.lastIndexOf('/');
+                        if (index !== -1) {
+                            localName = localName.substring(index + 1);
+                        }
+
+                        //Strip off extension name.
+                        index = localName.lastIndexOf('.');
+                        if (index !== -1) {
+                            localName = localName.substring(0, index);
+                        }
+
+                        if (response.statusCode >= 200 &&
+                            response.statusCode < 300) {
+
+                            fragment = null;
+                            isSingleFile = true;
+                        } else {
+                            //Not a single js file
+                            possibleSingleFile = false;
+                        }
+                    });
                 } else {
                     //An override situation.
                     url = override.url.replace(versionRegExp, versionOnlyTag);
+                    fragment = null;
+                    isSingleFile = true;
                 }
+            }
 
-                //Set fragment to null since it has already been processed.
-                fragment = null;
-                isSingleFile = true;
+        })
+        .then(function () {
 
+            if (possibleSingleFile) {
                 isArchive = archive.isArchive(url);
-            } else if (override && override.archive) {
-                url = override.archive.replace(versionRegExp, versionOnlyTag);
-                overrideFragmentIndex = url.indexOf('#');
-
-                //Remove any ".js" from the name since it can conflict
-                //with AMD loading.
-                localName = localName.replace(jsSuffixRegExp, '');
-
-                if (overrideFragmentIndex !== -1) {
-                    //If no explicit fragment specified, then use the one
-                    //in this override.
-                    if (!fragment) {
-                        fragment = url.substring(overrideFragmentIndex + 1);
-                    }
-                    url = url.substring(0, overrideFragmentIndex);
-                }
             } else {
-                url = github.zipballUrl(ownerPlusRepo, tag);
+                if (override && override.archive) {
+                    url = override.archive.replace(versionRegExp, versionOnlyTag);
+                    overrideFragmentIndex = url.indexOf('#');
 
-                //Remove any ".js" from the name since it can conflict
-                //with AMD loading.
-                localName = localName.replace(jsSuffixRegExp, '');
+                    //Remove any ".js" from the name since it can conflict
+                    //with AMD loading.
+                    localName = localName.replace(jsSuffixRegExp, '');
+
+                    if (overrideFragmentIndex !== -1) {
+                        //If no explicit fragment specified, then use the one
+                        //in this override.
+                        if (!fragment) {
+                            fragment = url.substring(overrideFragmentIndex + 1);
+                        }
+                        url = url.substring(0, overrideFragmentIndex);
+                    }
+                } else {
+                    url = github.zipballUrl(ownerPlusRepo, tag);
+
+                    //Remove any ".js" from the name since it can conflict
+                    //with AMD loading.
+                    localName = localName.replace(jsSuffixRegExp, '');
+                }
             }
 
             return {

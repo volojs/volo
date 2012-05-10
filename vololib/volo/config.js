@@ -35,7 +35,6 @@ define(function (require) {
             "searchHost": "api.github.com",
             "rawUrlPattern": "https://raw.github.com/{owner}/{repo}/{version}/{file}",
             "searchPath": "/legacy/repos/search/{query}?language=JavaScript",
-            "overrides": {},
             "searchOverrides": {
                 "amd": {
                     "underscore": "amdjs/underscore",
