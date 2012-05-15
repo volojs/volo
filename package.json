@@ -1,3 +1,33 @@
 {
+    "name": "volo",
+    "description": "A JavaScript dependency manager and project creation tool that favors GitHub for the package repository.",
+    "version": "0.1.5",
+    "homepage": "http://github.com/volojs/volo",
+    "author": "James Burke <jrburke@gmail.com> (http://github.com/jrburke)",
 
+    "licenses": [
+        {
+            "type": "BSD",
+            "url": "https://github.com/volojs/volo/blob/master/LICENSE"
+        },
+        {
+            "type": "MIT",
+            "url": "https://github.com/volojs/volo/blob/master/LICENSE"
+        }
+    ],
+
+    "bin": {
+        "volo": "./bin/volo"
+    },
+
+    "engines": {
+        "node": ">=0.6.7"
+    },
+
+    "dependencies": {
+        "q": "0.8.4",
+        "zip": "0.0.6"
+    },
+
+    "main": "volo"
 }
