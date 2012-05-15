@@ -87,7 +87,6 @@ define(function (require) {
                 .then(deferred.resolve, deferred.reject);
         }
 
-
         //Tries to run the command from the top, not from a local volofile.
         function runTopCommand() {
             if (commands.have(commandName)) {
@@ -109,6 +108,9 @@ define(function (require) {
 
         if (!commandOverride && path.existsSync(path.resolve(cwd, 'volofile'))) {
             volofile(cwd).then(function (voloMod) {
+                //Register all the volofile commands in the registry
+                
+
                 //Set up default command name if none specified.
                 commandName = commandName || 'run';
 

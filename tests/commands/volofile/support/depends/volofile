@@ -1,0 +1,38 @@
+
+define(function (require) {
+    'use strict';
+    var target = 'depends.txt';
+
+    function append(v, text, arg1, arg2) {
+        v.write(target, v.read(target) + text + ': ' + arg1 + ': ' + arg2);
+    }
+
+    return {
+        one: function (d, v, namedArgs, arg) {
+debugger;
+            append(v, 'one', namedArgs.name, arg);
+            d.resolve();
+        },
+        two: function (d, v, namedArgs, arg) {
+debugger;
+            append(v, 'two', namedArgs.name, arg);
+            d.resolve();
+        },
+        three: {
+            depends: ['one'],
+            run: function (d, v, namedArgs, arg) {
+debugger;
+                append(v, 'three', namedArgs.name, arg);
+                d.resolve();
+            }
+        },
+        four: {
+            depends: ['two', 'three'],
+            run: function (d, v, namedArgs, arg) {
+debugger;
+                append(v, 'one', namedArgs.name, arg);
+                d.resolve();
+            }
+        }
+    };
+});

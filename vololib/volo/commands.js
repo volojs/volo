@@ -4,37 +4,56 @@
  * see: http://github.com/volojs/volo for details
  */
 
-'use strict';
 /*jslint plusplus: false */
 /*global define */
 
 define(function (require) {
+    'use strict';
+
     var baseUrl = require('./baseUrl'),
+        nodeRequire = require('./nodeRequire');
         fs = require('fs'),
         path = require('path'),
         q = require('q'),
+        qutil = require('volo/qutil'),
         v = require('volo/v'),
         jsExtRegExp = /\.js$/,
         registry = {},
+        defaultCategory = 'global',
+        categoryList = [
+            'local',
+            'global',
+            'admin'
+        ],
         commands;
 
     commands = {
-        register: function (id, value) {
-            //Only take the first part of the ID
-            id = id.split('/')[0];
+        register: function (id, value, category) {
+            category = category || defaultCategory;
 
-            registry[id] = value;
+            var categoryRegistry = registry[category];
+            if (!categoryRegistry) {
+                categoryRegistry = registry[category] = {};
+            }
+
+            categoryRegistry[id] = value;
             return value;
         },
 
-        have: function (name) {
-            var hasCommand = name && registry.hasOwnProperty(name);
-            if (!hasCommand) {
-                //See if it is available on disk
-                hasCommand = path.existsSync(path.join(baseUrl, name + '.js'));
-            }
+        get: function (id, category) {
+            var i, result;
 
-            return hasCommand;
+            if (category) {
+                return registry[category][id];
+            } else {
+                for (i = 0; i < categoryList.length; i += 1) {
+                    result = registry[category][id];
+                    if (result) {
+                        break;
+                    }
+                }
+                return result;
+            }
         },
 
         list: function (callback) {
@@ -52,14 +71,13 @@ define(function (require) {
             require(ids, function () {
                 //All commands are loaded, list them out.
                 var message = '',
-                    ids, i;
+                    ids = Object.keys(registry);
 
-                ids = Object.keys(registry);
                 ids.sort();
 
-                for (i = 0; i < ids.length; i++) {
-                    message += ids[i] + ': ' + require(ids[i]).summary + '\n';
-                }
+                ids.forEach(function (id) {
+                    message += id + ': ' + require(id).summary + '\n';
+                });
 
                 callback(message);
             });
@@ -87,13 +105,24 @@ define(function (require) {
 
                 q.call(function () {
                     if (command.depends && command.depends.length) {
-                        return command.depends.reduce(function (done, command) {
-                            return q.wait(done,
-                                          commands.run.apply(commands,
-                                                        [command, venv].concat(args)));
+
+                        var execFuncs = command.depends.map(function (commandName) {
+                            return function () {
+                                var cmdDeferred = q.defer();
+                                if (commands.have(commandName)) {
+                                    //a volo command is available, run it.
+                                    require([commandName], function (cmd) {
+                                        cmdDeferred.resolve(commands.run.apply(commands,
+                                                        [cmd, venv].concat(args)));
+                                    });
+                                } else {
+                                    cmdDeferred.reject('Unknown command: ' + commandName);
+                                }
+                                return cmdDeferred.promise;
+                            };
                         });
+                        return qutil.sequence(execFuncs);
                     }
-                    return undefined;
                 })
                 .then(function () {
                     var commandDeferred = q.defer(),
@@ -117,6 +146,20 @@ define(function (require) {
             return d.promise;
         }
     };
+
+    //Set up list of commands. the volo built file will have some included
+    //So check the global area, and then load the volofile commands.
+    //Global area:
+    if (path.existsSync(baseUrl)) {
+        fs.readdirSync(baseUrl).forEach(function (name) {
+            var fullPath = path.join(baseUrl, name),
+                mod;
+            if (fs.statSync(fullPath).isFile() && jsExtRegExp.test(name)) {
+                mod = nodeRequire(fullPath);
+                commands.register(name, mod, 'global');
+            }
+        });
+    }
 
     return commands;
 });

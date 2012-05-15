@@ -1,8 +1,8 @@
 /*jslint nomen: false */
 /*global define, doh, process, console */
-'use strict';
 
 define(function (require, exports, module) {
+    'use strict';
 
     var q = require('q'),
         main = require('volo/main'),
@@ -23,6 +23,8 @@ define(function (require, exports, module) {
         fs.mkdirSync(testDir);
         process.chdir(testDir);
     })
+
+    //Test basic volofile usage
     .then(function () {
         return main(['create', 'simple', '../support/simple']);
     })
@@ -38,6 +40,31 @@ define(function (require, exports, module) {
                         var universalPath = path.join('universal.txt');
                         t.is(true, path.existsSync(universalPath));
                         t.is('galacticModified is backlit', fs.readFileSync(universalPath, 'utf8'));
+                    }
+                ]
+            );
+            doh.run();
+        });
+    })
+    .then(function (result) {
+        process.chdir('..');
+    })
+
+    //Test usage of "depends" in volofile commands
+    .then(function () {
+        return main(['create', 'depends', '../support/depends']);
+    })
+    .then(function () {
+        process.chdir('depends');
+
+        return main(['four', 'name=depends', 'testcall'],
+            function (result) {
+            console.log(result);
+            doh.register("volofileDepends",
+                [
+                    function volofileDepends(t) {
+                        t.is(fs.readFileSync('../../expected/depends/depends.txt', 'utf8'),
+                             fs.readFileSync('depends.txt', 'utf8'));
                     }
                 ]
             );

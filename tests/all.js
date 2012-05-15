@@ -47,11 +47,11 @@ requirejs(['q'], function (q) {
     //Tests
     requirejs([
         'q',
-        '../tests/lib/volo/packageJson/tests',
-        '../tests/lib/volo/version',
-        '../tests/commands/add/tests',
-        '../tests/commands/amdify/tests',
-        '../tests/commands/create/tests',
+//        '../tests/lib/volo/packageJson/tests',
+//        '../tests/lib/volo/version',
+//        '../tests/commands/add/tests',
+//        '../tests/commands/amdify/tests',
+//        '../tests/commands/create/tests',
         '../tests/commands/volofile/tests'
     ], function (q) {
 

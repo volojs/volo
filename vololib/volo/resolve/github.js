@@ -16,6 +16,7 @@ define(function (require) {
         q = require('q'),
         qutil = require('../qutil'),
         jsSuffixRegExp = /\.js$/,
+        vRegExpPrefix = /v\d+/,
         versionRegExp = /\{version\}/;
 
     function resolveGithub(archiveName, fragment, options, callback, errback) {
@@ -57,11 +58,13 @@ define(function (require) {
             //Fetch the latest version
             return github.latestTag(ownerPlusRepo + (version ? '/' + version : ''));
         }).then(function (tagResult) {
-            tag = tagResult;
+            versionOnlyTag = tag = tagResult;
 
             //Some version tags have a 'v' prefix, remove that for token
             //replacements used below.
-            versionOnlyTag = tag.replace(/^v/, '');
+            if (vRegExpPrefix.test(versionOnlyTag)) {
+                versionOnlyTag = versionOnlyTag.replace(/^v/, '');
+            }
 
             //Check the repo for a package.json file that may have info on
             //an install url or something.

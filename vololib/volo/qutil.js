@@ -14,6 +14,20 @@ define(function (require) {
             var d = q.defer();
             q.when(d.promise, callback, errback);
             return d;
+        },
+
+        //Calls each function in an array in sequence. If the function returns
+        //a promise, wait for that promise to finish before continuing to the
+        //next one.
+        sequence: function (arrayOfFuncs) {
+debugger;
+            var result = q.resolve();
+            arrayOfFuncs.forEach(function (func) {
+                result = result.then(function () {
+                    return func();
+                });
+            });
+            return result;
         }
     };
 });
