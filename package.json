@@ -26,7 +26,8 @@
 
     "dependencies": {
         "q": "0.8.4",
-        "zip": "0.0.6"
+        "zip": "0.0.6",
+        "uglify-js": "1.2.6"
     },
 
     "main": "volo"

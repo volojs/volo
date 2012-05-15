@@ -91,12 +91,12 @@ function main(args, callback, errback) {
     function runTopCommand() {
         if (commands.have(commandName)) {
             //a volo command is available, run it.
-            require([commandName], runCommand);
+            runCommand(commands.get(commandName));
         } else {
             //Show usage info.
             commands.list(function (message) {
                 //voloVersion set in tools/wrap.start
-                deferred.resolve(path.basename(config.volo.path) +
+                deferred.resolve(path.basename(__filename) +
                                  (typeof voloVersion !== 'undefined' ?
                                     ' v' + voloVersion : '') +
                                 ', a JavaScript tool to make ' +
