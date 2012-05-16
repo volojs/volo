@@ -1,3 +1,18 @@
 #!/usr/bin/env node
 
-(require('volo'))(process.argv);
+/**
+ * @license Copyright (c) 2012, The Dojo Foundation All Rights Reserved.
+ * Available via the MIT or new BSD license.
+ * see: http://github.com/volojs/volo for details
+ */
+
+/*jslint node: true */
+'use strict';
+
+var args = [].splice.call(process.argv, 2);
+
+(require('../volo'))(args).then(function (okText) {
+    console.log(okText);
+}, function (errText) {
+    console.log('ERROR: ' + errText);
+});

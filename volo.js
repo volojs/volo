@@ -5,7 +5,6 @@
  */
 
 /*jslint node: true */
-/*global define, voloVersion, console, process */
 
 'use strict';
 
@@ -13,7 +12,9 @@ var commands = require('./lib/volo/commands'),
     config = require('./lib/volo/config').get(),
     volofile = require('./lib/volo/volofile'),
     path = require('path'),
-    q = require('q');
+    q = require('q'),
+
+    version = '0.2.0.pre-shim-branch';
 
 function main(args, callback, errback) {
     var deferred = q.defer(),
@@ -95,10 +96,8 @@ function main(args, callback, errback) {
         } else {
             //Show usage info.
             commands.list(function (message) {
-                //voloVersion set in tools/wrap.start
-                deferred.resolve(path.basename(__filename) +
-                                 (typeof voloVersion !== 'undefined' ?
-                                    ' v' + voloVersion : '') +
+                deferred.resolve(path.basename(process.argv[1]) +
+                                ' v' + version +
                                 ', a JavaScript tool to make ' +
                                 'JavaScript projects. Allowed commands:\n\n' +
                                 message);
@@ -124,5 +123,13 @@ function main(args, callback, errback) {
 
     return q.when(deferred.promise, callback, errback);
 }
+
+//Load up the commands we know about.
+commands.register('add', require('./lib/add'));
+commands.register('amdify', require('./lib/amdify'));
+commands.register('create', require('./lib/create'));
+commands.register('help', require('./lib/help'));
+commands.register('npmrel', require('./lib/npmrel'));
+commands.register('search', require('./lib/search'));
 
 module.exports = main;
