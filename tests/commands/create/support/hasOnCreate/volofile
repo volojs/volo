@@ -1,19 +1,16 @@
+/*jslint node: true */
 'use strict';
-/*jslint */
-/*global define, console, process */
 
-define(function (require) {
-    return {
-        onCreate: function (d, v, namedArgs, appName) {
-            //Generate templatized output
-            var templatePath = 'sample.template';
+module.exports = {
+    onCreate: function (d, v, namedArgs, appName) {
+        //Generate templatized output
+        var templatePath = 'sample.template';
 
-            v.write('output.txt', v.template(v.read(templatePath), namedArgs));
+        v.write('output.txt', v.template(v.read(templatePath), namedArgs));
 
-            v.rm(templatePath);
-            v.rm('volofile');
+        v.rm(templatePath);
+        v.rm('volofile');
 
-            d.resolve();
-        }
-    };
-});
+        d.resolve();
+    }
+};

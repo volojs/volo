@@ -54,7 +54,6 @@ end = start.promise.then(function () {
     });
 })
 .then(function () {
-    debugger;
     return main(['add', '-noprompt', '../support/addable'], function (result) {
         console.log(result);
         doh.register("addOnAdd",

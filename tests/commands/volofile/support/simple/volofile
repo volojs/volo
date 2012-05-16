@@ -1,20 +1,17 @@
+/*jslint node: true */
 'use strict';
-/*jslint */
-/*global define, console, process */
 
-define(function (require) {
-    return {
-        foo: {
-            validate: function (namedArgs) {
-                namedArgs.style = namedArgs.style + 'Modified';
-            },
-            run: function (d, v, namedArgs) {
-                var template = '{style} is {future}';
+module.exports = {
+    foo: {
+        validate: function (namedArgs) {
+            namedArgs.style = namedArgs.style + 'Modified';
+        },
+        run: function (d, v, namedArgs) {
+            var template = '{style} is {future}';
 
-                v.write('universal.txt', v.template(template, namedArgs));
+            v.write('universal.txt', v.template(template, namedArgs));
 
-                d.resolve();
-            }
+            d.resolve();
         }
-    };
-});
+    }
+};
