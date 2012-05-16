@@ -5,6 +5,9 @@
 	if(!this["doh"]){
 		doh = {};
 	}
+        if (typeof module !== 'undefined' && module.exports) {
+            module.exports = doh;
+        }
 //}
 
 //
