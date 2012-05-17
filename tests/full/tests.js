@@ -21,7 +21,7 @@ end = start.promise.then(function () {
 .then(function (dir) {
     tempDir = dir;
     v = venv(tempDir).env;
-    process.chdir(dir);
+    process.chdir(tempDir);
 })
 
 
@@ -30,7 +30,8 @@ end = start.promise.then(function () {
     return v.sequence([
         ['volo', 'create', 'simple', path.join(dir, 'support', 'simple')],
         [process, 'chdir', 'simple'],
-        ['node', '/Users/jr/git/volo/volo.js', 'foo']
+        ['volo', 'foo']
+        //['node', '/Users/jr/git/volo/volo.js', 'foo']
     ],{ useConsole: true });
 })
 .then(function () {

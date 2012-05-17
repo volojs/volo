@@ -124,6 +124,10 @@ function main(args, callback, errback) {
     return q.when(deferred.promise, callback, errback);
 }
 
+//Export the require used by volo, so that volofiles can take advantage
+//of modules in volo itself.
+main.require = require;
+
 //Load up the commands we know about.
 commands.register('add', require('./lib/add'));
 commands.register('amdify', require('./lib/amdify'));
