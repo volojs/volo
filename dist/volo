@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
 /**
- * @license volo 0.1.5 Copyright (c) 2012, The Dojo Foundation All Rights Reserved.
+ * @license volo 0.1.5+ Thu, 17 May 2012 06:17:41 GMT Copyright (c) 2012, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
  * see: http://github.com/volojs/volo for details
  */
 
-var voloVersion = '0.1.5';
+var voloVersion = '0.1.5+ Thu, 17 May 2012 06:17:41 GMT';
 
 //Wipe out the exports object since some node-converted modules look for it.
 var exports = undefined;
@@ -3442,6 +3442,8 @@ define('volo/file',['require','fs','path','./qutil','child_process'],function (r
          * @param {String} dir the directory to create.
          */
         mkdirs: function (dir) {
+            dir = frontSlash(dir);
+
             var parts = dir.split('/'),
                 currDir = '',
                 first = true;
@@ -4655,30 +4657,49 @@ define('volo/v',['require','path','fs','q','child_process','child_process','volo
                     var d = qutil.convert(callback),
                         value = '';
 
-                    function onKeyPress(c, key) {
-                        if (key && key.ctrl && c === 'c') {
-                            process.exit();
-                        } else if (c === '\r' ||
-                                   c === '\n' ||
-                                   c === '\u0004') {
-                            //End of input, finish up.
-                            process.stdin.removeListener('keypress', onKeyPress);
-                            tty.setRawMode(false);
-                            process.stdin.pause();
-                            d.resolve(value);
-                        } else if (c === '\x7f' ||
-                                 c === '\x08') {
-                            //A backspace/delete character, remove a char
-                            //from the value.
-                            value = value.slice(0, -1);
-                        } else {
-                            value += c;
+                    function onError(e) {
+                        d.reject(e);
+                    }
+
+                    function onData(line) {
+                        var value = '',
+                            i, c;
+
+                        line = line.toString();
+
+                        for(i = 0; i < line.length; i += 1) {
+                            c = line[i];
+
+                            if (c === '\r' ||
+                                       c === '\n' ||
+                                       c === '\u0004') {
+                                //End of input, finish up.
+                                process.stdin.removeListener('error', onError);
+                                process.stdin.removeListener('data', onData);
+                                tty.setRawMode(false);
+                                process.stdin.pause();
+                                d.resolve(value.trim());
+                                return;
+                            } else if (c === '\x7f' ||
+                                     c === '\x08') {
+                                //A backspace/delete character, remove a char
+                                //from the value.
+                                value = value.slice(0, -1);
+                            } else if (c === '\u0003' ||
+                                       c === '\u0000') {
+                                //End of discussion!
+                                process.exit(1);
+                            } else {
+                                value = value + c;
+                            }
                         }
                     }
 
                     tty.setRawMode(true);
-                    process.stdin.on('keypress', onKeyPress);
                     process.stdin.resume();
+
+                    process.stdin.on('error', onError);
+                    process.stdin.on('data', onData);
 
                     process.stdout.write(message + ' ', 'utf8');
 

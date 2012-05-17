@@ -86,8 +86,8 @@ define(function (require) {
          * @param {String} dir the directory to create.
          */
         mkdirs: function (dir) {
-            dir = frontSlash(dir)
-            
+            dir = frontSlash(dir);
+
             var parts = dir.split('/'),
                 currDir = '',
                 first = true;
