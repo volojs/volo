@@ -12,10 +12,9 @@ define(function (require) {
         path = require('path'),
         lang = require('./lang'),
         file = require('./file'),
-        //volo/baseUrl is set up in tools/requirejsVars.js
-        baseUrl = require('./baseUrl'),
-        overrideConfigUrl = path.join(baseUrl, '.config.json'),
-        localConfigUrl = path.join(baseUrl, '.configLocal.json'),
+        homeDir = require('./homeDir'),
+        overrideConfigUrl = path.join(homeDir, '.voloconfig'),
+        localConfigUrl = path.join(homeDir, '.voloconfiglocal'),
 
         data, overrideConfig, localConfig, contents;
 

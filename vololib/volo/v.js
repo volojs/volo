@@ -96,8 +96,7 @@ define(function (require) {
                     }
 
                     function onData(line) {
-                        var value = '',
-                            i, c;
+                        var i, c;
 
                         line = line.toString();
 
