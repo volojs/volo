@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
 /**
- * @license volo 0.1.5 Copyright (c) 2012, The Dojo Foundation All Rights Reserved.
+ * @license volo 0.1.5+ Copyright (c) 2012, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
  * see: http://github.com/volojs/volo for details
  */
 
-var voloVersion = '0.1.5';
+var voloVersion = '0.1.5+';
 
 //Wipe out the exports object since some node-converted modules look for it.
 var exports = undefined;

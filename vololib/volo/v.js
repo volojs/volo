@@ -91,30 +91,49 @@ define(function (require) {
                     var d = qutil.convert(callback),
                         value = '';
 
-                    function onKeyPress(c, key) {
-                        if (key && key.ctrl && c === 'c') {
-                            process.exit();
-                        } else if (c === '\r' ||
-                                   c === '\n' ||
-                                   c === '\u0004') {
-                            //End of input, finish up.
-                            process.stdin.removeListener('keypress', onKeyPress);
-                            tty.setRawMode(false);
-                            process.stdin.pause();
-                            d.resolve(value);
-                        } else if (c === '\x7f' ||
-                                 c === '\x08') {
-                            //A backspace/delete character, remove a char
-                            //from the value.
-                            value = value.slice(0, -1);
-                        } else {
-                            value += c;
+                    function onError(e) {
+                        d.reject(e);
+                    }
+
+                    function onData(line) {
+                        var value = '',
+                            i, c;
+
+                        line = line.toString();
+
+                        for(i = 0; i < line.length; i += 1) {
+                            c = line[i];
+
+                            if (c === '\r' ||
+                                       c === '\n' ||
+                                       c === '\u0004') {
+                                //End of input, finish up.
+                                process.stdin.removeListener('error', onError);
+                                process.stdin.removeListener('data', onData);
+                                tty.setRawMode(false);
+                                process.stdin.pause();
+                                d.resolve(value.trim());
+                                return;
+                            } else if (c === '\x7f' ||
+                                     c === '\x08') {
+                                //A backspace/delete character, remove a char
+                                //from the value.
+                                value = value.slice(0, -1);
+                            } else if (c === '\u0003' ||
+                                       c === '\u0000') {
+                                //End of discussion!
+                                process.exit(1);
+                            } else {
+                                value = value + c;
+                            }
                         }
                     }
 
                     tty.setRawMode(true);
-                    process.stdin.on('keypress', onKeyPress);
                     process.stdin.resume();
+
+                    process.stdin.on('error', onError);
+                    process.stdin.on('data', onData);
 
                     process.stdout.write(message + ' ', 'utf8');
 
