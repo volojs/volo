@@ -1,0 +1,15 @@
+/*jslint node: true */
+'use strict';
+
+var version = require('volo/lib/volo/version');
+
+module.exports = {
+    foo: {
+        run: function (d, v, namedArgs) {
+            var text = typeof version.compare;
+
+            console.log("HELLO: " + text);
+            v.write('compareType.txt', text);
+        }
+    }
+};
