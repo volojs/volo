@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
 /**
- * @license volo 0.1.5+ Thu, 17 May 2012 06:17:41 GMT Copyright (c) 2012, The Dojo Foundation All Rights Reserved.
+ * @license volo 0.1.6 Copyright (c) 2012, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
  * see: http://github.com/volojs/volo for details
  */
 
-var voloVersion = '0.1.5+ Thu, 17 May 2012 06:17:41 GMT';
+var voloVersion = '0.1.6';
 
 //Wipe out the exports object since some node-converted modules look for it.
 var exports = undefined;
@@ -2336,6 +2336,19 @@ define('volo/lang',[],function () {
     return lang;
 });
 
+/**
+* @license Copyright (c) 2012, The Dojo Foundation All Rights Reserved.
+* Available via the MIT or new BSD license.
+* see: http://github.com/volojs/volo for details
+*/
+
+/*jslint node: true */
+/*global define */
+
+
+define('volo/homeDir',['require'],function (require) {
+    return process.env[(process.platform === 'win32') ? 'USERPROFILE' : 'HOME'];
+});
 // vim:ts=4:sts=4:sw=4:
 /*jshint browser: true, node: true,
   curly: true, eqeqeq: true, noarg: true, nonew: true, trailing: true, undef: true
@@ -3621,16 +3634,15 @@ define('volo/file',['require','fs','path','./qutil','child_process'],function (r
 
 /*global define, process, voloPath, console */
 
-define('volo/config',['require','fs','path','./lang','./file','./baseUrl'],function (require) {
+define('volo/config',['require','fs','path','./lang','./file','./homeDir'],function (require) {
     
     var fs = require('fs'),
         path = require('path'),
         lang = require('./lang'),
         file = require('./file'),
-        //volo/baseUrl is set up in tools/requirejsVars.js
-        baseUrl = require('./baseUrl'),
-        overrideConfigUrl = path.join(baseUrl, '.config.json'),
-        localConfigUrl = path.join(baseUrl, '.configLocal.json'),
+        homeDir = require('./homeDir'),
+        overrideConfigUrl = path.join(homeDir, '.voloconfig'),
+        localConfigUrl = path.join(homeDir, '.voloconfiglocal'),
 
         data, overrideConfig, localConfig, contents;
 
@@ -4662,8 +4674,7 @@ define('volo/v',['require','path','fs','q','child_process','child_process','volo
                     }
 
                     function onData(line) {
-                        var value = '',
-                            i, c;
+                        var i, c;
 
                         line = line.toString();
 
