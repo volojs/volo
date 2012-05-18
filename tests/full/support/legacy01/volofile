@@ -1,0 +1,28 @@
+/*jslint regexp: true */
+/*global define, console, process */
+
+define(function (require) {
+    'use strict';
+
+    var amdify = require('amdify'),
+        q = require('q'),
+        crypto = require('crypto'),
+        fs = require('fs'),
+        path = require('path'),
+        github = require('volo/github'),
+        githubAuth = require('volo/github/auth');
+
+    return {
+        test: function (d, v, namedArgs) {
+            var text = (!!amdify.api) + '\n' +
+                       (typeof q.defer) + '\n' +
+                       (typeof crypto.createHash) + '\n' +
+                       (typeof fs.stat) + '\n' +
+                       (typeof path.exists) + '\n' +
+                       (typeof github) + '\n' +
+                       (typeof githubAuth.fetch) + '\n';
+
+            v.write('results.txt', text);
+        }
+    }
+});

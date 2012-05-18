@@ -31,7 +31,6 @@ end = start.promise.then(function () {
         ['volo', 'create', 'simple', path.join(dir, 'support', 'simple')],
         [process, 'chdir', 'simple'],
         ['volo', 'foo']
-        //['node', '/Users/jr/git/volo/volo.js', 'foo']
     ],{ useConsole: true });
 })
 .then(function () {
@@ -41,6 +40,30 @@ end = start.promise.then(function () {
                 var comparePath = path.join('compareType.txt');
                 t.is(true, path.existsSync(comparePath));
                 t.is('function', fs.readFileSync(comparePath, 'utf8'));
+            }
+        ]
+    );
+    doh.run();
+
+    process.chdir('..');
+})
+
+//Allow a legacy 0.1 volofile to work in the new system.
+.then(function () {
+    return v.sequence([
+        ['volo', 'create', 'legacy01', path.join(dir, 'support', 'legacy01')],
+        [process, 'chdir', 'legacy01'],
+        ['volo', 'test']
+    ],{ useConsole: true });
+})
+.then(function () {
+    doh.register("fullLegacy01",
+        [
+            function fullLegacy01(t) {
+                var resultsPath = path.join('results.txt');
+                t.is(true, path.existsSync(resultsPath));
+                t.is(fs.readFileSync(path.join(dir, 'expected', 'legacy01', 'results.txt'), 'utf8').trim(),
+                     fs.readFileSync(resultsPath, 'utf8').trim());
             }
         ]
     );
