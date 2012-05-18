@@ -8,7 +8,7 @@
 /*global console, process */
 'use strict';
 
-var commands = require('./volo/commands'),
+var commands = require('../lib/commands'),
     help;
 
 help = {

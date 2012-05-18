@@ -8,9 +8,9 @@
 
 'use strict';
 
-var commands = require('./lib/volo/commands'),
-    config = require('./lib/volo/config').get(),
-    volofile = require('./lib/volo/volofile'),
+var commands = require('./lib/commands'),
+    config = require('./lib/config').get(),
+    volofile = require('./lib/volofile'),
     path = require('path'),
     q = require('q'),
 
@@ -129,11 +129,11 @@ function main(args, callback, errback) {
 main.require = require;
 
 //Load up the commands we know about.
-commands.register('add', require('./lib/add'));
-commands.register('amdify', require('./lib/amdify'));
-commands.register('create', require('./lib/create'));
-commands.register('help', require('./lib/help'));
-commands.register('npmrel', require('./lib/npmrel'));
-commands.register('search', require('./lib/search'));
+commands.register('add', require('./commands/add'));
+commands.register('amdify', require('./commands/amdify'));
+commands.register('create', require('./commands/create'));
+commands.register('help', require('./commands/help'));
+commands.register('npmrel', require('./commands/npmrel'));
+commands.register('search', require('./commands/search'));
 
 module.exports = main;

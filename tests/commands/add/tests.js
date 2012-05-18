@@ -7,7 +7,7 @@ var q = require('q'),
     start = q.defer(),
     fs = require('fs'),
     path = require('path'),
-    file = require(voloLib + '/volo/file'),
+    file = require(voloLib + '/file'),
     cwd = process.cwd(),
     dir = __dirname,
     testDir = path.join(dir, 'output'),
@@ -19,6 +19,7 @@ end = start.promise.then(function () {
     fs.mkdirSync(testDir);
     process.chdir(testDir);
 })
+/*
 .then(function () {
     return main(['add', '../support/simple'], function (result) {
         console.log(result);
@@ -53,6 +54,7 @@ end = start.promise.then(function () {
         doh.run();
     });
 })
+*/
 .then(function () {
     return main(['add', '-noprompt', '../support/addable'], function (result) {
         console.log(result);
@@ -71,8 +73,10 @@ end = start.promise.then(function () {
     });
 })
 .then(function () {
+debugger;
     //Test using volojs/repos-provided package.json override.
     return main(['add', 'three.js'], function (result) {
+debugger;
         console.log(result);
         doh.register("addRepoPackageJsonOverride",
             [

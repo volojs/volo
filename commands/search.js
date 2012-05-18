@@ -7,7 +7,7 @@
 /*jslint node: true */
 'use strict';
 
-var qutil = require('./volo/qutil'),
+var qutil = require('../lib/qutil'),
     fs = require('fs'),
     path = require('path'),
     baseDir = __dirname,
@@ -50,7 +50,7 @@ search = {
         }
 
         //Figure out if there is a resolver for the given scheme.
-        searchId = path.join(baseDir, 'volo', 'search', scheme + '.js');
+        searchId = path.join(baseDir, '..', 'lib', 'search', scheme + '.js');
 
         try {
             searchMod = require(searchId);

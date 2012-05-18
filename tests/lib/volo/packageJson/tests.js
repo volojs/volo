@@ -3,10 +3,10 @@
 /*global doh, voloLib */
 'use strict';
 
-var packageJson = require(voloLib + '/volo/packageJson'),
+var packageJson = require(voloLib + '/packageJson'),
     path = require('path'),
     q = require('q'),
-    file = require(voloLib + '/volo/file'),
+    file = require(voloLib + '/file'),
     start = q.defer(),
     cwd = process.cwd(),
     dir = __dirname,

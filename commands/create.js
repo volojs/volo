@@ -12,12 +12,12 @@
 var fs = require('fs'),
     path = require('path'),
     q = require('q'),
-    tempDir = require('./volo/tempDir'),
-    archive = require('./volo/archive'),
-    file = require('./volo/file'),
-    download = require('./volo/download'),
-    unzip = require('./volo/unzip'),
-    volofile = require('./volo/volofile'),
+    tempDir = require('../lib/tempDir'),
+    archive = require('../lib/archive'),
+    file = require('../lib/file'),
+    download = require('../lib/download'),
+    unzip = require('../lib/unzip'),
+    volofile = require('../lib/volofile'),
     create;
 
 create = {

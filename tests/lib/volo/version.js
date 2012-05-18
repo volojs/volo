@@ -3,7 +3,7 @@
 /*global define, doh */
 'use strict';
 
-var version = require(global.voloLib + '/volo/version'),
+var version = require(global.voloLib + '/version'),
     q = require('q'),
     start = q.defer(),
     end;
