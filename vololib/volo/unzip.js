@@ -31,7 +31,9 @@ define(function (require) {
                 }
 
                 if (entry.isDirectory()) {
-                    fs.mkdirSync(name);
+                    if (!path.existsSync(name)) {
+                        fs.mkdirSync(name);
+                    }
                 } else {
                     dirName = path.dirname(name);
                     if (!path.existsSync(dirName)) {
