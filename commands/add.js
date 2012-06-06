@@ -40,18 +40,12 @@ add = {
         'amd': 'amd',
         'amdoff': 'amdoff',
         'amdlog': 'amdlog',
-        'noprompt': 'noprompt'
+        'noprompt': 'noprompt',
+        'nostamp': 'nostamp'
     },
 
-    validate: function (namedArgs, archiveName, version) {
-        if (!archiveName) {
-            return new Error('Please specify an archive name or an URL.');
-        }
-
-        return undefined;
-    },
     run: function (deferred, v, namedArgs, archiveName, specificLocalName) {
-        var pkg = packageJson('.'),
+        var pkg = packageJson('.', { create: true }),
             isAmdProject = !!(namedArgs.amd || (pkg.data && pkg.data.amd)),
             baseUrl = pkg.data &&
                     //Favor volo.baseDir over volo.baseUrl over amd.baseUrl
@@ -59,7 +53,7 @@ add = {
                      (pkg.data.volo && pkg.data.volo.baseUrl) ||
                      (pkg.data.amd && pkg.data.amd.baseUrl)),
             existingPath, tempDirName, linkPath, linkStat, linkTarget,
-            info, targetDirName;
+            info, targetDirName, depPackageInfo, groupAddResult;
 
         //Function used to clean up in case of errors.
         function errCleanUp(err) {
@@ -68,6 +62,30 @@ add = {
             file.asyncPlatformRm(tempDirName);
 
             deferred.reject(err);
+        }
+
+        if (!archiveName) {
+            //Try the package.json.
+            archiveName = (pkg.data.volo && pkg.data.volo.deps) ||
+                          (pkg.data.volo && pkg.data.browser.deps);
+            if (!archiveName) {
+                return deferred.reject(new Error('Please specify an archive name or an URL.'));
+            }
+        }
+
+        //TODO, ideally from here on out it would be an add.api method?
+        if (typeof archiveName !== 'string') {
+            //An object of dependencies with local names. Call add for each
+            //one.
+            groupAddResult = q.resolve();
+            Object.keys(archiveName).forEach(function (key) {
+                groupAddResult = groupAddResult.then(function () {
+                    var localD = q.defer();
+                    add.run(localD, v, namedArgs, archiveName[key], key);
+                    return localD.promise;
+                });
+            });
+            return deferred.resolve(groupAddResult);
         }
 
         archive.resolve(archiveName, namedArgs.volo.resolve, {
@@ -89,6 +107,10 @@ add = {
                     }
                 }
             }
+
+            //Hold on to the dependency's package.json info,
+            //which may have been fetched from the network.
+            depPackageInfo = archiveInfo.packageInfo;
 
             //Store the final local name. Value given in add command
             //takes precedence over the calculated name.
@@ -144,8 +166,8 @@ add = {
                     }
 
                     if (existingPath && !namedArgs.force) {
-                        return deferred.reject(existingPath + ' already exists. To ' +
-                                'install anyway, pass -f to the command');
+                        return deferred.resolve(existingPath + ' already exists. To ' +
+                                'overwrite, pass -f to the command');
                     }
 
                 } catch (e) {
@@ -179,7 +201,7 @@ add = {
 
                     if (archiveInfo.isArchive) {
                         return download(url, path.join(tempDirName, downloadTarget))
-                        .then(function (filePath) {
+                        .then(function () {
                             //Unpack the zip file.
                             zipName = path.join(tempDirName, localName +
                                                 '.zip');
@@ -214,11 +236,16 @@ add = {
                             deps, pkgType, overrideTypeName;
 
                         if (dirName) {
-                            info = packageJson(dirName);
+                            if (!depPackageInfo) {
+                                info = packageJson(dirName);
+                                if (info.data) {
+                                    depPackageInfo = info.data;
+                                }
+                            }
 
-                            if (info.data) {
-                                mainFile = info.data && info.data.main;
-                                pkgType = info.data.volo && info.data.volo.type;
+                            if (depPackageInfo) {
+                                mainFile = depPackageInfo.main;
+                                pkgType = depPackageInfo.volo && depPackageInfo.volo.type;
                             }
 
                             if (!pkgType && archiveInfo.scheme === 'github') {
@@ -273,7 +300,7 @@ add = {
                                     defaultName = listing[0];
                                     ext = path.extname(sourceName);
                                 } else {
-                                    //packagJson will look for one top level .js
+                                    //packageJson will look for one top level .js
                                     //file, and if so, and has package data via
                                     //a package.json comment, only install that
                                     //file.
@@ -295,7 +322,7 @@ add = {
                                 //Just move the single file into position.
                                 if (specificLocalName) {
                                     targetName = path.join(baseUrl,
-                                                           specificLocalName + ext);
+                                                           specificLocalName + (ext || '.js'));
                                 } else {
                                     targetName = path.join(baseUrl, defaultName);
                                 }
@@ -314,20 +341,20 @@ add = {
                                 //bail out.
                                 if (path.existsSync(targetName) &&
                                     !namedArgs.force) {
-                                    errCleanUp(targetName + ' already exists.' +
+                                    completeMessage += 'Skipping installed of ' + targetName + ' already exists.' +
                                         ' To install anyway, pass -f to the ' +
-                                        'command');
-                                    return;
-                                }
-                                //Doing a copy instead of a rename since
-                                //that does not work across partitions.
-                                if (fs.statSync(sourceName).isDirectory()) {
-                                    file.copyDir(sourceName, targetName);
+                                        'command';
                                 } else {
-                                    file.copyFile(sourceName, targetName);
-                                }
+                                    //Doing a copy instead of a rename since
+                                    //that does not work across partitions.
+                                    if (fs.statSync(sourceName).isDirectory()) {
+                                        file.copyDir(sourceName, targetName);
+                                    } else {
+                                        file.copyFile(sourceName, targetName);
+                                    }
 
-                                file.rm(sourceName);
+                                    file.rm(sourceName);
+                                }
                             } else {
                                 //A complete directory install.
                                 targetName = targetDirName = path.join(baseUrl,
@@ -366,6 +393,43 @@ add = {
                                     return damd.promise;
                                 }
                                 return undefined;
+                            }).then(function () {
+                                //Now install any dependencies.
+                                var packageDeps = depPackageInfo &&
+                                                 ((depPackageInfo.volo && depPackageInfo.volo.dependencies) ||
+                                                 (depPackageInfo.browser && depPackageInfo.browser.dependencies)),
+                                    depDeferred = q.defer();
+
+                                if (packageDeps) {
+                                    add.run(depDeferred, v, namedArgs, packageDeps);
+                                    return depDeferred.promise;
+                                }
+                            }).then(function (depInstallMessages) {
+                                if (depInstallMessages) {
+                                    completeMessage += depInstallMessages + '\n';
+                                }
+
+                                //If the added dependency is a directory
+                                //with a volofile and it has an onAdd
+                                //command, run it.
+                                if (targetDirName) {
+                                    return volofile.run(targetDirName, 'onAdd');
+                                }
+                            }).then(function () {
+                                //Add this dependency to the package.json
+                                //info, if available, and a package.json
+                                //file, not a single JS file.
+                                //Refresh first since it may have changed
+                                //from other dependency installs/onAdd
+                                //behavior.
+                                if (!namedArgs.nostamp) {
+                                    pkg.refresh();
+                                    if (!pkg.isSingleFile && pkg.data) {
+                                        pkg.addVoloDep(archiveInfo.finalLocalName,
+                                                        archiveInfo.id);
+                                    }
+                                    pkg.save();
+                                }
                             }).then(function (amdMessage) {
                                 //All done.
                                 //Clean up temp area. Even though this is async,
@@ -384,36 +448,6 @@ add = {
                                                         archiveInfo.finalLocalName;
                                 }
 
-                            }).then(function () {
-                                if (deps && deps.length) {
-                                    //TODO: scan all the files?
-                                    //No, just do this main file,
-                                    //rely on package.json to do
-                                    //the rest. scan dependencies: xx(?)
-                                    //and scan for volo: dependencies
-
-                                    //Stamp app's package.json with the dependency
-                                }
-                            }).then(function () {
-                                //If the added dependency is a directory
-                                //with a volofile and it has an onAdd
-                                //command, run it.
-                                if (targetDirName) {
-                                    return volofile.run(targetDirName, 'onAdd');
-                                }
-                            }).then(function () {
-                                //Add this dependency to the package.json
-                                //info, if available, and a package.json
-                                //file, not a single JS file.
-                                //Refresh first since it may have changed
-                                //from other dependency installs/onAdd
-                                //behavior.
-                                pkg.refresh();
-                                if (!pkg.isSingleFile && pkg.data) {
-                                    pkg.addVoloDep(archiveInfo.finalLocalName,
-                                                    archiveInfo.id);
-                                }
-                                pkg.save();
                             }).then(function () {
                                 deferred.resolve(completeMessage);
                             }, deferred.reject);

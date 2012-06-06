@@ -1,4 +1,4 @@
-/*jslint node: true */
+/*jslint node: true, nomen: true */
 /*global doh, voloLib */
 'use strict';
 
@@ -19,6 +19,43 @@ end = start.promise.then(function () {
     fs.mkdirSync(testDir);
     process.chdir(testDir);
 })
+
+//Test a recursive add.
+.then(function () {
+    fs.mkdirSync('recursiveAdd');
+    process.chdir('recursiveAdd');
+
+    return main(['add', '../../support/localModules/d'], function (result) {
+        console.log(result);
+        doh.register("recursiveAdd",
+            [
+                function recursiveAdd(t) {
+
+                    var expected = fs.readFileSync('../../support/localModules/d/d.js', 'utf8'),
+                        output = fs.readFileSync('d.js', 'utf8');
+                    t.is(expected, output, 'd.js');
+
+                    expected = fs.readFileSync('../../support/localModules/a/a.js', 'utf8');
+                    output = fs.readFileSync('a.js', 'utf8');
+                    t.is(expected, output, 'a.js');
+
+                    expected = fs.readFileSync('../../support/localModules/b/b.js', 'utf8');
+                    output = fs.readFileSync('b.js', 'utf8');
+                    t.is(expected, output, 'b.js');
+
+                    expected = fs.readFileSync('../../support/localModules/c/c.js', 'utf8');
+                    output = fs.readFileSync('c.js', 'utf8');
+                    t.is(expected, output, 'c.js');
+                }
+            ]
+        );
+        doh.run();
+    });
+})
+.then(function (result) {
+    process.chdir('..');
+})
+
 /*
 .then(function () {
     return main(['add', '../support/simple'], function (result) {
@@ -73,10 +110,8 @@ end = start.promise.then(function () {
     });
 })
 .then(function () {
-debugger;
-    //Test using volojs/repos-provided package.json override.
+  //Test using volojs/repos-provided package.json override.
     return main(['add', 'three.js'], function (result) {
-debugger;
         console.log(result);
         doh.register("addRepoPackageJsonOverride",
             [

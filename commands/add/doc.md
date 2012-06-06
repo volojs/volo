@@ -14,6 +14,8 @@ where the allowed flags are:
   is done.
 * -noprompt: Does not prompt the user for any dependency/exports details when
   adding a non-AMD/non-CommonJS module to an AMD project.
+* -nostamp: Does not stamp the package.json in the directory that runs this
+  command with the added dependency information.
 
 **archive** is in one of the following formats:
 
@@ -34,6 +36,10 @@ where the allowed flags are:
 * local:paht/to/directory: Copies the local directory. A local directory is
   also checked when the "some/thing" archive name is used -- if there is no
   local file match, it is assumed to be a GitHub URL.
+
+If **archive** is missing from the command, then if a package.json in the
+current directory contains a **volo.dependencies** section, it will go through
+those dependencies and add them.
 
 If **localName** is specified then that name is used for the installed name.
 If the installed item is a directory, the directory will have this name. If
@@ -81,3 +87,9 @@ as the repo's/zip file name, then only that .js file will be installed.
 
 Or, if there is only one top level .js file in the repo and it has a
 /*package.json */ comment with JSON inside that comment, it will be used.
+
+## Remembering the details
+
+Once the dependency has been added, `volo add` will stamp a package.json
+file with the archive name used to add the dependency. If there is no
+package.json file in the current directory, it will create one.
