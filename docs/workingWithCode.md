@@ -14,12 +14,3 @@ will not be accepted unless you have signed a
 More information on why there is a CLA and the code style to use, see the
 [RequireJS Contributing page](requirejs.org/docs/contributing.html) since that
 info generally applies to volo too.
-
-## Building the code
-
-volo is made up of a series of AMD modules that are built into one file
-using the RequireJS optimizer. To build volo, use the following command:
-
-    > node tools/r.js -o tools/build.js
-
-That will generate a volo file in the top level directory for the project.
