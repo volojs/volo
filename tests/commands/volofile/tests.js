@@ -21,6 +21,7 @@ end = start.promise.then(function () {
     fs.mkdirSync(testDir);
     process.chdir(testDir);
 })
+
 .then(function () {
     return main(['create', 'simple', '../support/simple']);
 })
@@ -42,6 +43,36 @@ end = start.promise.then(function () {
         doh.run();
     });
 })
+.then(function (result) {
+    process.chdir('..');
+})
+
+//Testing that string commands work, and that array of strings work. Also
+//includes a depends test.
+.then(function () {
+    return main(['create', 'shell', '../support/shell']);
+})
+.then(function () {
+    process.chdir('shell');
+
+    return main(['copy'],
+        function (result) {
+        console.log(result);
+        doh.register("volofileShell",
+            [
+                function volofileShell(t) {
+                    t.is('HELLO WORLD', fs.readFileSync(path.join('final.txt'), 'utf8'));
+                }
+            ]
+        );
+        doh.run();
+    });
+})
+.then(function (result) {
+    process.chdir('..');
+})
+
+
 .then(function (result) {
     process.chdir(cwd);
 });

@@ -1,0 +1,12 @@
+module.exports = {
+
+    write: 'v.write text.txt "Hello world"',
+
+    copy: {
+        depends: ['write'],
+        run: [
+            'v.copyFile text.txt final.txt',
+            'n.uppercase final.txt'
+        ]
+    }
+};

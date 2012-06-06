@@ -12,7 +12,10 @@
 var args = [].splice.call(process.argv, 2);
 
 (require('../volo'))(args).then(function (okText) {
-    console.log(okText);
+    if (okText) {
+        console.log(okText);
+    }
 }, function (errText) {
     console.log('ERROR: ' + errText);
+    process.exit(1);
 });
