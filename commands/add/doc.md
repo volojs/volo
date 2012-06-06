@@ -67,8 +67,9 @@ specifying 'jquery' and 'underscore' as dependencies:
 For the directory in which add is run, it will look for the following to know
 where to install:
 
-* Looks for a package.json file and if there is an volo.baseUrl defined in it.
-* Looks for a package.json file and if there is an amd.baseUrl defined in it.
+* Looks for a volo.baseDir package.json property.
+* Looks for a volo.baseUrl package.json property. (legacy property)
+* Looks for a amd.baseUrl package.json property (legacy property)
 * Looks for a **js** directory
 * Looks for a **scripts** directory
 

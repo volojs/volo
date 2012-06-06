@@ -54,8 +54,9 @@ add = {
         var pkg = packageJson('.'),
             isAmdProject = !!(namedArgs.amd || (pkg.data && pkg.data.amd)),
             baseUrl = pkg.data &&
-                    //Favor volo.baseUrl over amd.baseUrl
-                    ((pkg.data.volo && pkg.data.volo.baseUrl) ||
+                    //Favor volo.baseDir over volo.baseUrl over amd.baseUrl
+                    ((pkg.data.volo && pkg.data.volo.baseDir) ||
+                     (pkg.data.volo && pkg.data.volo.baseUrl) ||
                      (pkg.data.amd && pkg.data.amd.baseUrl)),
             existingPath, tempDirName, linkPath, linkStat, linkTarget,
             info, targetDirName;
