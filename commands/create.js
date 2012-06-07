@@ -28,7 +28,7 @@ create = {
     validate: function (namedArgs, appName) {
         if (!appName) {
             return new Error('Please specify a name to use for the created project.');
-        } else if (path.existsSync(appName)) {
+        } else if (file.exists(appName)) {
             return new Error(appName + ' already exists.');
         }
         return undefined;

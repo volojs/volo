@@ -106,12 +106,12 @@ add = {
             //If no baseUrl, then look for an existing js directory
             if (!baseUrl) {
                 baseUrl = path.join('.', 'js');
-                if (!path.existsSync(baseUrl)) {
+                if (!file.exists(baseUrl)) {
                     //Allow for a 'scripts' option instead of js/, in case
                     //it is something uses transpiled scripts so 'js/'
                     //would not be accurate.
                     baseUrl = path.join('.', 'scripts');
-                    if (!path.existsSync(baseUrl)) {
+                    if (!file.exists(baseUrl)) {
                         //No js or scripts subdir, so just use current
                         //directory.
                         baseUrl = '.';
@@ -133,7 +133,7 @@ add = {
             if (archiveInfo.scheme === 'symlink') {
                 linkPath = path.resolve(archiveInfo.url.substring(archiveInfo.url.indexOf(':') + 1));
 
-                if (!path.existsSync(linkPath)) {
+                if (!file.exists(linkPath)) {
                     return deferred.reject(new Error(linkPath + ' does not exist'));
                 }
 
@@ -169,9 +169,9 @@ add = {
                     //Get the package JSON data for dependency, if it is
                     //already on disk.
                     existingPath = path.join(baseUrl, archiveInfo.finalLocalName);
-                    if (!path.existsSync(existingPath)) {
+                    if (!file.exists(existingPath)) {
                         existingPath += '.js';
-                        if (!path.existsSync(existingPath)) {
+                        if (!file.exists(existingPath)) {
                             existingPath = null;
                         }
                     }
@@ -322,7 +322,7 @@ add = {
                                         defaultName = archiveInfo.finalLocalName + '.js';
 
                                         sourceName = path.join(dirName, defaultName);
-                                        if (!path.existsSync(sourceName)) {
+                                        if (!file.exists(sourceName)) {
                                             sourceName = null;
                                         }
                                     }
@@ -350,7 +350,7 @@ add = {
                                 //Check for the existence of the
                                 //singleFileName, and if it already exists,
                                 //bail out.
-                                if (path.existsSync(targetName) &&
+                                if (file.exists(targetName) &&
                                     !namedArgs.force) {
                                     completeMessage += 'Skipping installed of ' + targetName + ' already exists.' +
                                         ' To install anyway, pass -f to the ' +

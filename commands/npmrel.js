@@ -76,7 +76,7 @@ npmrel = {
     doc: file.readFile(path.join(__dirname, '/npmrel/doc.md')),
 
     validate: function (namedArgs, targetDir) {
-        if (!targetDir || !path.existsSync(targetDir)) {
+        if (!targetDir || !file.exists(targetDir)) {
             return new Error('Please pass a target directory to convert.');
         }
         return undefined;

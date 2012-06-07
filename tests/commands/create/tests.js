@@ -27,7 +27,7 @@ end = start.promise.then(function () {
         doh.register("createSimple",
             [
                 function createSimple(t) {
-                    t.is(true, path.existsSync(path.join('simple', 'simple.js')));
+                    t.is(true, file.exists(path.join('simple', 'simple.js')));
                 }
             ]
         );
@@ -42,9 +42,9 @@ end = start.promise.then(function () {
             [
                 function createHasOnCreate(t) {
                     var outputPath = path.join('dude', 'output.txt');
-                    t.is(true, path.existsSync(outputPath));
-                    t.is(false, path.existsSync(path.join('dude', 'volofile')));
-                    t.is(false, path.existsSync(path.join('dude', 'sample.template')));
+                    t.is(true, file.exists(outputPath));
+                    t.is(false, file.exists(path.join('dude', 'volofile')));
+                    t.is(false, file.exists(path.join('dude', 'sample.template')));
                     t.is('Hello fred. Your code is blue', fs.readFileSync(outputPath, 'utf8'));
                 }
             ]

@@ -38,7 +38,7 @@ end = start.promise.then(function () {
         [
             function fullSimple(t) {
                 var comparePath = path.join('compareType.txt');
-                t.is(true, path.existsSync(comparePath));
+                t.is(true, file.exists(comparePath));
                 t.is('function', fs.readFileSync(comparePath, 'utf8'));
             }
         ]
@@ -61,7 +61,7 @@ end = start.promise.then(function () {
         [
             function fullLegacy01(t) {
                 var resultsPath = path.join('results.txt');
-                t.is(true, path.existsSync(resultsPath));
+                t.is(true, file.exists(resultsPath));
                 t.is(fs.readFileSync(path.join(dir, 'expected', 'legacy01', 'results.txt'), 'utf8').trim(),
                      fs.readFileSync(resultsPath, 'utf8').trim());
             }

@@ -110,7 +110,7 @@ end = start.promise.then(function () {
                     var expected = fs.readFileSync('../support/simple/simple.js', 'utf8'),
                         output = fs.readFileSync('simple.js', 'utf8');
 
-                    t.is(true, path.existsSync('simple.js'));
+                    t.is(true, file.exists('simple.js'));
                     t.is(expected, output);
                 }
             ]
@@ -127,7 +127,7 @@ end = start.promise.then(function () {
                     var expected = fs.readFileSync('../expected/simpleAmd.js', 'utf8'),
                         output = fs.readFileSync('simpleAmd.js', 'utf8');
 
-                    t.is(true, path.existsSync('simpleAmd.js'));
+                    t.is(true, file.exists('simpleAmd.js'));
                     t.is(expected, output);
                 }
             ]
@@ -145,7 +145,7 @@ end = start.promise.then(function () {
                     var expected = fs.readFileSync('../support/addable/temp/a.js', 'utf8'),
                         output = fs.readFileSync('addable/a.js', 'utf8');
 
-                    t.is(false, path.existsSync('addable/temp'));
+                    t.is(false, file.exists('addable/temp'));
                     t.is(expected, output);
                 }
             ]
@@ -160,7 +160,7 @@ end = start.promise.then(function () {
         doh.register("addRepoPackageJsonOverride",
             [
                 function addOnAdd(t) {
-                    t.is(true, path.existsSync('three.js'));
+                    t.is(true, file.exists('three.js'));
                 }
             ]
         );

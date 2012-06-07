@@ -35,7 +35,7 @@ end = start.promise.then(function () {
             [
                 function volofileSimple(t) {
                     var universalPath = path.join('universal.txt');
-                    t.is(true, path.existsSync(universalPath));
+                    t.is(true, file.exists(universalPath));
                     t.is('galacticModified is backlit', fs.readFileSync(universalPath, 'utf8'));
                 }
             ]

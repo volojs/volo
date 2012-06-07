@@ -77,7 +77,7 @@ main = {
             return new Error('A target file needs to be specified');
         }
 
-        if (!path.existsSync(target)) {
+        if (!file.exists(target)) {
             return new Error(target + ' does not exist!');
         }
 
@@ -153,7 +153,7 @@ main = {
             mainPath = path.join(targetFileName.replace(jsSuffixRegExp, ''),
                                  mainName + '.js');
 
-            if (path.existsSync(mainPath)) {
+            if (file.exists(mainPath)) {
                 //Add in adapter module for AMD code
                 contents = "define(['" + localName + "/" + mainName +
                            "'], function (main) {\n" +

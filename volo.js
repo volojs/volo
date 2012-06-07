@@ -12,9 +12,10 @@ var commands = require('./lib/commands'),
     config = require('./lib/config').get(),
     volofile = require('./lib/volofile'),
     path = require('path'),
+    exists = require('./lib/exists'),
     q = require('q'),
 
-    version = '0.2.0.pre-shim-branch';
+    version = '0.2.0pre';
 
 function main(args, callback, errback) {
     var deferred = q.defer(),
@@ -105,7 +106,7 @@ function main(args, callback, errback) {
         }
     }
 
-    if (!commandOverride && path.existsSync(path.resolve(cwd, 'volofile'))) {
+    if (!commandOverride && exists(path.resolve(cwd, 'volofile'))) {
         volofile(cwd).then(function (voloMod) {
             //Set up default command name if none specified.
             commandName = commandName || 'run';
