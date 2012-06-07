@@ -1,0 +1,8 @@
+{
+    "volo": {
+        "dependencies": {
+            "d": "../../support/localModules/d",
+            "e": "../../support/localModules/e"
+        }
+    }
+}

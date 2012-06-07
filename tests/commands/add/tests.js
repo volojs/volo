@@ -56,6 +56,50 @@ end = start.promise.then(function () {
     process.chdir('..');
 })
 
+
+//Test add of packages in a package.json.
+.then(function () {
+    fs.mkdirSync('addAll');
+    process.chdir('addAll');
+
+    file.copyFile('../../support/addAll/package.json', 'package.json');
+
+    return main(['add'], function (result) {
+        console.log(result);
+        doh.register("addAll",
+            [
+                function recursiveAdd(t) {
+
+                    var expected = fs.readFileSync('../../support/localModules/d/d.js', 'utf8'),
+                        output = fs.readFileSync('d.js', 'utf8');
+                    t.is(expected, output, 'd.js');
+
+                    expected = fs.readFileSync('../../support/localModules/a/a.js', 'utf8');
+                    output = fs.readFileSync('a.js', 'utf8');
+                    t.is(expected, output, 'a.js');
+
+                    expected = fs.readFileSync('../../support/localModules/b/b.js', 'utf8');
+                    output = fs.readFileSync('b.js', 'utf8');
+                    t.is(expected, output, 'b.js');
+
+                    expected = fs.readFileSync('../../support/localModules/c/c.js', 'utf8');
+                    output = fs.readFileSync('c.js', 'utf8');
+                    t.is(expected, output, 'c.js');
+
+                    expected = fs.readFileSync('../../support/localModules/e/e.js', 'utf8');
+                    output = fs.readFileSync('e.js', 'utf8');
+                    t.is(expected, output, 'e.js');
+                }
+            ]
+        );
+        doh.run();
+    });
+})
+.then(function (result) {
+    process.chdir('..');
+})
+
+
 /*
 .then(function () {
     return main(['add', '../support/simple'], function (result) {

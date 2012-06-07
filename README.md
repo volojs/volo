@@ -24,7 +24,7 @@ corners, but it is already fun to use.
 volo requires Node to run. Node includes [npm](http://npmjs.org/),
 a package manager for node code. To install volo:
 
-    npm install volo
+    npm install -g volo
 
 ## Usage
 

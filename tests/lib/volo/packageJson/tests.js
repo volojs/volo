@@ -83,7 +83,7 @@ end = start.promise.then(function () {
                 //Test file, but no comment or package.json
                 result = packageJson(path.join(outputDir, 'hasJsNoComment'));
                 t.is(null, result.data);
-                t.is(path.join(outputDir, 'hasJsNoComment', 'lib.js'), result.file);
+                t.is(null, result.file);
 
                 //Test no package.json and too many .js files
                 result = packageJson(path.join(outputDir, 'tooManyJs'));

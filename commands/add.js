@@ -52,6 +52,7 @@ add = {
                     ((pkg.data.volo && pkg.data.volo.baseDir) ||
                      (pkg.data.volo && pkg.data.volo.baseUrl) ||
                      (pkg.data.amd && pkg.data.amd.baseUrl)),
+            groupMessage = '',
             existingPath, tempDirName, linkPath, linkStat, linkTarget,
             info, targetDirName, depPackageInfo, groupAddResult;
 
@@ -64,10 +65,15 @@ add = {
             deferred.reject(err);
         }
 
+        //Save the top level package.json for use in archive name tracking
+        if (!namedArgs.masterPackageJson) {
+            namedArgs.masterPackageJson = pkg;
+        }
+
         if (!archiveName) {
             //Try the package.json.
-            archiveName = (pkg.data.volo && pkg.data.volo.deps) ||
-                          (pkg.data.volo && pkg.data.browser.deps);
+            archiveName = (pkg.data.volo && pkg.data.volo.dependencies) ||
+                          (pkg.data.browser && pkg.data.browser.dependencies);
             if (!archiveName) {
                 return deferred.reject(new Error('Please specify an archive name or an URL.'));
             }
@@ -79,13 +85,18 @@ add = {
             //one.
             groupAddResult = q.resolve();
             Object.keys(archiveName).forEach(function (key) {
-                groupAddResult = groupAddResult.then(function () {
+                groupAddResult = groupAddResult.then(function (text) {
+                    groupMessage += text ? '\n' + text : '';
                     var localD = q.defer();
                     add.run(localD, v, namedArgs, archiveName[key], key);
                     return localD.promise;
                 });
             });
-            return deferred.resolve(groupAddResult);
+
+            return deferred.resolve(groupAddResult.then(function (text) {
+                groupMessage += text ? '\n' + text : '';
+                return groupMessage;
+            }));
         }
 
         archive.resolve(archiveName, namedArgs.volo.resolve, {
@@ -422,13 +433,14 @@ add = {
                                 //Refresh first since it may have changed
                                 //from other dependency installs/onAdd
                                 //behavior.
-                                if (!namedArgs.nostamp) {
-                                    pkg.refresh();
-                                    if (!pkg.isSingleFile && pkg.data) {
-                                        pkg.addVoloDep(archiveInfo.finalLocalName,
-                                                        archiveInfo.id);
-                                    }
-                                    pkg.save();
+                                if (!namedArgs.nostamp &&
+                                    !namedArgs.masterPackageJson.isSingleFile &&
+                                    namedArgs.masterPackageJson.data) {
+
+                                    namedArgs.masterPackageJson.refresh();
+                                    namedArgs.masterPackageJson.addVoloDep(archiveInfo.finalLocalName,
+                                                    archiveInfo.id);
+                                    namedArgs.masterPackageJson.save();
                                 }
                             }).then(function (amdMessage) {
                                 //All done.
