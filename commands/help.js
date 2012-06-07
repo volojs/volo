@@ -16,30 +16,17 @@ help = {
 
     doc: '##Usage\n\n    volo help commandName',
 
-    validate: function (namedArgs, commandName) {
-        if (!commandName) {
-            return new Error('Please specify a command name to get its help docs.');
-        }
-
-        if (!commands.have(commandName)) {
-            return new Error(commandName + ' command does not exist. Do ' +
-                             'you need to *acquire* it?');
-        }
-        return undefined;
-    },
-
-    run: function (deferred, v, namedArgs, commandName) {
-        var command = commands.get(commandName),
-            doc;
-        if (command) {
-            command = commands.get(commandName);
-            doc = command.doc || command.summary ||
+    run: function (d, v, namedArgs, commandName) {
+        commands.get(commandName).then(function (command) {
+            var doc;
+            if (command) {
+                doc = command.doc || command.summary ||
                       commandName + ' does not have any documentation.';
-
-            deferred.resolve(doc);
-        } else {
-            deferred.reject('Command is not known: ' + commandName);
-        }
+                d.resolve(doc);
+            } else {
+                d.reject('Unknown command: ' + commandName);
+            }
+        }).fail(d.reject);
     }
 };
 

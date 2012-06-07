@@ -75,6 +75,12 @@ function main(args, callback, errback) {
 
     combinedArgs = [namedArgs].concat(aryArgs);
 
+    //Global flag override for help
+    if (flags.indexOf('h') !== -1 || flags.indexOf('help') !== -1) {
+        combinedArgs = [namedArgs].concat([commandName]);
+        commandName = 'help';
+    }
+
     //Function to run after the command object has been loaded, either
     //by a volofile or by installed volo actions.
     function runCommand(command) {
@@ -91,19 +97,20 @@ function main(args, callback, errback) {
 
     //Tries to run the command from the top, not from a local volofile.
     function runTopCommand() {
-        if (commands.have(commandName)) {
-            //a volo command is available, run it.
-            runCommand(commands.get(commandName));
-        } else {
-            //Show usage info.
-            commands.list(function (message) {
-                deferred.resolve(path.basename(process.argv[1]) +
-                                ' v' + version +
-                                ', a JavaScript tool to make ' +
-                                'JavaScript projects. Allowed commands:\n\n' +
-                                message);
-            });
-        }
+        commands.get(commandName).then(function (command) {
+            if (command) {
+                runCommand(command);
+            } else {
+                //Show usage info.
+                commands.list().then(function (message) {
+                    deferred.resolve(path.basename(process.argv[1]) +
+                                    ' v' + version +
+                                    ', a JavaScript tool to make ' +
+                                    'JavaScript projects. Allowed commands:\n\n' +
+                                    message);
+                }).fail(deferred.reject);
+            }
+        }).fail(deferred.reject);
     }
 
     if (!commandOverride && exists(path.resolve(cwd, 'volofile'))) {
