@@ -74,6 +74,7 @@ To work well with volo, here are some tips on how to structure your library code
 * [Design goals](https://github.com/volojs/volo/wiki/Design-Goals)
 * [Prior Art](https://github.com/volojs/volo/wiki/Prior-Art): npm, cpm, bpm.
 * [Create a volo command](https://github.com/volojs/volo/wiki/Creating-a-volo-command)
+* [Create a volofile](https://github.com/volojs/volo/wiki/Creating-a-volofile)
 * License: [MIT and new BSD](https://github.com/volojs/volo/blob/master/LICENSE).
 
 ## Engage
