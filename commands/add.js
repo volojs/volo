@@ -72,7 +72,7 @@ add = {
 
         if (!archiveName) {
             //Try the package.json.
-            archiveName = (pkg.data.volo && pkg.data.volo.dependencies) ||
+            archiveName = pkg.data && (pkg.data.volo && pkg.data.volo.dependencies) ||
                           (pkg.data.browser && pkg.data.browser.dependencies);
             if (!archiveName) {
                 return deferred.reject(new Error('Please specify an archive name or an URL.'));
@@ -247,16 +247,20 @@ add = {
                             deps, pkgType, overrideTypeName;
 
                         if (dirName) {
-                            if (!depPackageInfo) {
+                            if (depPackageInfo) {
+                                //Shim in info with the depPackageInfo. Favor
+                                //it since it came from the shim repo, or from
+                                //the same tag as the distributed source bundle
+                                info = {
+                                    data: depPackageInfo
+                                };
+                            } else {
                                 info = packageJson(dirName);
-                                if (info.data) {
-                                    depPackageInfo = info.data;
-                                }
                             }
 
-                            if (depPackageInfo) {
-                                mainFile = depPackageInfo.main;
-                                pkgType = depPackageInfo.volo && depPackageInfo.volo.type;
+                            if (info.data) {
+                                mainFile = info.data.main;
+                                pkgType = info.data.volo && info.data.volo.type;
                             }
 
                             if (!pkgType && archiveInfo.scheme === 'github') {
@@ -406,9 +410,9 @@ add = {
                                 return undefined;
                             }).then(function () {
                                 //Now install any dependencies.
-                                var packageDeps = depPackageInfo &&
-                                                 ((depPackageInfo.volo && depPackageInfo.volo.dependencies) ||
-                                                 (depPackageInfo.browser && depPackageInfo.browser.dependencies)),
+                                var packageDeps = info.data &&
+                                                 ((info.data.volo && info.data.volo.dependencies) ||
+                                                 (info.data.browser && info.data.browser.dependencies)),
                                     depDeferred = q.defer();
 
                                 if (packageDeps) {

@@ -136,6 +136,40 @@ end = start.promise.then(function () {
     });
 })
 */
+
+/*
+.then(function () {
+    return main(['add', 'volojs/test-package-download'], function (result) {
+        console.log(result);
+        doh.register("addSingleFileFromGitHubDownloadZip",
+            [
+                function addSingleFileFromGitHubDownloadZip(t) {
+                    t.is(true, file.exists('test-package-download.js'));
+                    t.is(false, file.exists('test-package-download'));
+                }
+            ]
+        );
+        doh.run();
+    });
+})
+*/
+.then(function () {
+    return main(['add', '-amd', 'volojs/test-directory-main'], function (result) {
+        console.log(result);
+        doh.register("addDirectoryWithMain",
+            [
+                function addDirectoryWithMain(t) {
+                    t.is(true, file.exists('test-directory-main.js'), 'main.js shim');
+                    t.is(true, file.exists('test-directory-main'), 'directory exists');
+                    t.is(true, file.exists('test-directory-main/main.js'), 'main.js exists');
+                }
+            ]
+        );
+        doh.run();
+    });
+})
+
+
 .then(function () {
     return main(['add', '-noprompt', '../support/addable'], function (result) {
         console.log(result);
