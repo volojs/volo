@@ -72,8 +72,8 @@ add = {
 
         if (!archiveName) {
             //Try the package.json.
-            archiveName = pkg.data && (pkg.data.volo && pkg.data.volo.dependencies) ||
-                          (pkg.data.browser && pkg.data.browser.dependencies);
+            archiveName = pkg.data && ((pkg.data.volo && pkg.data.volo.dependencies) ||
+                          (pkg.data.browser && pkg.data.browser.dependencies));
             if (!archiveName) {
                 return deferred.reject(new Error('Please specify an archive name or an URL.'));
             }

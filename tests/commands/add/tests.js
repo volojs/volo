@@ -153,6 +153,25 @@ end = start.promise.then(function () {
     });
 })
 */
+
+//Tests #37, use of non-master master, and #41, use volo.url name, not repo name.
+.then(function () {
+    return main(['add', 'volojs/test-nomaster'], function (result) {
+        console.log(result);
+        doh.register("addNoMaster",
+            [
+                function addNoMaster(t) {
+                    t.is(true, file.exists('real.js'), 'real.js is there');
+                    t.is(false, file.exists('fake.js'), 'fake.js should not exist');
+                    t.is(false, file.exists('test-nomaster'), 'test-nomaster should not exist');
+                    t.is(false, file.exists('test-nomaster.js'), 'test-nomaster should not exist');
+                }
+            ]
+        );
+        doh.run();
+    });
+})
+
 .then(function () {
     return main(['add', '-amd', 'volojs/test-directory-main'], function (result) {
         console.log(result);
@@ -168,7 +187,6 @@ end = start.promise.then(function () {
         doh.run();
     });
 })
-
 
 .then(function () {
     return main(['add', '-noprompt', '../support/addable'], function (result) {
