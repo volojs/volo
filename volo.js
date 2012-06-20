@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2011, The Dojo Foundation All Rights Reserved.
+ * @license Copyright (c) 2011-2012, The Dojo Foundation All Rights Reserved.
  * Available via the MIT or new BSD license.
  * see: http://github.com/volojs/volo for details
  */
@@ -15,7 +15,7 @@ var commands = require('./lib/commands'),
     exists = require('./lib/exists'),
     q = require('q'),
 
-    version = '0.2.0';
+    version = '0.2.0+';
 
 function main(args, callback, errback) {
     var deferred = q.defer(),
