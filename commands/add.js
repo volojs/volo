@@ -314,6 +314,12 @@ add = {
                                     sourceName = path.join(dirName, listing[0]);
                                     defaultName = listing[0];
                                     ext = path.extname(sourceName);
+
+                                    //Update the finalLocalName since it will
+                                    //be different now.
+                                    archiveInfo.finalLocalName = ext ?
+                                        defaultName.substring(0, defaultName.lastIndexOf(ext)) :
+                                        defaultName;
                                 } else {
                                     //packageJson will look for one top level .js
                                     //file, and if so, and has package data via
