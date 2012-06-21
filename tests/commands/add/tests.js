@@ -190,6 +190,43 @@ end = start.promise.then(function () {
     });
 })
 
+//Tests #59, content-type check the volo.url, and if an archive, handle
+//appropriately.
+.then(function () {
+    return main(['add', 'volojs/test-master-download'], function (result) {
+        console.log(result);
+        doh.register("addMasterDownload",
+            [
+                function addMasterDownload(t) {
+                    t.is(true, file.exists('test-master-download.js'), 'test-master-download.js is there');
+                    t.is(false, file.exists('master'), 'master should not exist');
+                    t.is(false, file.exists('test-master-download'), 'test-master-download should not exist');
+                }
+            ]
+        );
+        doh.run();
+    });
+})
+
+//Tests #59, content-type check the volo.url, and if an archive, handle
+//appropriately, even when it has a fragment ID in the URL for a specific file.
+.then(function () {
+    return main(['add', 'volojs/test-master-downloadfragment'], function (result) {
+        console.log(result);
+        doh.register("addMasterDownloadFragment",
+            [
+                function addMasterDownloadFragment(t) {
+                    t.is(true, file.exists('one.js'), 'one.js is there');
+                    t.is(false, file.exists('master'), 'master should not exist');
+                    t.is(false, file.exists('test-master-downloadfragment'), 'test-master-downloadfragment should not exist');
+                }
+            ]
+        );
+        doh.run();
+    });
+})
+
+
 .then(function () {
     return main(['add', '-amd', 'volojs/test-directory-main'], function (result) {
         console.log(result);
