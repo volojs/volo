@@ -15,6 +15,7 @@ var fs = require('fs'),
     parse = require('../lib/parse'),
     file = require('../lib/file'),
     net = require('../lib/net'),
+    packageJson = require('../lib/packageJson'),
     github = require('../lib/github'),
     templatePath = path.join(__dirname, 'amdify'),
     template = fs.readFileSync(path.join(templatePath, 'template.js'), 'utf8'),
@@ -136,22 +137,14 @@ main = {
 
     api: {
         makeMainAmdAdapter: function (mainValue, localName, targetFileName) {
-            //Trim off any leading dot and file
-            //extension, if they exist.
             var mainName = mainValue
-                           .replace(/^\.\//, '')
-                           .replace(jsSuffixRegExp, ''),
-            mainPath, contents;
-
-            //Some packages use a main of "." to mean "index.js" in this
-            //directory.
-            if (mainName === '.') {
-                mainName = "index";
-            }
+                   .replace(/^\.\//, '')
+                   .replace(jsSuffixRegExp, ''),
+                mainPath, contents;
 
             //Make sure the main file exists.
-            mainPath = path.join(targetFileName.replace(jsSuffixRegExp, ''),
-                                 mainName + '.js');
+            mainPath = packageJson.resolveMainPath(targetFileName.replace(jsSuffixRegExp, ''),
+                                                   mainValue);
 
             if (file.exists(mainPath)) {
                 //Add in adapter module for AMD code

@@ -53,8 +53,9 @@ add = {
                      (pkg.data.volo && pkg.data.volo.baseUrl) ||
                      (pkg.data.amd && pkg.data.amd.baseUrl)),
             groupMessage = '',
+            alreadyUsesAmd = false,
             existingPath, tempDirName, linkPath, linkStat, linkTarget,
-            info, targetDirName, depPackageInfo, groupAddResult;
+            info, targetDirName, depPackageInfo, groupAddResult, mainPath;
 
         //Function used to clean up in case of errors.
         function errCleanUp(err) {
@@ -395,11 +396,22 @@ add = {
                                     makeMainAmdAdapter(info.data.main,
                                                        archiveInfo.finalLocalName,
                                                        targetName + '.js');
+
+                                    //Check to see if the main file already uses
+                                    //AMD, and if so, skip the AMD conversion in
+                                    //the next step.
+                                    mainPath = packageJson.resolveMainPath(targetName,
+                                                                info.data.main);
+
+                                    if (file.exists(mainPath)) {
+                                        alreadyUsesAmd = !!parse.usesAmdOrRequireJs(mainPath,
+                                                                                    file.readFile(mainPath));
+                                    }
                                 }
                             }
 
                             q.call(function () {
-                                if (isAmdProject && !namedArgs.amdoff) {
+                                if (isAmdProject && !namedArgs.amdoff && !alreadyUsesAmd) {
                                     var damd = q.defer();
 
                                     //Add owner/repo info to the amdify call,
@@ -413,7 +425,6 @@ add = {
                                     amdify.run.apply(amdify, [damd, v, namedArgs, targetName]);
                                     return damd.promise;
                                 }
-                                return undefined;
                             }).then(function () {
                                 //Now install any dependencies.
                                 var packageDeps = info.data &&
