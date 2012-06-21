@@ -172,6 +172,24 @@ end = start.promise.then(function () {
     });
 })
 
+//Tests #56, use default branch's package.json if a version tag does not have
+//one.
+.then(function () {
+    return main(['add', 'volojs/test-noversionjson'], function (result) {
+        console.log(result);
+        doh.register("addNoVersionJson",
+            [
+                function addNoVersionJson(t) {
+                    t.is(true, file.exists('lib.js'), 'lib.js is there');
+                    t.is(false, file.exists('fake.js'), 'fake.js should not exist');
+                    t.is(false, file.exists('test-noversionjson'), 'test-noversionjson should not exist');
+                }
+            ]
+        );
+        doh.run();
+    });
+})
+
 .then(function () {
     return main(['add', '-amd', 'volojs/test-directory-main'], function (result) {
         console.log(result);
