@@ -15,7 +15,7 @@ var commands = require('./lib/commands'),
     exists = require('./lib/exists'),
     q = require('q'),
 
-    version = '0.2.1';
+    version = '0.2.1+';
 
 function main(args, callback, errback) {
     var deferred = q.defer(),

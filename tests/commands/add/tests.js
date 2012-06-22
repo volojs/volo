@@ -226,6 +226,20 @@ end = start.promise.then(function () {
     });
 })
 
+//Tests #60, volo add url
+.then(function () {
+    return main(['add', 'https://github.com/jashkenas/coffee-script/raw/master/extras/coffee-script.js'], function (result) {
+        console.log(result);
+        doh.register("addUrl",
+            [
+                function addUrl(t) {
+                    t.is(true, file.exists('coffee-script.js'), 'coffee-script.js is there');
+                }
+            ]
+        );
+        doh.run();
+    });
+})
 
 .then(function () {
     return main(['add', '-amd', 'volojs/test-directory-main'], function (result) {
