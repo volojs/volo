@@ -8,9 +8,9 @@ commands for volo, and you can use commands others have created.
 
 By default, volo knows how to:
 
-* [create a new web project](https://github.com/volojs/volo/blob/master/vololib/create/doc.md)
-* [add scripts for a web project from the command line](https://github.com/volojs/volo/blob/master/vololib/add/doc.md)
-* [convert some scripts to AMD format](https://github.com/volojs/volo/blob/master/vololib/amdify/doc.md)
+* [create a new web project](https://github.com/volojs/volo/blob/master/commands/create/doc.md)
+* [add scripts for a web project from the command line](https://github.com/volojs/volo/blob/master/commands/add/doc.md)
+* [convert some scripts to AMD format](https://github.com/volojs/volo/blob/master/commands/amdify/doc.md)
 
 It is still very early in development. Lots may change and it has some sharp
 corners, but it is already fun to use.
