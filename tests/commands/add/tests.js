@@ -241,6 +241,21 @@ end = start.promise.then(function () {
     });
 })
 
+//Tests non-versioned local names: https://github.com/volojs/volo/issues/67
+.then(function () {
+    return main(['add', 'jquery/jquery'], function (result) {
+        console.log(result);
+        doh.register("addNoVersionLocalName",
+            [
+                function addNoVersionLocalName(t) {
+                    t.is(true, file.exists('jquery.js'), 'jquery.js is there with no version');
+                }
+            ]
+        );
+        doh.run();
+    });
+})
+
 .then(function () {
     return main(['add', '-amd', 'volojs/test-directory-main'], function (result) {
         console.log(result);
