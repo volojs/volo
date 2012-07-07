@@ -22,6 +22,7 @@ end = start.promise.then(function () {
                 var dirs = [
                        'hasFile',
                        'hasJs',
+                       'hasJsNpmStyle',
                        'hasJsNoComment',
                        'hasJsonFile',
                        'tooManyJs'
@@ -66,6 +67,11 @@ end = start.promise.then(function () {
                 t.is('dojo/dijit/1.7.2', result.data.volo.dependencies.dijit);
                 t.is(file.readFile(path.join(expectedDir, 'hasJsonFile', 'package.json')),
                      file.readFile(path.join(outputDir, 'hasJsonFile', 'package.json')));
+
+                //Test file comment, /**package  **/ npm style.
+                result = packageJson(path.join(outputDir, 'hasJsNpmStyle'));
+                t.is('nlib', result.data.name);
+                t.is('1.1', result.data.version);
 
                 //Test file comment
                 result = packageJson(path.join(outputDir, 'hasJs'));
