@@ -52,6 +52,25 @@ end = start.promise.then(function () {
         doh.run();
     });
 })
+
+//Test running npm before running onCreate: #68
+.then(function () {
+    return main(['create', 'dude2', '../support/hasNpmInstall'],
+        function (result) {
+        console.log(result);
+        doh.register("createHasNpmInstall",
+            [
+                function createHasNpmInstall(t) {
+                    var outputPath = path.join('dude2', 'ok.txt');
+                    t.is(true, file.exists(outputPath));
+                    t.is('ok', fs.readFileSync(outputPath, 'utf8'));
+                }
+            ]
+        );
+        doh.run();
+    });
+})
+
 .then(function (result) {
     process.chdir(cwd);
 });

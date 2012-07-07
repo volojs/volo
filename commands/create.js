@@ -4,8 +4,8 @@
  * see: http://github.com/volojs/volo for details
  */
 
-/*jslint node: true */
-/*global console, process */
+/*jslint node: true, nomen: true */
+/*global console */
 
 'use strict';
 
@@ -17,6 +17,8 @@ var fs = require('fs'),
     file = require('../lib/file'),
     download = require('../lib/download'),
     unzip = require('../lib/unzip'),
+    packageJson = require('../lib/packageJson'),
+    venv = require('../lib/v'),
     volofile = require('../lib/volofile'),
     create;
 
@@ -37,7 +39,10 @@ create = {
     run: function (d, v, namedArgs, appName, template) {
         template = template || 'volojs/create-template';
 
-        var archiveInfo, tempDirName, zipFileName;
+        var q = v.require('q'),
+            archiveInfo,
+            tempDirName,
+            zipFileName;
 
         //Function used to clean up in case of errors.
         function errCleanUp(err) {
@@ -52,13 +57,11 @@ create = {
         //Find out how to get the template
         q.call(function () {
             return archive.resolve(template, namedArgs.volo.resolve);
-        })
-        //Create a tempdir to store the archive.
-        .then(function (info) {
+        }).then(function (info) {
+            //Create a tempdir to store the archive.
             archiveInfo = info;
             return tempDir.create(template);
-        })
-        .then(function (tempName) {
+        }).then(function (tempName) {
             //Save the name for the outer errCleanUp to use later.
             tempDirName = tempName;
             zipFileName = path.join(tempDirName, 'template.zip');
@@ -88,6 +91,33 @@ create = {
                 return errCleanUp(new Error('Unexpected zipball configuration'));
             }
         }).then(function () {
+            //If there is a package.json with dependencies listed for install
+            //by npm, and there is no existing node_modules, then run npm.
+            var packageInfo = packageJson(appName),
+                vinstance,
+                currentDir,
+                d;
+
+            function done() {
+                process.chdir(currentDir);
+                d.resolve();
+            }
+
+            if (packageInfo.data && packageInfo.data.dependencies &&
+                    !file.exists(path.join(appName, 'node_modules'))) {
+
+                vinstance = venv(appName).env;
+                currentDir = process.cwd();
+                d = q.defer();
+                process.chdir(appName);
+
+                vinstance.shell('npm install', {
+                    useConsole: !namedArgs.quiet
+                }).then(done, done);
+
+                return d.promise;
+            }
+        }).then(function () {
             //If there is a volofile with an onCreate, run it.
             return volofile.run(appName, 'onCreate', namedArgs, appName)
                 .fail(function (err) {
@@ -99,8 +129,7 @@ create = {
         }).then(function (commandOutput) {
             return (commandOutput ? commandOutput + '\n' : '') +
                     archiveInfo.url + ' used to create ' + appName;
-        })
-        .then(d.resolve, function (err) {
+        }).then(d.resolve, function (err) {
             errCleanUp(err);
             d.reject(err);
         });

@@ -1,0 +1,13 @@
+/*jslint node: true */
+'use strict';
+
+module.exports = {
+    onCreate: function (d, v, namedArgs, appName) {
+        //Generate templatized output
+        if (v.exists('node_modules/volo-ghdeploy/index.js')) {
+            v.write('ok.txt', 'ok');
+        }
+
+        d.resolve();
+    }
+};
