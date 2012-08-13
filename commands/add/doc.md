@@ -1,6 +1,6 @@
 ## Usage
 
-    volo add [flags] archive [localName]
+    volo add [flags] [archive] [localName]
 
 where the allowed flags are:
 
@@ -37,9 +37,8 @@ where the allowed flags are:
   also checked when the "some/thing" archive name is used -- if there is no
   local file match, it is assumed to be a GitHub URL.
 
-If **archive** is missing from the command, then if a package.json in the
-current directory contains a **volo.dependencies** section, it will go through
-those dependencies and add them.
+If **archive is missing from the command**, then if a package.json in the
+current directory contains a **volo.dependencies** section, it will go through those dependencies and add all of them.
 
 If **localName** is specified then that name is used for the installed name.
 If the installed item is a directory, the directory will have this name. If
