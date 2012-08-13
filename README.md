@@ -1,19 +1,20 @@
 # volo
 
-A JavaScript dependency manager and project creation tool that favors GitHub
-for the package repository. Written in JavaScript for JavaScript.
+**Create** browser-based, front-end projects from project templates, and **add**
+dependencies by fetching them from GitHub. Once your project is set up,
+**automate** common tasks.
 
-The basic tool is a generic command completion tool -- you can create new
+volo is dependency manager and project creation tool that favors GitHub
+for the package repository.
+
+At its heart, volo is a generic command runner -- you can create new
 commands for volo, and you can use commands others have created.
 
 By default, volo knows how to:
 
 * [create a new web project](https://github.com/volojs/volo/blob/master/commands/create/doc.md)
 * [add scripts for a web project from the command line](https://github.com/volojs/volo/blob/master/commands/add/doc.md)
-* [convert some scripts to AMD format](https://github.com/volojs/volo/blob/master/commands/amdify/doc.md)
-
-It is still very early in development. Lots may change and it has some sharp
-corners, but it is already fun to use.
+* [automate project actions via volofiles](https://github.com/volojs/volo/wiki/Creating-a-volofile) and [reusable volo commands](https://github.com/volojs/volo/wiki/Creating-a-volo-command)
 
 ## Prerequisites
 
