@@ -27,6 +27,14 @@ a package manager for node code. To install volo:
 
     npm install -g volo
 
+If you get an error when running that command, and it contains this line somwhere in it:
+
+    npm ERR! Please try running this command again as root/Administrator.
+
+You will need to run the install via sudo:
+
+    sudo npm install -g volo
+
 ## Usage
 
 volo can use GitHub to retrieve code, so one of the core concepts when using
