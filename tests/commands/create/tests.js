@@ -71,6 +71,27 @@ end = start.promise.then(function () {
     });
 })
 
+//Make sure something that looks like a .git directory but is really not
+//gets copied over correctly: #68
+.then(function () {
+    return main(['create', 'funny', '../support/funnySubDirName'],
+        function (result) {
+        console.log(result);
+        doh.register("createFunnySubDirName",
+            [
+                function createFunnySubDirName(t) {
+                    var outputPath = path.join('funny', 'README.md');
+                    t.is(true, file.exists(outputPath));
+                    outputPath = path.join('funny', 'something.github.com', 'test.txt');
+                    t.is(true, file.exists(outputPath));
+                    t.is('success', fs.readFileSync(outputPath, 'utf8'));
+                }
+            ]
+        );
+        doh.run();
+    });
+})
+
 .then(function (result) {
     process.chdir(cwd);
 });
