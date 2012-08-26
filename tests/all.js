@@ -31,6 +31,7 @@ global.doh = doh;
 tests = [
     './lib/volo/packageJson/tests',
     './lib/volo/version',
+    './lib/volo/github',
     './commands/create/tests',
     './commands/add/tests',
     './commands/amdify/tests',
