@@ -304,6 +304,20 @@ end = start.promise.then(function () {
     });
 })
 .then(function () {
+    //Make sure extra dots in local name not trimmed: #74
+    return main(['add', 'jzaefferer/jquery-validation/1.9.0/#jquery.validate.js'], function (result) {
+        console.log(result);
+        doh.register("addExtraDotName",
+            [
+                function addExtraDotName(t) {
+                    t.is(true, file.exists('jquery.validate.js'));
+                }
+            ]
+        );
+        doh.run();
+    });
+})
+.then(function () {
     return main(['create', 'voloBaseUrl', '../support/voloBaseUrl'], function (result) {
         console.log(result);
         doh.register("voloBaseUrl",
