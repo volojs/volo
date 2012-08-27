@@ -336,6 +336,21 @@ end = start.promise.then(function () {
     });
 })
 
+.then(function () {
+    //Allow fragments to be directories #86
+    return main(['add', 'jquery/qunit#qunit'], function (result) {
+        console.log(result);
+        doh.register("addFragDir",
+            [
+                function addFragDir(t) {
+                    t.is(true, file.exists('qunit/qunit.js'));
+                    t.is(true, file.exists('qunit/qunit.css'));
+                }
+            ]
+        );
+        doh.run();
+    });
+})
 
 .then(function (result) {
     process.chdir(cwd);

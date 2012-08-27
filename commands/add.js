@@ -284,6 +284,10 @@ add = {
                                 //The whole directory should be kept,
                                 //not an individual source file.
                                 sourceName = null;
+                            } else if (archiveInfo.fragment) {
+                                //Only one file is wanted out of the archive.
+                                sourceName = path.join(dirName, archiveInfo.fragment);
+                                defaultName = path.basename(sourceName);
                             } else if (mainFile && v.exists(mainFile)) {
                                 //Read the main file. If it
                                 //calls define() and any of the dependencies
@@ -303,10 +307,6 @@ add = {
                                     sourceName = mainFile;
                                     defaultName = path.basename(mainFile);
                                 }
-                            } else if (archiveInfo.fragment) {
-                                //Only one file is wanted out of the archive.
-                                sourceName = path.join(dirName, archiveInfo.fragment);
-                                defaultName = path.basename(sourceName);
                             } else {
                                 //If the directory only contains one file, then
                                 //that is the install target.
