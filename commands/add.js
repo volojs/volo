@@ -41,7 +41,8 @@ add = {
         'amdoff': 'amdoff',
         'amdlog': 'amdlog',
         'noprompt': 'noprompt',
-        'nostamp': 'nostamp'
+        'nostamp': 'nostamp',
+        'skipexists': 'skipexists'
     },
 
     run: function (deferred, v, namedArgs, archiveName, specificLocalName) {
@@ -178,8 +179,12 @@ add = {
                     }
 
                     if (existingPath && !namedArgs.force) {
-                        return deferred.resolve(existingPath + ' already exists. To ' +
-                                'overwrite, pass -f to the command');
+                        if (namedArgs.skipexists) {
+                            return deferred.resolve();
+                        } else {
+                            return deferred.resolve(existingPath + ' already exists. To ' +
+                                    'overwrite, pass -f to the command');
+                        }
                     }
 
                 } catch (e) {

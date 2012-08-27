@@ -16,6 +16,8 @@ where the allowed flags are:
   adding a non-AMD/non-CommonJS module to an AMD project.
 * -nostamp: Does not stamp the package.json in the directory that runs this
   command with the added dependency information.
+* -skipexists: If a dependency by that name already exists, just skip it without
+  informing it already exists.
 
 **archive** is in one of the following formats:
 

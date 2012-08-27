@@ -109,6 +109,21 @@ end = start.promise.then(function () {
     });
 })
 
+.then(function () {
+    return main(['create', 'addOnCreate', '../support/addOnCreate'], function (result) {
+        console.log(result);
+        doh.register("createAddOnCreate",
+            [
+                function createAddOnCreate(t) {
+                    t.is(true, file.exists('addOnCreate/js/jquery.js'), 'jquery.js exists');
+                    t.is(true, file.exists('addOnCreate/js/require.js'), 'require.js exists');
+                }
+            ]
+        );
+        doh.run();
+    });
+})
+
 .then(function (result) {
     process.chdir(cwd);
 });

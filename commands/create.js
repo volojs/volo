@@ -22,6 +22,26 @@ var fs = require('fs'),
     volofile = require('../lib/volofile'),
     create;
 
+//Changes directories, runs a function that returns a promise,
+//ignores the return value (pass or fail), resolves a promise regardless,
+//but transfers back to original dir.
+//returns a promise to be used by others.
+function withDir(targetDir, promiseGenerator) {
+    var currentDir = process.cwd(),
+        d = q.defer();
+
+    process.chdir(targetDir);
+
+    function done() {
+        process.chdir(currentDir);
+        d.resolve();
+    }
+
+    promiseGenerator().then(done, done);
+
+    return d.promise;
+}
+
 create = {
     summary: 'Creates a new web project.',
 
@@ -39,10 +59,8 @@ create = {
     run: function (d, v, namedArgs, appName, template) {
         template = template || 'volojs/create-template';
 
-        var q = v.require('q'),
-            archiveInfo,
-            tempDirName,
-            zipFileName;
+        var archiveInfo, tempDirName, zipFileName, packageInfo,
+            q = v.require('q');
 
         //Function used to clean up in case of errors.
         function errCleanUp(err) {
@@ -93,29 +111,33 @@ create = {
         }).then(function () {
             //If there is a package.json with dependencies listed for install
             //by npm, and there is no existing node_modules, then run npm.
-            var packageInfo = packageJson(appName),
-                vinstance,
-                currentDir,
-                d;
+            var vinstance;
 
-            function done() {
-                process.chdir(currentDir);
-                d.resolve();
-            }
+            packageInfo = packageJson(appName);
 
             if (packageInfo.data && packageInfo.data.dependencies &&
                     !file.exists(path.join(appName, 'node_modules'))) {
 
                 vinstance = venv(appName).env;
-                currentDir = process.cwd();
-                d = q.defer();
-                process.chdir(appName);
-
-                vinstance.shell('npm install', {
-                    useConsole: !namedArgs.quiet
-                }).then(done, done);
-
-                return d.promise;
+                return withDir(appName, function () {
+                    return vinstance.shell('npm install', {
+                        useConsole: !namedArgs.quiet
+                    });
+                });
+            }
+        }).then(function () {
+            if (packageInfo && packageInfo.data && packageInfo.data.volo &&
+                    packageInfo.data.volo.dependencies) {
+                //Run `volo add` to install any dependencies that are missing.
+                return withDir(appName, function () {
+                    return require('../volo')(['add', '-skipexists'])
+                        .then(function (result) {
+                            //Log result if appropriate.
+                            if (!namedArgs.quiet) {
+                                console.log(result);
+                            }
+                        });
+                });
             }
         }).then(function () {
             //If there is a volofile with an onCreate, run it.
