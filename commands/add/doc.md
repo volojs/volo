@@ -19,6 +19,9 @@ where the allowed flags are:
 
 **archive** is in one of the following formats:
 
+* searchterm: GitHub search is used to resolve searchterm to a user/repo value.
+* searchterm/version: GitHub search is used to resolve searchterm to a user/repo
+  value, then version is added to it. version can be a semantic version range.
 * user/repo: Download the zip file from GitHub for the user/repo, using the
   latest version tag, or "master" if no version tags.
 * user/repo/tag: Download the zip file from GitHub for the user/repo, using the
@@ -35,12 +38,13 @@ where the allowed flags are:
 * symlink:path/to/directory/or/file.js: Creates a symlink to the specific
   location in the project. If it is a directory and the project using the
   directory is an AMD project, an adapter module will also be created.
-* local:paht/to/directory: Copies the local directory. A local directory is
+* local:path/to/directory: Copies the local directory. A local directory is
   also checked when the "some/thing" archive name is used -- if there is no
   local file match, it is assumed to be a GitHub URL.
 
 If **archive is missing from the command**, then if a package.json in the
-current directory contains a **volo.dependencies** section, it will go through those dependencies and add all of them.
+current directory contains a **volo.dependencies** section, it will go through
+those dependencies and add all of them.
 
 If **localName** is specified then that name is used for the installed name.
 If the installed item is a directory, the directory will have this name. If

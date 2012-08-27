@@ -92,6 +92,23 @@ end = start.promise.then(function () {
     });
 })
 
+.then(function () {
+    return main(['create', 'voloBaseUrl', '../support/voloBaseUrl'], function (result) {
+        console.log(result);
+        doh.register("voloBaseUrl",
+            [
+                function voloBaseUrl(t) {
+                    var expected = fs.readFileSync('../support/simple/simple.js', 'utf8'),
+                        output = fs.readFileSync('voloBaseUrl/funkyBaseUrl/simple.js', 'utf8');
+
+                    t.is(expected, output);
+                }
+            ]
+        );
+        doh.run();
+    });
+})
+
 .then(function (result) {
     process.chdir(cwd);
 });
