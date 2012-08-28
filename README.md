@@ -100,7 +100,7 @@ To do development with volo:
     cd volo
     npm link
 
-The `npm link` command will set up a global connection for volo, so that you
+The `npm link` command will set up a global link for volo, so that you
 will now be using this source form of volo when you type volo commands. Since
 it changes the global environment, you may need to type `sudo npm link`.
 
@@ -119,4 +119,5 @@ On Windows, in a git-bash shell:
     cd tests
     ./all.js
 
-Runs the tests. You will need a network connection and GitHub to run the tests.
+Runs the tests. You will need a network connection with access to GitHub to run
+the tests.
