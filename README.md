@@ -91,3 +91,32 @@ To work well with volo, here are some tips on how to structure your library code
 * [Discussion list](http://groups.google.com/group/volojs)
 * [File an issue](https://github.com/volojs/volo/issues)
 * [Working with the volo code](https://github.com/volojs/volo/blob/master/docs/workingWithCode.md)
+
+## Development
+
+To do development with volo:
+
+    git clone https://github.com/volojs/volo.git
+    cd volo
+    npm link
+
+The `npm link` command will set up a global connection for volo, so that you
+will now be using this source form of volo when you type volo commands. Since
+it changes the global environment, you may need to type `sudo npm link`.
+
+## Debugging
+
+On OS X/Linux/Unix:
+
+    node --debug-brk `which volo`
+
+On Windows, in a git-bash shell:
+
+    node --debug-brk "`dirname "\`which volo\`"`/node_modules/volo/bin/volo"
+
+## Running Tests
+
+    cd tests
+    ./all.js
+
+Runs the tests. You will need a network connection and GitHub to run the tests.
