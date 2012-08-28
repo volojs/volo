@@ -5,7 +5,7 @@
  */
 
 
-/*jslint node: true */
+/*jslint node: true, nomen: true, regexp: true */
 /*global console, process */
 
 
@@ -15,6 +15,7 @@ var fs = require('fs'),
     path = require('path'),
     q = require('q'),
     config = require('../lib/config').get(),
+    lang = require('../lib/lang'),
     myConfig = config.command.add,
     archive = require('../lib/archive'),
     download = require('../lib/download'),
@@ -46,17 +47,17 @@ add = {
     },
 
     run: function (deferred, v, namedArgs, archiveName, specificLocalName) {
-        var pkg = packageJson('.', { create: true }),
+        var existingPath, tempDirName, linkPath, linkStat, linkTarget,
+            info, targetDirName, depPackageInfo, groupAddResult, mainPath,
+            pkg = packageJson('.', { create: true }),
             isAmdProject = !!(namedArgs.amd || (pkg.data && pkg.data.amd)),
             baseUrl = pkg.data &&
-                    //Favor volo.baseDir over volo.baseUrl over amd.baseUrl
-                    ((pkg.data.volo && pkg.data.volo.baseDir) ||
-                     (pkg.data.volo && pkg.data.volo.baseUrl) ||
-                     (pkg.data.amd && pkg.data.amd.baseUrl)),
+            //Favor volo.baseDir over volo.baseUrl over amd.baseUrl
+            ((pkg.data.volo && pkg.data.volo.baseDir) ||
+            (pkg.data.volo && pkg.data.volo.baseUrl) ||
+            (pkg.data.amd && pkg.data.amd.baseUrl)),
             groupMessage = '',
-            alreadyUsesAmd = false,
-            existingPath, tempDirName, linkPath, linkStat, linkTarget,
-            info, targetDirName, depPackageInfo, groupAddResult, mainPath;
+            alreadyUsesAmd = false;
 
         //Function used to clean up in case of errors.
         function errCleanUp(err) {
@@ -104,6 +105,7 @@ add = {
         archive.resolve(archiveName, namedArgs.volo.resolve, {
             amd: isAmdProject && !namedArgs.amdoff
         }).then(function (archiveInfo) {
+            var installedId, parentId;
 
             //If no baseUrl, then look for an existing js directory
             if (!baseUrl) {
@@ -182,8 +184,38 @@ add = {
                         if (namedArgs.skipexists) {
                             return deferred.resolve();
                         } else {
-                            return deferred.resolve(existingPath + ' already exists. To ' +
-                                    'overwrite, pass -f to the command');
+                            //File already exists. Compare info in package.json
+                            //with what was fetched. If they are incompatible,
+                            //mention how.
+                            installedId = namedArgs.masterPackageJson.data;
+                            installedId = installedId && installedId.volo &&
+                                         installedId.volo.dependencies;
+                            installedId = installedId[archiveInfo.finalLocalName];
+
+                            if (installedId) {
+                                if (installedId === archiveInfo.id) {
+                                    //Have a match, already installed, so just
+                                    //resolve with no message.
+                                    return deferred.resolve();
+                                } else {
+                                    parentId = namedArgs._parentId;
+                                    return deferred.resolve('MISMATCH: ' +
+                                            (parentId ? parentId + ' t' : 'T') +
+                                            'ried to add ' +
+                                            archiveInfo.id +
+                                            ', but ' + installedId +
+                                            ' already at ' +
+                                            existingPath + '. ' +
+                                            'To overwrite, run:\n' +
+                                            '    volo add -f ' + archiveInfo.id +
+                                            ' ' + archiveInfo.finalLocalName
+                                        );
+                                }
+                            } else {
+                                return deferred.resolve(existingPath +
+                                       ' already exists. To ' +
+                                       'overwrite, pass -f to the command');
+                            }
                         }
                     }
 
@@ -195,10 +227,10 @@ add = {
                 tempDir.create(archiveInfo.finalLocalName).then(function (newTempDir) {
                     tempDirName = newTempDir;
 
-                    var url = archiveInfo.url,
-                        localName = archiveInfo.finalLocalName,
-                        index, lastDotIndex, urlBaseName,
-                        ext, urlDir, zipName, downloadTarget, downloadPath;
+                    var index, lastDotIndex, urlBaseName,
+                        ext, urlDir, zipName, downloadTarget, downloadPath,
+                        url = archiveInfo.url,
+                        localName = archiveInfo.finalLocalName;
 
                     //Find extension, but only take the last part of path for it.
                     index = url.lastIndexOf('/');
@@ -218,12 +250,12 @@ add = {
 
                     if (archiveInfo.isArchive) {
                         return download(url, path.join(tempDirName, downloadTarget))
-                        .then(function () {
-                            //Unpack the zip file.
-                            zipName = path.join(tempDirName, localName +
-                                                '.zip');
-                            return unzip(zipName);
-                        }, errCleanUp);
+                            .then(function () {
+                                //Unpack the zip file.
+                                zipName = path.join(tempDirName, localName +
+                                                    '.zip');
+                                return unzip(zipName);
+                            }, errCleanUp);
                     } else {
                         if (archiveInfo.isSingleFile) {
                             //Single file install.
@@ -245,12 +277,12 @@ add = {
                     //location.
                     try {
                         //Find the directory that was unpacked in tempDirName
-                        var dirName = file.firstDir(tempDirName),
-                            completeMessage = '',
-                            ext = '',
-                            info, sourceName, targetName,
+                        var info, sourceName, targetName,
                             listing, defaultName, mainFile, mainContents,
-                            deps, pkgType, overrideTypeName;
+                            deps, pkgType, overrideTypeName,
+                            dirName = file.firstDir(tempDirName),
+                            completeMessage = '',
+                            ext = '';
 
                         if (dirName) {
                             if (depPackageInfo) {
@@ -305,8 +337,8 @@ add = {
                                            mainContents);
                                 }
                                 if (deps && deps.some(function (dep) {
-                                    return dep.indexOf('.') === 0;
-                                })) {
+                                        return dep.indexOf('.') === 0;
+                                    })) {
                                     sourceName = null;
                                 } else {
                                     sourceName = mainFile;
@@ -324,8 +356,8 @@ add = {
                                     //Update the finalLocalName since it will
                                     //be different now.
                                     archiveInfo.finalLocalName = ext ?
-                                        defaultName.substring(0, defaultName.lastIndexOf(ext)) :
-                                        defaultName;
+                                            defaultName.substring(0, defaultName.lastIndexOf(ext)) :
+                                            defaultName;
                                 } else {
                                     //packageJson will look for one top level .js
                                     //file, and if so, and has package data via
@@ -367,7 +399,7 @@ add = {
                                 //singleFileName, and if it already exists,
                                 //bail out.
                                 if (file.exists(targetName) &&
-                                    !namedArgs.force) {
+                                        !namedArgs.force) {
                                     completeMessage += 'Skipping installed of ' + targetName + ' already exists.' +
                                         ' To install anyway, pass -f to the ' +
                                         'command';
@@ -432,13 +464,16 @@ add = {
                                 }
                             }).then(function () {
                                 //Now install any dependencies.
-                                var packageDeps = info.data &&
+                                var localNamedArgs = {},
+                                    packageDeps = info.data &&
                                                  ((info.data.volo && info.data.volo.dependencies) ||
                                                  (info.data.browser && info.data.browser.dependencies)),
                                     depDeferred = q.defer();
 
                                 if (packageDeps) {
-                                    add.run(depDeferred, v, namedArgs, packageDeps);
+                                    lang.mixin(localNamedArgs, namedArgs);
+                                    localNamedArgs._parentId = archiveInfo.id;
+                                    add.run(depDeferred, v, localNamedArgs, packageDeps);
                                     return depDeferred.promise;
                                 }
                             }).then(function (depInstallMessages) {
@@ -460,8 +495,8 @@ add = {
                                 //from other dependency installs/onAdd
                                 //behavior.
                                 if (!namedArgs.nostamp &&
-                                    !namedArgs.masterPackageJson.isSingleFile &&
-                                    namedArgs.masterPackageJson.data) {
+                                        !namedArgs.masterPackageJson.isSingleFile &&
+                                        namedArgs.masterPackageJson.data) {
 
                                     namedArgs.masterPackageJson.refresh();
                                     namedArgs.masterPackageJson.addVoloDep(archiveInfo.finalLocalName,
@@ -507,10 +542,11 @@ add = {
             if (myConfig.discard) {
                 fs.readdirSync(dir).forEach(
                     function (name) {
-                    if (myConfig.discard[name]) {
-                        file.rm(path.join(dir, name));
+                        if (myConfig.discard[name]) {
+                            file.rm(path.join(dir, name));
+                        }
                     }
-                });
+                );
             }
         }
     }
