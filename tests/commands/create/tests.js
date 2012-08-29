@@ -124,6 +124,22 @@ end = start.promise.then(function () {
     });
 })
 
+.then(function () {
+    return main(['create', 'addVersionNoV', 'h5bp/html5-boilerplate/4.0.0'], function (result) {
+        console.log(result);
+        doh.register("addVersionNoV",
+            [
+                function createAddOnCreate(t) {
+                    t.is(true, file.exists('addVersionNoV/CHANGELOG.md'), 'h5bp changelog exists');
+                    t.is(true, /4\.0\.0/.test(file.readFile('addVersionNoV/CHANGELOG.md')),
+                               'h5bp changelog has 4.0.0 in it');
+                }
+            ]
+        );
+        doh.run();
+    });
+})
+
 .then(function (result) {
     process.chdir(cwd);
 });
