@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+
+    <title>volo: js tool for the future</title>
+    <meta name="description"
+          content="volo is a javascript tool for managing web projects">
+
+    <meta name="viewport" content="width=device-width">
+
+    <link rel="icon" type="image/png" href="favicon.png" />
+
+    <link rel="stylesheet" href="css/app.css">
+    <script type="text/javascript">
+      (function() {
+        var config = {
+          kitId: 'awa0aad',
+          scriptTimeout: 3000
+        };
+        var h=document.getElementsByTagName("html")[0];h.className+=" wf-loading";var t=setTimeout(function(){h.className=h.className.replace(/(\s|^)wf-loading(\s|$)/g," ");h.className+=" wf-inactive"},config.scriptTimeout);var tk=document.createElement("script"),d=false;tk.src='//use.typekit.net/'+config.kitId+'.js';tk.type="text/javascript";tk.async="true";tk.onload=tk.onreadystatechange=function(){var a=this.readyState;if(d||a&&a!="complete"&&a!="loaded")return;d=true;clearTimeout(t);try{Typekit.load(config)}catch(b){}};var s=document.getElementsByTagName("script")[0];s.parentNode.insertBefore(tk,s)
+      })();
+    </script>
+  </head>
+  <body>
+    <div class="logo">
+      <!-- div class="logo"></div -->
+      <span class="logoText">volo</span>
+    </div>
+
+    <div class="content">
+
+      <div class="headline">
+        Are you tired of repeating yourself when building web sites?
+        <strong>volo</strong> is a tool which lets you
+        quickly <strong>create</strong> projects, <strong>add</strong>
+        libraries, and <strong>automate</strong> common tasks using
+        <a href="http://www.nodejs.org/">node</a> and
+        JavaScript.
+      </div>
+
+      <div class="install">
+        <h4>Get started now:</h4>
+
+        <pre><code>npm install -g volo</code></pre>
+      </div>
+
+      <div class="features">
+
+          <div id="create" class="feature">
+            <h3><a href="#create">Create</a></h3>
+            <div class="summary">
+              Use an
+              existing repo on github or a zipball (local or
+              remote) as a template for your new project.
+            </div>
+            <div class="pair">
+              <div class="explain">
+                Create 'foo' project with volo's default template
+              </div>
+              <div class="example">
+                <pre><code>volo create foo</code></pre>
+              </div>
+            </div>
+            <div class="pair">
+              <div class="explain">
+                Create 'foo' from h5bp/html5-boilerplate v3.0.2 on GitHub
+              </div>
+              <div class="example">
+                <pre><code>volo create foo h5bp/html5-boilerplate/3.0.2</code></pre>
+              </div>
+            </div>
+            <div class="pair">
+              <div class="explain">
+                Create 'foo' from zipball URL
+              </div>
+              <div class="example">
+                <pre><code>volo create foo http://mozilla.github.com/mortar/builds/app-stub.zip</code></pre>
+              </div>
+            </div>
+            <div class="summary more">
+              <a href="https://github.com/volojs/volo/blob/master/commands/create/doc.md">more about create</a>
+            </div>
+          </div>
+
+          <div id="add" class="feature">
+            <h3><a href="#add">Add</a></h3>
+            <div class="summary">
+              Quickly add javascript libraries by using a search term,
+              GitHub identifier, or raw URL.
+            </div>
+            <div class="pair">
+              <div class="explain">
+                Queries github for 'jquery', then downloads latest version
+              </div>
+              <div class="example">
+                <pre><code>volo add jquery</code></pre>
+              </div>
+            </div>
+            <div class="summary more">
+              <a href="https://github.com/volojs/volo/blob/master/commands/add/doc.md">more about add</a>
+            </div>
+          </div>
+
+          <div id="automate" class="feature">
+            <h3><a href="#automate">Automate</a></h3>
+            <div class="summary">
+              Quickly code up project automation using a volofile and JavaScript.
+              Reuse automation commands by publishing/installing from npm.
+            </div>
+
+            <div class="summary sub">
+              <strong>Simple automation</strong>: Create a
+              <code>volofile</code> in your project's top-level directory. This
+              file is just a node module that defines a property for each
+              automation task. npm install reusable command line functions.
+            </div>
+            <div class="pair">
+              <div class="explain">
+                npm install local tools to use in volofile
+              </div>
+              <div class="example">
+                <pre><code>npm install jshint uglify-js</code></pre>
+              </div>
+            </div>
+            <div class="pair">
+              <div class="explain">
+                Simple volofile that cleans, lints and uglifies
+              </div>
+              <div class="example">
+              <pre><code>module.exports = {
+  clean: {
+      summary: 'removes a.min.js',
+      run: 'v.rm a.min.js'
+  },
+  lint: {
+      summary: 'runs jshint on a.js',
+      run: 'n.jshint a.js'
+  },
+  uglify: {
+      summary: 'minifies a.js to a.min.js',
+      depends: ['clean', 'lint'],
+      run: 'n.uglifyjs -o a.min.js a.js'
+  }
+};</code></pre>
+              </div>
+            </div>
+            <div class="summary more">
+              <a href="https://github.com/volojs/volo/wiki/Creating-a-volofile">more about volofiles</a>
+            </div>
+
+            <div class="summary sub">
+              <strong>Deploy straight to github</strong>: If your site
+              is all client-side, you can publish to github with one
+              command. Your site is live within seconds.
+            </div>
+            <div class="pair">
+              <div class="explain">
+                Install the reusable volofile command, volo-ghdeploy
+              </div>
+              <div class="example">
+                <pre><code>npm install volo-ghdeploy</code></pre>
+              </div>
+            </div>
+            <div class="pair">
+              <div class="explain">
+                Add an entry to your project's volofile to use it
+              </div>
+              <div class="example">
+                <pre><code>module.exports = {
+  ghdeploy: require('volo-ghdeploy')('built', 'deployed')
+}</code></pre>
+              </div>
+            </div>
+            <div class="pair">
+              <div class="explain">
+                Now deploying to GitHub is a single command
+              </div>
+              <div class="example">
+                <pre><code>volo ghdeploy</code></pre>
+              </div>
+            </div>
+            <div class="summary more">
+              <a href="https://github.com/volojs/volo-ghdeploy">more about volo-ghdeploy</a>
+            </div>
+          </div>
+
+          <div class="feature">
+            <div class="summary sub">
+              <strong>Manage the appcache</strong>: Make or update an
+                appcache with one simple command. Never worry about adding
+                files or changing the appcache version again.
+            </div>
+            <div class="pair">
+              <div class="explain">
+                Install the reusable volofile command, volo-appcache
+              </div>
+              <div class="example">
+                <pre><code>npm install volo-appcache</code></pre>
+              </div>
+            </div>
+            <div class="pair">
+              <div class="explain">
+                Add an entry to your project's volofile to use it
+              </div>
+              <div class="example">
+                <pre><code>module.exports = {
+  appcache: require('volo-appcache')({
+    dir: 'www-built'
+  })
+}</code></pre>
+              </div>
+            </div>
+            <div class="pair">
+              <div class="explain">
+                Now generating the appcache is a single command
+              </div>
+              <div class="example">
+                <pre><code>volo appcache</code></pre>
+              </div>
+            </div>
+            <div class="summary more">
+              <a href="https://github.com/volojs/volo-appcache">more about volo-appcache</a>
+            </div>
+          </div>
+          <div id="learnmore" class="feature">
+            <h3><a href="#learnmore">Learn more</a></h3>
+            <div class="summary">
+              <ul>
+                <li><a href="https://github.com/volojs/volo">GitHub repo</a></li>
+                <li><a href="https://github.com/volojs/volo/wiki/Library-best-practices">How to add your library to volo</a></li>
+                <li><a href="http://groups.google.com/group/volojs">Discussion list</a></li>
+                <li><a href="https://github.com/volojs/volo/issues">File an issue</a></li>
+              </ul>
+            </div>
+          </div>
+      </div>
+    </div>
+
+  </body>
+</html>
