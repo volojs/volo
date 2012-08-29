@@ -36,3 +36,15 @@ Make sure to `npm install node-inspector` then you can do this:
 That will drop you into the debugger. It is best to put a `debugger` statement
 in the code where you want to stop execution, otherwise it will be time
 consuming to step through the individual statements and modules.
+
+If you are on Windows using a git-bash shell, this command may work better:
+
+    node --debug-brk "`dirname "\`which volo\`"`/node_modules/volo/bin/volo"
+
+## Running Tests
+
+    cd tests
+    ./all.js
+
+Runs the tests. You will need a network connection with access to GitHub to run
+the tests.
