@@ -2,6 +2,7 @@
 
 * {
   font-family: "museo-sans",sans-serif;
+  box-sizing: border-box;
 }
 
 a {
@@ -23,9 +24,18 @@ h3 a:visited {
   color: black;
 }
 
-.content {
-  width: 775px;
-  margin: 2em auto;
+
+@media (max-width: 1024px) {
+  .content {
+    margin: 2em;
+  }
+}
+
+@media (min-width: 1024px) {
+  .content {
+    margin: 2em auto;
+    width: 775px;
+  }
 }
 
 .logo {
@@ -90,6 +100,19 @@ button.get-started {
   padding: 1em;
   border-radius: 10px;
 }
+
+@media (max-width: 1024px) {
+  .install {
+    width: 90%;
+  }
+}
+
+@media (max-width: 320px) {
+  .install {
+    width: 100%;
+  }
+}
+
 .install pre {
   color: blue;
 }
@@ -151,6 +174,19 @@ div.pair:after {
 .features .example {
   float: right;
 }
+
+@media (max-width: 768px) {
+  .features .explain {
+    text-align: left;
+  }
+
+  .features .explain,
+  .features .example {
+    float: none;
+    width: 100%;
+  }
+}
+
 .features pre {
   margin: 0;
   margin-bottom: 1em;
