@@ -39,6 +39,7 @@ h3 a:visited {
 }
 
 .logo {
+  position: relative;
   margin: 0 0 2em 0;
   text-align: center;
   background-color: black;
@@ -48,6 +49,15 @@ h3 a:visited {
   color: white;
   font-size: 10em;
   font-family: "voluta-script-pro",sans-serif;
+}
+
+.logo .latestVersion {
+  position: absolute;
+  bottom: 0.2em;
+  right: 0.2em;
+  color: grey;
+  font-size: smaller;
+  font-style: italic;
 }
 
 code {
