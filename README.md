@@ -1,4 +1,4 @@
-# volo
+# [volo](http://volojs.org)
 
 **Create** browser-based, front-end projects from project templates, and **add**
 dependencies by fetching them from GitHub. Once your project is set up,
