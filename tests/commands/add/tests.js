@@ -352,6 +352,22 @@ end = start.promise.then(function () {
     });
 })
 
+.then(function () {
+    //Allow single file JS downloads to go into a directory #90
+    return main(['add', 'jquery', 'dollar/main'], function (result) {
+        console.log(result);
+        doh.register("addSingleInDir",
+            [
+                function addSingleInDir(t) {
+                    t.is(true, file.exists('dollar/main.js'));
+                }
+            ]
+        );
+        doh.run();
+    });
+})
+
+
 .then(function (result) {
     process.chdir(cwd);
 });

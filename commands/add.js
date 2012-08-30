@@ -262,8 +262,11 @@ add = {
                             //Create a directory inside tempDirName to receive the
                             //file, since the zipball path has a similar setup.
                             urlDir = path.join(tempDirName, 'download');
-                            fs.mkdirSync(urlDir);
-                            downloadPath = path.join(urlDir, downloadTarget);
+                            //Only use last, file name part of downloadTarget,
+                            //since the next step of the single file JS download
+                            //is to find just one file in the download directory.
+                            downloadPath = path.join(urlDir, path.basename(downloadTarget));
+                            file.mkdirs(path.dirname(downloadPath));
                         } else {
                             //a local directory install, it already has
                             //a directory structure.
@@ -504,6 +507,8 @@ add = {
                                     namedArgs.masterPackageJson.save();
                                 }
                             }).then(function (amdMessage) {
+                                var amdName;
+
                                 //All done.
                                 //Clean up temp area. Even though this is async,
                                 //it is not important to track the completion.
@@ -517,8 +522,11 @@ add = {
                                     ' at ' + targetName;
 
                                 if (isAmdProject) {
+                                    amdName = targetName.replace(baseUrl, '')
+                                              .replace(/^\//, '')
+                                              .replace(jsRegExp, '');
                                     completeMessage += '\nAMD dependency name: ' +
-                                                        archiveInfo.finalLocalName;
+                                                        amdName;
                                 }
 
                             }).then(function () {
