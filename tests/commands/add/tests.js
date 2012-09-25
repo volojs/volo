@@ -291,7 +291,7 @@ end = start.promise.then(function () {
 })
 .then(function () {
   //Test using volojs/repos-provided package.json override.
-    return main(['add', 'three.js'], function (result) {
+    return main(['add', 'three.js', 'three'], function (result) {
         console.log(result);
         doh.register("addRepoPackageJsonOverride",
             [
@@ -345,6 +345,21 @@ end = start.promise.then(function () {
                 function addFragDir(t) {
                     t.is(true, file.exists('qunit/qunit.js'));
                     t.is(true, file.exists('qunit/qunit.css'));
+                }
+            ]
+        );
+        doh.run();
+    });
+})
+
+.then(function () {
+    //Allow branch names as well as tags #98
+    return main(['add', 'jrburke/requirejs/master', 'requiremaster'], function (result) {
+        console.log(result);
+        doh.register("addFromBranch",
+            [
+                function addFromBranch(t) {
+                    t.is(true, file.exists('requiremaster.js'));
                 }
             ]
         );
