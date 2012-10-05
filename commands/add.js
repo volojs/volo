@@ -63,7 +63,9 @@ add = {
         function errCleanUp(err) {
             //Clean up temp area. Even though this is async,
             //it is not important to track the completion.
-            file.asyncPlatformRm(tempDirName);
+            if (tempDirName) {
+                file.asyncPlatformRm(tempDirName);
+            }
 
             deferred.reject(err);
         }
@@ -190,7 +192,8 @@ add = {
                             installedId = namedArgs.masterPackageJson.data;
                             installedId = installedId && installedId.volo &&
                                          installedId.volo.dependencies;
-                            installedId = installedId[archiveInfo.finalLocalName];
+                            installedId = installedId &&
+                                          installedId[archiveInfo.finalLocalName];
 
                             if (installedId) {
                                 if (installedId === archiveInfo.id) {
