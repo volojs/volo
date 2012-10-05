@@ -35,6 +35,33 @@ end = start.promise.then(function () {
 })
 
 .then(function () {
+    return github.latestTag('jrburke/requirejs/1.x').then(function (version) {
+
+        doh.register("githubDotXVersion",
+            [
+                function githubDotXVersion(t) {
+                    t.is('1.0.8', version);
+                }
+            ]);
+        doh.run();
+    });
+})
+
+.then(function () {
+    return github.latestTag('jrburke/requirejs/1.0.x').then(function (version) {
+
+        doh.register("githubDotDotXVersion",
+            [
+                function githubDotDotXVersion(t) {
+                    t.is('1.0.8', version);
+                }
+            ]);
+        doh.run();
+    });
+})
+
+
+.then(function () {
     return github.latestTag('jrburke/requirejs/1.0.6').then(function (version) {
 
         doh.register("githubExactVersion",
