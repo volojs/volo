@@ -211,7 +211,7 @@ end = start.promise.then(function () {
 //Tests #59, content-type check the volo.url, and if an archive, handle
 //appropriately, even when it has a fragment ID in the URL for a specific file.
 .then(function () {
-    return main(['add', 'volojs/test-master-downloadfragment'], function (result) {
+    return main(['install', 'volojs/test-master-downloadfragment'], function (result) {
         console.log(result);
         doh.register("addMasterDownloadFragment",
             [
@@ -273,7 +273,7 @@ end = start.promise.then(function () {
 })
 
 .then(function () {
-    return main(['add', '-noprompt', '../support/addable'], function (result) {
+    return main(['install', '-noprompt', '../support/addable'], function (result) {
         console.log(result);
         doh.register("addOnAdd",
             [
@@ -305,7 +305,7 @@ end = start.promise.then(function () {
 })
 .then(function () {
     //Make sure extra dots in local name not trimmed: #74
-    return main(['add', 'jzaefferer/jquery-validation/1.9.0/#jquery.validate.js'], function (result) {
+    return main(['install', 'jzaefferer/jquery-validation/1.9.0/#jquery.validate.js'], function (result) {
         console.log(result);
         doh.register("addExtraDotName",
             [

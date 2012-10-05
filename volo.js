@@ -138,6 +138,7 @@ main.require = require;
 
 //Load up the commands we know about.
 commands.register('add', require('./commands/add'));
+commands.register('install', require('./commands/install'));
 commands.register('amdify', require('./commands/amdify'));
 commands.register('create', require('./commands/create'));
 commands.register('help', require('./commands/help'));
