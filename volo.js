@@ -144,5 +144,6 @@ commands.register('create', require('./commands/create'));
 commands.register('help', require('./commands/help'));
 commands.register('npmrel', require('./commands/npmrel'));
 commands.register('search', require('./commands/search'));
+commands.register('info', require('./commands/info'));
 
 module.exports = main;
