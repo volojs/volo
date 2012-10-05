@@ -1,7 +1,7 @@
 {
     "name": "volo",
     "description": "A JavaScript dependency manager and project creation tool that favors GitHub for the package repository.",
-    "version": "0.2.3",
+    "version": "0.2.4",
     "homepage": "http://github.com/volojs/volo",
     "author": "James Burke <jrburke@gmail.com> (http://github.com/jrburke)",
 
