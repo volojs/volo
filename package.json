@@ -29,7 +29,8 @@
         "zip": "0.0.6",
         "uglify-js": "1.2.6",
         "shell-quote": "0.0.1",
-        "semver": "1.0.14"
+        "semver": "1.0.14",
+        "which": "*"
     },
 
     "main": "volo"
