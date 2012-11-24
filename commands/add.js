@@ -29,6 +29,7 @@ var fs = require('fs'),
     makeMainAmdAdapter = amdify.api.makeMainAmdAdapter,
     jsRegExp = /\.js$/,
     doubleJsRegExp = /\.js\.js$/,
+    isWin32 = process.platform === 'win32',
     add;
 
 add = {
@@ -107,7 +108,7 @@ add = {
         archive.resolve(archiveName, namedArgs.volo.resolve, {
             amd: isAmdProject && !namedArgs.amdoff
         }).then(function (archiveInfo) {
-            var installedId, parentId;
+            var installedId, parentId, completeMessage, finalLinkPath;
 
             //If no baseUrl, then look for an existing js directory
             if (!baseUrl) {
@@ -144,29 +145,46 @@ add = {
                 }
 
                 linkStat = fs.statSync(linkPath);
-                if (linkStat.isFile()) {
-                    //Simple symlink.
-                    linkTarget = path.join(baseUrl, archiveInfo.finalLocalName + '.js');
-                    fs.symlinkSync(path.resolve(linkPath), linkTarget);
-                } else {
-                    //A directory. Set the symlink.
-                    linkTarget = path.join(baseUrl, archiveInfo.finalLocalName);
-                    fs.symlinkSync(linkPath, linkTarget);
-
-                    //Create an adapter module if an AMD project.
-                    info = packageJson(linkPath);
-                    if (info.data && info.data.main && isAmdProject) {
-                        makeMainAmdAdapter(info.data.main,
-                                           archiveInfo.finalLocalName,
-                                           linkTarget + '.js');
-                    }
-                }
-
-                deferred.resolve(linkTarget + ' points to ' + linkPath +
+                completeMessage = ' points to ' + linkPath +
                                      (isAmdProject ?
                                       '\nThe AMD dependency name: \'' +
                                       archiveInfo.finalLocalName :
-                                      ''));
+                                      '');
+
+                if (linkStat.isFile()) {
+                    //Simple symlink.
+                    linkTarget = path.join(baseUrl, archiveInfo.finalLocalName + '.js');
+                    q.call(function () {
+                        finalLinkPath = path.resolve(linkPath);
+                        if (isWin32) {
+                            return v.spawn('mklink', [linkTarget, finalLinkPath]);
+                        } else {
+                            fs.symlinkSync(finalLinkPath, linkTarget);
+                        }
+                    }).then(function () {
+                        deferred.resolve(linkTarget + completeMessage);
+                    }, deferred.reject);
+                } else {
+                    //A directory. Set the symlink.
+                    linkTarget = path.join(baseUrl, archiveInfo.finalLocalName);
+                    q.call(function () {
+                        if (isWin32) {
+                            return v.spawn('mklink', ['/D', linkTarget, linkPath]);
+                        } else {
+                            fs.symlinkSync(linkPath, linkTarget);
+                        }
+                    }).then(function () {
+                        //Create an adapter module if an AMD project.
+                        info = packageJson(linkPath);
+                        if (info.data && info.data.main && isAmdProject) {
+                            makeMainAmdAdapter(info.data.main,
+                                               archiveInfo.finalLocalName,
+                                               linkTarget + '.js');
+                        }
+                        deferred.resolve(linkTarget + completeMessage);
+
+                    }, deferred.reject);
+                }
             } else {
                 try {
                     //If the baseUrl does not exist, create it.
