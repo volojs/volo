@@ -23,6 +23,13 @@ info = {
 
     doc: file.readFile(path.join(__dirname + '/info/doc.md')),
 
+    //Validate any arguments here.
+    validate: function (namedArgs, archiveName) {
+        if (!archiveName) {
+            return new Error('An archiveName/query needs to be specified: volo info [query]');
+        }
+    },
+
     run: function (deferred, v, namedArgs, archiveName) {
         deferred.resolve(info.api.get(archiveName, namedArgs.volo.resolve)
             .then(function (results) {
