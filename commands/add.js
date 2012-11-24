@@ -252,7 +252,10 @@ add = {
                     downloadTarget = localName + (ext || '');
 
                     if (archiveInfo.isArchive) {
-                        return download(url, path.join(tempDirName, downloadTarget))
+                        return download({
+                            url: url,
+                            headers: archiveInfo.urlHeaders
+                        }, path.join(tempDirName, downloadTarget))
                             .then(function () {
                                 //Unpack the zip file.
                                 zipName = path.join(tempDirName, localName +
@@ -276,7 +279,10 @@ add = {
                             downloadPath = path.join(tempDirName, downloadTarget);
                         }
 
-                        return download(url, downloadPath);
+                        return download({
+                            url: url,
+                            headers: archiveInfo.urlHeaders
+                        }, downloadPath);
                     }
                 }).then(function () {
                     //Move the file(s) from temp dir to final

@@ -13,18 +13,17 @@ var commands = require('./lib/commands'),
     volofile = require('./lib/volofile'),
     path = require('path'),
     exists = require('./lib/exists'),
-    q = require('q'),
-
-    version = '0.2.4';
+    q = require('q');
 
 function main(args, callback, errback) {
-    var deferred = q.defer(),
+    var commandName, combinedArgs, commandOverride, firstArg,
+        deferred = q.defer(),
         cwd = process.cwd(),
         namedArgs = {
             volo: {
                 resolve: function (relativePath) {
                     if (relativePath.indexOf('/') !== 0 &&
-                        relativePath.indexOf(':') === -1) {
+                            relativePath.indexOf(':') === -1) {
                         return path.resolve(cwd, relativePath);
                     }
                     return relativePath;
@@ -32,13 +31,12 @@ function main(args, callback, errback) {
             }
         },
         aryArgs = [],
-        flags = [],
-        commandName, combinedArgs, commandOverride, firstArg;
+        flags = [];
 
     //Cycle through args, pulling off name=value pairs into an object.
     args.forEach(function (arg) {
-        var eqIndex = arg.indexOf('='),
-            name, value;
+        var name, value,
+            eqIndex = arg.indexOf('=');
         if (eqIndex === -1) {
             //If passed a flag like -f, convert to named
             //argument based on the command's configuration.
@@ -94,7 +92,6 @@ function main(args, callback, errback) {
             .then(deferred.resolve, deferred.reject);
     }
 
-
     //Tries to run the command from the top, not from a local volofile.
     function runTopCommand() {
         commands.get(commandName).then(function (command) {
@@ -104,7 +101,7 @@ function main(args, callback, errback) {
                 //Show usage info.
                 commands.list().then(function (message) {
                     deferred.resolve(path.basename(process.argv[1]) +
-                                    ' v' + version +
+                                    ' v' + config.volo.version +
                                     ', a JavaScript tool to make ' +
                                     'JavaScript projects. Allowed commands:\n\n' +
                                     message);
@@ -124,7 +121,7 @@ function main(args, callback, errback) {
                 runTopCommand();
             }
         })
-        .fail(deferred.reject);
+            .fail(deferred.reject);
     } else {
         runTopCommand();
     }

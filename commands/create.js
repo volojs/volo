@@ -84,7 +84,10 @@ create = {
             tempDirName = tempName;
             zipFileName = path.join(tempDirName, 'template.zip');
 
-            return download(archiveInfo.url, zipFileName);
+            return download({
+                url: archiveInfo.url,
+                headers: archiveInfo.urlHeaders
+            }, zipFileName);
         }).then(function () {
             if (archiveInfo.isArchive) {
                 return unzip(zipFileName);

@@ -153,7 +153,7 @@ end = start.promise.then(function () {
     });
 })
 */
-
+/*
 //Tests #37, use of non-master master, and #41, use volo.url name, not repo name.
 .then(function () {
     return main(['add', 'volojs/test-nomaster'], function (result) {
@@ -255,7 +255,7 @@ end = start.promise.then(function () {
         doh.run();
     });
 })
-
+*/
 .then(function () {
     return main(['add', '-amd', 'volojs/test-directory-main'], function (result) {
         console.log(result);
@@ -271,8 +271,8 @@ end = start.promise.then(function () {
         doh.run();
     });
 })
-
 .then(function () {
+debugger;
     return main(['install', '-noprompt', '../support/addable'], function (result) {
         console.log(result);
         doh.register("addOnAdd",
@@ -295,7 +295,7 @@ end = start.promise.then(function () {
         console.log(result);
         doh.register("addRepoPackageJsonOverride",
             [
-                function addOnAdd(t) {
+                function addRepoPackageJsonOverride(t) {
                     t.is(true, file.exists('three.js'));
                 }
             ]
@@ -303,6 +303,7 @@ end = start.promise.then(function () {
         doh.run();
     });
 })
+/*
 .then(function () {
     //Make sure extra dots in local name not trimmed: #74
     return main(['install', 'jzaefferer/jquery-validation/1.9.0/#jquery.validate.js'], function (result) {
@@ -382,7 +383,7 @@ end = start.promise.then(function () {
     });
 })
 
-
+*/
 .then(function (result) {
     process.chdir(cwd);
 });
