@@ -156,11 +156,20 @@ add = {
                     linkTarget = path.join(baseUrl, archiveInfo.finalLocalName + '.js');
                     q.call(function () {
                         finalLinkPath = path.resolve(linkPath);
-                        if (isWin32) {
-                            return v.spawn('mklink', [linkTarget, finalLinkPath]);
-                        } else {
-                            fs.symlinkSync(finalLinkPath, linkTarget);
-                        }
+                        var d = q.defer();
+                        fs.symlink(finalLinkPath, linkTarget, 'file', function (err) {
+                            if (err) {
+                                if (err.code === 'EPERM' && isWin32) {
+                                    d.reject(new Error('Insufficient privileges, see:\r\n' +
+                                             'http://superuser.com/questions/124679/how-do-i-create-a-link-in-windows-7-home-premium-as-a-regular-user'));
+                                } else {
+                                    d.reject(err);
+                                }
+                            } else {
+                                d.resolve();
+                            }
+                        });
+                        return d.promise;
                     }).then(function () {
                         deferred.resolve(linkTarget + completeMessage);
                     }, deferred.reject);
@@ -168,11 +177,20 @@ add = {
                     //A directory. Set the symlink.
                     linkTarget = path.join(baseUrl, archiveInfo.finalLocalName);
                     q.call(function () {
-                        if (isWin32) {
-                            return v.spawn('mklink', ['/D', linkTarget, linkPath]);
-                        } else {
-                            fs.symlinkSync(linkPath, linkTarget);
-                        }
+                        var d = q.defer();
+                        fs.symlink(linkPath, linkTarget, 'dir', function (err) {       
+                            if (err) {
+                                if (err.code === 'EPERM' && isWin32) {
+                                    d.reject(new Error('Insufficient privileges, see:\r\n' +
+                                             'http://superuser.com/questions/124679/how-do-i-create-a-link-in-windows-7-home-premium-as-a-regular-user'));
+                                } else {
+                                    d.reject(err);
+                                }
+                            } else {
+                                d.resolve();
+                            }
+                        });
+                        return d.promise;
                     }).then(function () {
                         //Create an adapter module if an AMD project.
                         info = packageJson(linkPath);
