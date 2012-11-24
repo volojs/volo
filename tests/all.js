@@ -28,15 +28,15 @@ var vm = require('vm'),
 global.voloLib = voloLib;
 global.doh = doh;
 
-tests = [/*
+tests = [
     './lib/volo/packageJson/tests',
     './lib/volo/version',
     './lib/volo/github',
-    './commands/create/tests', */
-    './commands/add/tests' /*,
+    './commands/create/tests',
+    './commands/add/tests',
     './commands/amdify/tests',
     './commands/volofile/tests',
-    './full/tests' */
+    './full/tests'
 ];
 
 //All the tests return a an object with the following properties:
