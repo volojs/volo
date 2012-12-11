@@ -72,7 +72,7 @@ by **amdify** can als be used with **add**.
 Here is a command that fetches Backbone and wraps in it in an AMD define() call,
 specifying 'jquery' and 'underscore' as dependencies:
 
-    volo add -amd documentcloud/backbone depend=underscore,jquery exports=Backbone
+    volo add -amd documentcloud/backbone depends=underscore,jquery exports=Backbone
 
 
 ## Installation Details
