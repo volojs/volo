@@ -67,7 +67,7 @@ through the module ID:
 
 When the -amd flag is used, the the **amdify** command is used to convert
 the file downloaded by the **add** command, so the named arguments supported
-by **amdify** can als be used with **add**.
+by **amdify** can also be used with **add**.
 
 Here is a command that fetches Backbone and wraps in it in an AMD define() call,
 specifying 'jquery' and 'underscore' as dependencies:
