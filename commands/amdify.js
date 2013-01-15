@@ -201,8 +201,9 @@ main = {
 
             if (amdProps && (!amdProps.declaresDefine ||
                             (amdProps.declaresDefine && amdProps.defineAmd))) {
-                //AMD in use, and it is not a file that declares a define()
-                //or if it does, does not declare define.amd.
+                //AMD in use, and it is not a file that declares a define().
+                //If it does declare define(), also declares define.amd,
+                //so does not need transformation as it is likely an AMD loader.
                 d.resolve('SKIP: ' + target + ': already uses AMD.');
                 return;
             }
