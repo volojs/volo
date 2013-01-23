@@ -383,6 +383,21 @@ end = start.promise.then(function () {
 })
 
 .then(function () {
+    //Work with 301 redirects. #127
+    return main(['add', 'http://volojs.org/tests/redirect/redirect.js'], function (result) {
+        console.log(result);
+        doh.register("addFrom301",
+            [
+                function addFrom301(t) {
+                    t.is(true, /name\: 'final'/.test(file.readFile('redirect.js')));
+                }
+            ]
+        );
+        doh.run();
+    });
+})
+
+.then(function () {
     //Allow single file JS downloads to go into a directory #90
     return main(['add', 'jquery', 'dollar/main'], function (result) {
         console.log(result);
