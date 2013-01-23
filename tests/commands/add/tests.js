@@ -368,6 +368,21 @@ end = start.promise.then(function () {
 })
 
 .then(function () {
+    //Allow version-like branches that are not actual tags yet. #133
+    return main(['add', 'volojs/test-versionlike-branch/0.2.0'], function (result) {
+        console.log(result);
+        doh.register("addFromVersionLikeBranch",
+            [
+                function addFromVersionLikeBranch(t) {
+                    t.is(true, /0\.2\.0\-dev/.test(file.readFile('test-versionlike-branch.js')));
+                }
+            ]
+        );
+        doh.run();
+    });
+})
+
+.then(function () {
     //Allow single file JS downloads to go into a directory #90
     return main(['add', 'jquery', 'dollar/main'], function (result) {
         console.log(result);
