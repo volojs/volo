@@ -5,7 +5,7 @@
  */
 
 /*jslint node: true */
-/*global console, process */
+/*global */
 'use strict';
 
 var commands = require('../lib/commands'),
@@ -20,8 +20,13 @@ help = {
         commands.get(commandName).then(function (command) {
             var doc;
             if (command) {
-                doc = command.doc || command.summary ||
-                      commandName + ' does not have any documentation.';
+                doc = command.summary || '';
+                doc += (doc && command.doc ? '\n\n' : '') + (command.doc || '');
+
+                if (!doc) {
+                    doc = commandName + ' does not have any documentation.';
+                }
+
                 d.resolve(doc);
             } else {
                 d.reject('Unknown command: ' + commandName);
