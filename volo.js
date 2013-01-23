@@ -75,8 +75,10 @@ function main(args, callback, errback) {
 
     //Global flag override for help
     if (flags.indexOf('h') !== -1 || flags.indexOf('help') !== -1) {
-        combinedArgs = [namedArgs].concat([commandName]);
-        commandName = 'help';
+        if (commandName) {
+            combinedArgs = [namedArgs].concat([commandName]);
+            commandName = 'help';
+        }
     }
 
     //Function to run after the command object has been loaded, either
