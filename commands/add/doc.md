@@ -32,7 +32,10 @@ where the allowed flags are:
   using the specified semantic version range. Example ranges: '~1.2', '>1.6.4'.
 * user/repo/tag#specific/file.js: Download zip file from GitHub for the user/
   repo, using the specific tag/branch name listed, then extracting only
-  the specific/file.js from that archive and installing it.
+  the specific/file.js file from that archive and installing it.
+* user/repo/tag#specific/dir: Download zip file from GitHub for the user/
+  repo, using the specific tag/branch name listed, then extracting only
+  the specific/dir directory from that archive and installing it.
 * http://some.domain.com/path/to/archive.zip: Downloads the zip file and
   installs it.
 * http://some.domain.com/path/to/archive.zip#specific/file.js: Download
