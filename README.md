@@ -72,6 +72,14 @@ jQuery):
     > volo add underscore (uses documentcloud/underscore as repo)
     > volo add backbone (uses documentcloud/backbone as repo)
 
+### Updating a previously added library
+
+There is no "update" command in Volo. However, updating a library is simple:
+
+    > volo add -f underscore
+    
+This will delete your local copy of underscore and then re-add underscore.
+
 ## Library Best Practices
 
 To work well with volo, here are some tips on how to structure your library code:
