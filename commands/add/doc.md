@@ -77,6 +77,9 @@ specifying 'jquery' and 'underscore' as dependencies:
 
     volo add -amd documentcloud/backbone depends=underscore,jquery exports=Backbone
 
+To update an exising library, use the -f flag:
+
+    volo add -f jquery
 
 ## Installation Details
 
