@@ -272,6 +272,22 @@ end = start.promise.then(function () {
     });
 })
 
+//Subdir adds of directories issue: https://github.com/volojs/volo/issues/143
+.then(function () {
+    return main(['add', 'volojs/test-directory-main', 'sub/dirmain'], function (result) {
+        console.log(result);
+        doh.register("addDirectoryWithMainToSubDir",
+            [
+                function addDirectoryWithMainToSubDir(t) {
+                    t.is(true, file.exists('sub/dirmain'), 'directory exists');
+                    t.is(true, file.exists('sub/dirmain/main.js'), 'main.js exists');
+                }
+            ]
+        );
+        doh.run();
+    });
+})
+
 .then(function () {
     return main(['install', '-noprompt', '../support/addable'], function (result) {
         console.log(result);

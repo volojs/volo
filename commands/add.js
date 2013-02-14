@@ -178,7 +178,7 @@ add = {
                     linkTarget = path.join(baseUrl, archiveInfo.finalLocalName);
                     q.call(function () {
                         var d = q.defer();
-                        fs.symlink(linkPath, linkTarget, 'dir', function (err) {       
+                        fs.symlink(linkPath, linkTarget, 'dir', function (err) {
                             if (err) {
                                 if (err.code === 'EPERM' && isWin32) {
                                     d.reject(new Error('Insufficient privileges, see:\r\n' +
@@ -269,7 +269,9 @@ add = {
                     var index, lastDotIndex, urlBaseName,
                         ext, urlDir, zipName, downloadTarget, downloadPath,
                         url = archiveInfo.url,
-                        localName = archiveInfo.finalLocalName;
+                        //Create local download directory name. Convert any
+                        //characters that would imply other directories underneath
+                        localName = tempDir.removeDirChars(archiveInfo.finalLocalName);
 
                     //Find extension, but only take the last part of path for it.
                     index = url.lastIndexOf('/');
@@ -463,6 +465,7 @@ add = {
                                     file.rm(sourceName);
                                 }
                             } else {
+
                                 //A complete directory install.
                                 targetName = targetDirName = path.join(baseUrl,
                                                        archiveInfo.finalLocalName);
