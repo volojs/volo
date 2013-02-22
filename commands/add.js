@@ -327,7 +327,7 @@ add = {
                     //location.
                     try {
                         //Find the directory that was unpacked in tempDirName
-                        var info, sourceName, targetName,
+                        var info, sourceName, targetName, hasParseError,
                             listing, defaultName, mainFile, mainContents,
                             deps, pkgType, overrideTypeName,
                             dirName = file.firstDir(tempDirName),
@@ -380,15 +380,23 @@ add = {
                                 //calls define() and any of the dependencies
                                 //are relative, then keep the whole directory.
                                 mainContents = fs.readFileSync(mainFile, 'utf8');
-                                deps = parse.findDependencies(mainFile,
-                                       mainContents);
-                                if (!deps || !deps.length) {
-                                    deps = parse.findCjsDependencies(mainFile,
+                                try {
+                                    deps = parse.findDependencies(mainFile,
                                            mainContents);
+                                    if (!deps || !deps.length) {
+                                        deps = parse.findCjsDependencies(mainFile,
+                                               mainContents);
+                                    }
+                                } catch (e) {
+                                    //A parse error, just skip it then,
+                                    //could be malformed JS, JS 1.8
+                                    hasParseError = true;
                                 }
-                                if (deps && deps.some(function (dep) {
+
+                                if (hasParseError ||
+                                        (deps && deps.some(function (dep) {
                                         return dep.indexOf('.') === 0;
-                                    })) {
+                                    }))) {
                                     sourceName = null;
                                 } else {
                                     sourceName = mainFile;
