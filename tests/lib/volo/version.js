@@ -262,10 +262,17 @@ end = start.promise.then(function () {
                       'v1.0.2',
                       'v1.0.1',
                       'v1.0.0',
-                      'semver' ];
+                      'semver' ],
+                    list3 = ['0.9.8.1', '0.9.8.2', '10.0', '10.1',
+                             '10.1.1', '10.2', '0.9.8', '10.2.1', '10.2.1.1',
+                             '10.2.1.2'],
+                    expected3 = ['10.2.1.2', '10.2.1.1', '10.2.1', '10.2',
+                               '10.1.1', '10.1', '10.0', '0.9.8.2', '0.9.8.1',
+                               '0.9.8'];
 
                 validate(t, expected1, list1.sort(version.compare));
                 validate(t, expected2, list2.sort(version.compare));
+                validate(t, expected3, list3.sort(version.compare));
 
             }
         ]
