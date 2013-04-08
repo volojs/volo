@@ -428,6 +428,21 @@ end = start.promise.then(function () {
     });
 })
 
+.then(function () {
+    //If installing a subdir from a repo, skip .js extension add.
+    //https://github.com/volojs/volo/issues/151
+    return main(['add', 'jrburke/r.js#build/jslib', 'rjs'], function (result) {
+        console.log(result);
+        doh.register("addSubDirNoExt",
+            [
+                function addSubDirNoExt(t) {
+                    t.is(true, file.exists('rjs/build.js'));
+                }
+            ]
+        );
+        doh.run();
+    });
+})
 
 .then(function (result) {
     process.chdir(cwd);

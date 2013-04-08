@@ -330,6 +330,7 @@ add = {
                         var info, sourceName, targetName, hasParseError,
                             listing, defaultName, mainFile, mainContents,
                             deps, pkgType, overrideTypeName,
+                            isSourceNameADirectory,
                             dirName = file.firstDir(tempDirName),
                             completeMessage = '',
                             ext = '';
@@ -436,10 +437,18 @@ add = {
                             }
 
                             if (sourceName) {
+                                isSourceNameADirectory = fs.statSync(sourceName).isDirectory();
+
                                 //Just move the single file into position.
                                 if (specificLocalName) {
                                     targetName = path.join(baseUrl,
-                                                           specificLocalName + (ext || '.js'));
+                                                           specificLocalName);
+
+                                    //If the source is a directory, do not add
+                                    //a file extension.
+                                    if (!isSourceNameADirectory) {
+                                        targetName += (ext || '.js');
+                                    }
                                 } else {
                                     targetName = path.join(baseUrl, defaultName);
                                 }
@@ -464,7 +473,7 @@ add = {
                                 } else {
                                     //Doing a copy instead of a rename since
                                     //that does not work across partitions.
-                                    if (fs.statSync(sourceName).isDirectory()) {
+                                    if (isSourceNameADirectory) {
                                         file.copyDir(sourceName, targetName);
                                     } else {
                                         file.copyFile(sourceName, targetName);
