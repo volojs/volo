@@ -20,6 +20,8 @@ By default, volo knows how to:
 
 * [Node](http://nodejs.org) 0.6.5 or later installed.
 
+If you are using Ubuntu, then you may need to `apt-get install nodejs-legacy` too.
+
 ## Install
 
 volo requires Node to run. Node includes [npm](http://npmjs.org/),
@@ -77,7 +79,7 @@ jQuery):
 There is no "update" command in Volo. However, updating a library is simple:
 
     > volo add -f underscore
-    
+
 This will delete your local copy of underscore and then re-add underscore.
 
 ## Library Best Practices
