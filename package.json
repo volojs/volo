@@ -16,6 +16,11 @@
         }
     ],
 
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/volojs/volo.git"
+    },
+
     "bin": {
         "volo": "./bin/volo"
     },
