@@ -6,7 +6,7 @@
 
 
 /*jslint node: true, nomen: true, regexp: true */
-/*global console, process */
+/*global process */
 
 
 'use strict';
@@ -495,7 +495,8 @@ add = {
 
                                 //If directory, remove common directories not
                                 //needed for install.
-                                add.api.discard(targetName);
+                                add.api.discard(targetName,
+                                            info.data && info.data.volo.ignore);
 
                                 if (info.data && info.data.main && isAmdProject) {
                                     makeMainAmdAdapter(info.data.main,
@@ -609,13 +610,22 @@ add = {
         }, deferred.reject);
     },
     api: {
-        //Discards certain directories based on the config for the add
-        //comand.
-        discard: function (dir) {
-            if (myConfig.discard) {
+        //Discards certain directories based on an array of top level
+        //directory/file names, or if no arrayDiscard, the default set of
+        //directory contents specified in myConfig.discard
+        discard: function (dir, arrayDiscard) {
+            var obj = myConfig.discard;
+            if (arrayDiscard) {
+                obj = {};
+                arrayDiscard.forEach(function (item) {
+                    obj[item] = true;
+                });
+            }
+
+            if (obj) {
                 fs.readdirSync(dir).forEach(
                     function (name) {
-                        if (myConfig.discard[name]) {
+                        if (obj[name]) {
                             file.rm(path.join(dir, name));
                         }
                     }

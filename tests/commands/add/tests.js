@@ -154,6 +154,26 @@ end = start.promise.then(function () {
 })
 */
 
+//Tests package.json volo.ignore during add
+.then(function () {
+    return main(['add', '../support/dirIgnore'], function (result) {
+        console.log(result);
+        doh.register("addDirIgnore",
+            [
+                function addDirIgnore(t) {
+                    t.is(true, file.exists('dirIgnore/keep/empty.txt'), 'keep dir exists');
+                    t.is(true, file.exists('dirIgnore/demos/empty.txt'), 'demos dir exists, default discard config would remove it');
+
+                    t.is(false, file.exists('dirIgnore/.npmignore'), '.npmignore should not exist');
+                    t.is(false, file.exists('dirIgnore/extra'), 'extra should not exist');
+                    t.is(false, file.exists('dirIgnore/node_modules'), 'node_modules should not exist');
+                }
+            ]
+        );
+        doh.run();
+    });
+})
+
 //Tests #37, use of non-master master, and #41, use volo.url name, not repo name.
 .then(function () {
     return main(['add', 'volojs/test-nomaster'], function (result) {
