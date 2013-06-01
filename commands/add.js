@@ -496,7 +496,9 @@ add = {
                                 //If directory, remove common directories not
                                 //needed for install.
                                 add.api.discard(targetName,
-                                            info.data && info.data.volo.ignore);
+                                            info.data &&
+                                            info.data.volo &&
+                                            info.data.volo.ignore);
 
                                 if (info.data && info.data.main && isAmdProject) {
                                     makeMainAmdAdapter(info.data.main,
