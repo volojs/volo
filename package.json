@@ -31,7 +31,7 @@
 
     "dependencies": {
         "q": "0.8.5",
-        "zip": "0.0.6",
+        "zip": "1.1.0",
         "uglify-js": "1.2.6",
         "shell-quote": "0.0.1",
         "semver": "1.0.14",

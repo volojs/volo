@@ -5,7 +5,7 @@
  * Ported to CommonJS by Tom Robinson, 2010
 */
 
-var BufferIO = require("q-io-buffer").BufferIO;
+var BufferIO = require("./buffer-io").BufferIO;
 var Buffer = require("buffer").Buffer;
 
 exports.inflate = function (input) {
@@ -679,7 +679,7 @@ exports.inflate = function (input) {
         }
 
         if(method == -1) {
-            
+
             if(eof)
             break;
 
@@ -696,7 +696,7 @@ exports.inflate = function (input) {
             tl = null;
             copy_leng = 0;
         }
-        
+
         switch(method) {
           case 0: // STORED_BLOCK
             i = inflate_stored(buff, off + n, size - n);
