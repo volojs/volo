@@ -141,6 +141,7 @@ commands.register('install', require('./commands/install'));
 commands.register('update', require('./commands/update'));
 commands.register('amdify', require('./commands/amdify'));
 commands.register('create', require('./commands/create'));
+commands.register('remove', require('./commands/remove'));
 commands.register('help', require('./commands/help'));
 commands.register('npmrel', require('./commands/npmrel'));
 commands.register('search', require('./commands/search'));
