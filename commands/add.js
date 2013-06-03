@@ -52,11 +52,7 @@ add = {
             info, targetDirName, depPackageInfo, groupAddResult, mainPath,
             pkg = packageJson('.', { create: true }),
             isAmdProject = !!(namedArgs.amd || (pkg.data && pkg.data.amd)),
-            baseUrl = pkg.data &&
-            //Favor volo.baseDir over volo.baseUrl over amd.baseUrl
-            ((pkg.data.volo && pkg.data.volo.baseDir) ||
-            (pkg.data.volo && pkg.data.volo.baseUrl) ||
-            (pkg.data.amd && pkg.data.amd.baseUrl)),
+            baseUrl = pkg.getBaseDir(),
             groupMessage = '',
             alreadyUsesAmd = false;
 
@@ -109,22 +105,6 @@ add = {
             amd: isAmdProject && !namedArgs.amdoff
         }).then(function (archiveInfo) {
             var installedId, parentId, completeMessage, finalLinkPath;
-
-            //If no baseUrl, then look for an existing js directory
-            if (!baseUrl) {
-                baseUrl = path.join('.', 'js');
-                if (!file.exists(baseUrl)) {
-                    //Allow for a 'scripts' option instead of js/, in case
-                    //it is something uses transpiled scripts so 'js/'
-                    //would not be accurate.
-                    baseUrl = path.join('.', 'scripts');
-                    if (!file.exists(baseUrl)) {
-                        //No js or scripts subdir, so just use current
-                        //directory.
-                        baseUrl = '.';
-                    }
-                }
-            }
 
             //Hold on to the dependency's package.json info,
             //which may have been fetched from the network.
@@ -496,7 +476,9 @@ add = {
                                 //If directory, remove common directories not
                                 //needed for install.
                                 add.api.discard(targetName,
-                                            info.data && info.data.volo.ignore);
+                                            info.data &&
+                                            info.data.volo &&
+                                            info.data.volo.ignore);
 
                                 if (info.data && info.data.main && isAmdProject) {
                                     makeMainAmdAdapter(info.data.main,

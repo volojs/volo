@@ -34,6 +34,7 @@ tests = [
     './lib/volo/github',
     './commands/create/tests',
     './commands/add/tests',
+    './commands/remove/tests',
     './commands/amdify/tests',
     './commands/volofile/tests',
     './full/tests'
