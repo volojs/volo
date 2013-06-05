@@ -73,7 +73,7 @@ create = {
         }
 
         //Find out how to get the template
-        q.call(function () {
+        q.fcall(function () {
             return archive.resolve(template, namedArgs.volo.resolve);
         }).then(function (info) {
             //Create a tempdir to store the archive.

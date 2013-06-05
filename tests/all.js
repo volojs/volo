@@ -62,7 +62,7 @@ last = promises.reduce(function (previous, current) {
 last.end.then(function () {
     //All promises are done, print out summary.
     doh.run();
-}).end();
+}).done();
 
 //Start the cascade
 master.resolve();

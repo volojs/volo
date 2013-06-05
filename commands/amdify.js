@@ -92,9 +92,9 @@ main = {
             completeMessage = '',
             varNames, jsFiles;
 
-        deferred.resolve(q.call(function () {
+        deferred.resolve(q.fcall(function () {
             var parsed = parseDepends(depends),
-                promise = q.call(function () {});
+                promise = q.fcall(function () {});
 
             depends = parsed.depends;
             varNames = parsed.varNames;
@@ -208,7 +208,7 @@ main = {
                 return;
             }
 
-            q.call(function () {
+            q.fcall(function () {
                 if (options.github) {
                     return net.getJson(github.rawUrl('volojs/repos',
                                                      'master',
@@ -257,7 +257,7 @@ main = {
                     d.resolve('CONVERTED: ' + target + ': wrapped define().');
                 } else {
                     //May need to prompt the user for input so use promises.
-                    d.resolve(q.call(function () {
+                    d.resolve(q.fcall(function () {
                         var message;
 
                         //If no explicit depends passed in, ask, but only if no exports

@@ -86,7 +86,7 @@ npmrel = {
         targetDir = path.resolve(targetDir).replace(/\\/g, '/');
 
         var registry = {},
-            promise = q.call(function () {}),
+            promise = q.fcall(function () {}),
             pkg, prop, pkgPath, targetId, lastSegment;
 
         //Include the targetDir in the registry.

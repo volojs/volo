@@ -134,7 +134,7 @@ add = {
                 if (linkStat.isFile()) {
                     //Simple symlink.
                     linkTarget = path.join(baseUrl, archiveInfo.finalLocalName + '.js');
-                    q.call(function () {
+                    q.fcall(function () {
                         finalLinkPath = path.resolve(linkPath);
                         var d = q.defer();
                         fs.symlink(finalLinkPath, linkTarget, 'file', function (err) {
@@ -156,7 +156,7 @@ add = {
                 } else {
                     //A directory. Set the symlink.
                     linkTarget = path.join(baseUrl, archiveInfo.finalLocalName);
-                    q.call(function () {
+                    q.fcall(function () {
                         var d = q.defer();
                         fs.symlink(linkPath, linkTarget, 'dir', function (err) {
                             if (err) {
@@ -498,7 +498,7 @@ add = {
                                 }
                             }
 
-                            q.call(function () {
+                            q.fcall(function () {
                                 if (isAmdProject && !namedArgs.amdoff && !alreadyUsesAmd) {
                                     var damd = q.defer();
 

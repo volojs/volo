@@ -30,7 +30,7 @@
     },
 
     "dependencies": {
-        "q": "0.8.5",
+        "q": "0.9.4",
         "zip": "1.1.0",
         "uglify-js": "1.2.6",
         "shell-quote": "0.0.1",
