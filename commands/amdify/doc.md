@@ -4,13 +4,13 @@
 
 where flags can be:
 
-* -noConflict indicates that code shoud be included to call the exports
+* **-noConflict**: indicates that code shoud be included to call the exports
   value's noConflict method if it exists.
-* -noprompt means do not prompt for dependencies/exported value for
+* **-noprompt**: do not prompt for dependencies/exported value for
   non-AMD/CommonJS files. Useful for automated processes.
-* -commonJs indicates that the code should use the "convert CommonJS to AMD"
-  path, intead of trying to detect it via require('') use in the file. Useful
-  if the modules just uses `this` property assignments, and does not use
+* **-commonJs**: indicates that the code should use the "convert CommonJS to
+  AMD" path, intead of trying to detect it via require('') use in the file.
+  Useful if the modules just uses `this` property assignments, and does not use
   `require` or `exports`.
 
 and:
@@ -19,9 +19,9 @@ and:
 * **exports** is the global value created by the file that should be treated as
   the module's exported value.
 * **github** is the "user/repo" that is the origin of the file. Used in AMD
-projects to look for depends/exports override arguments to use from the
-volojs/repos project. Example value: "jrburke/almond" for the almond repo
-under the jrburke user.
+  projects to look for depends/exports override arguments to use from the
+  volojs/repos project. Example value: "jrburke/almond" for the almond repo
+  under the jrburke user.
 
 ## Details
 

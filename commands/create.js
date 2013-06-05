@@ -12,6 +12,7 @@
 var fs = require('fs'),
     path = require('path'),
     q = require('q'),
+    colors = require('colors'),
     tempDir = require('../lib/tempDir'),
     archive = require('../lib/archive'),
     file = require('../lib/file'),
@@ -21,6 +22,8 @@ var fs = require('fs'),
     venv = require('../lib/v'),
     volofile = require('../lib/volofile'),
     create;
+
+colors.mode = 'console';
 
 //Changes directories, runs a function that returns a promise,
 //ignores the return value (pass or fail), resolves a promise regardless,
@@ -153,7 +156,7 @@ create = {
                 });
         }).then(function (commandOutput) {
             return (commandOutput ? commandOutput + '\n' : '') +
-                    archiveInfo.url + ' used to create ' + appName;
+                    (archiveInfo.url.bold + ' used to create ' + appName.bold);
         }).then(d.resolve, function (err) {
             errCleanUp(err);
             d.reject(err);

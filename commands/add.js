@@ -218,22 +218,22 @@ add = {
                                     return deferred.resolve();
                                 } else {
                                     parentId = namedArgs._parentId;
-                                    return deferred.resolve('MISMATCH: ' +
+                                    return deferred.resolve('MISMATCH: '.red.bold +
                                             (parentId ? parentId + ' t' : 'T') +
                                             'ried to add ' +
-                                            archiveInfo.id +
-                                            ', but ' + installedId +
+                                            archiveInfo.id.bold +
+                                            ', but ' + installedId.bold +
                                             ' already at ' +
-                                            existingPath + '. ' +
+                                            existingPath.bold + '. ' +
                                             'To overwrite, run:\n' +
-                                            '    volo add -f ' + archiveInfo.id +
-                                            ' ' + archiveInfo.finalLocalName
+                                            ('    volo add -f ' + archiveInfo.id +
+                                            ' ' + archiveInfo.finalLocalName).green
                                         );
                                 }
                             } else {
-                                return deferred.resolve(existingPath +
+                                return deferred.resolve((existingPath +
                                        ' already exists. To ' +
-                                       'overwrite, pass -f to the command');
+                                       'overwrite, pass ' + '-f'.bold + ' to the command').grey);
                             }
                         }
                     }
@@ -566,8 +566,8 @@ add = {
                                     completeMessage += amdMessage + '\n';
                                 }
                                 completeMessage += 'Installed ' +
-                                    archiveInfo.id +
-                                    ' at ' + targetName;
+                                    archiveInfo.id.bold +
+                                    ' at ' + targetName.bold;
 
                                 if (isAmdProject) {
                                     amdName = targetName.replace(baseUrl, '')

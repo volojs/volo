@@ -35,6 +35,7 @@
         "uglify-js": "1.2.6",
         "shell-quote": "0.0.1",
         "semver": "1.0.14",
+        "colors": "0.6.0-1",
         "which": "*"
     },
 

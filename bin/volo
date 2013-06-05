@@ -27,6 +27,9 @@ var args = [].splice.call(process.argv, 2);
     //failures that did not show up in 0.8.
     process.exit(0);
 }, function (errText) {
-    console.log('ERROR: ' + errText);
+    var colors = require('colors');
+    colors.mode = 'console';
+    //Create new string to get the red modifier.
+    console.log(String(errText).red);
     process.exit(1);
 });

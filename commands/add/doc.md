@@ -4,46 +4,48 @@
 
 where the allowed flags are:
 
-* -f: Forces the add even if the code has already been added to the project.
-* -amd: Indicates the project is an AMD project. If the project has a
+* **-f**: Forces the add even if the code has already been added to the project.
+* **-amd**: Indicates the project is an AMD project. If the project has a
   package.json entry for "amd": {} then this flag is not needed.
-* -amdoff: Turns off AMD conversion for when the project is AMD and the
+* **-amdoff**: Turns off AMD conversion for when the project is AMD and the
   dependency being added is not AMD/CommonJS. Only needs to be set if the
   project's package.json has an "amd": {} entry.
-* -amdlog: Prints out more details on files converted to AMD, if AMD conversion
-  is done.
-* -noprompt: Does not prompt the user for any dependency/exports details when
-  adding a non-AMD/non-CommonJS module to an AMD project.
-* -nostamp: Does not stamp the package.json in the directory that runs this
+* **-amdlog**: Prints out more details on files converted to AMD, if AMD
+  conversion is done.
+* **-noprompt**: Does not prompt the user for any dependency/exports details
+  when adding a non-AMD/non-CommonJS module to an AMD project.
+* **-nostamp**: Does not stamp the package.json in the directory that runs this
   command with the added dependency information.
-* -skipexists: If a dependency by that name already exists, just skip it without
-  informing it already exists.
+* **-skipexists**: If a dependency by that name already exists, just skip it
+  without informing it already exists.
 
 **archive** is in one of the following formats:
 
-* searchterm: GitHub search is used to resolve searchterm to a user/repo value.
+* **searchterm**: GitHub search is used to resolve searchterm to a user/repo
+  value.
 * searchterm/version: GitHub search is used to resolve searchterm to a user/repo
   value, then version is added to it. version can be a semantic version range.
-* user/repo: Download the zip file from GitHub for the user/repo, using the
+* **user/repo**: Download the zip file from GitHub for the user/repo, using the
   latest version tag, or "master" if no version tags.
-* user/repo/tag: Download the zip file from GitHub for the user/repo, using the
-  specific tag/branch name listed.
-* user/repo/semverVersion: Download the zip file from GitHub for the user/repo,
-  using the specified semantic version range. Example ranges: '~1.2', '>1.6.4'.
-* user/repo/tag#specific/file.js: Download zip file from GitHub for the user/
-  repo, using the specific tag/branch name listed, then extracting only
+* **user/repo/tag**: Download the zip file from GitHub for the user/repo, using
+  the specific tag/branch name listed.
+* **user/repo/semverVersion**: Download the zip file from GitHub for the
+  user/repo, using the specified semantic version range. Example ranges: '~1.2',
+  '>1.6.4'.
+* **user/repo/tag#specific/file.js**: Download zip file from GitHub for the
+  user/ repo, using the specific tag/branch name listed, then extracting only
   the specific/file.js file from that archive and installing it.
-* user/repo/tag#specific/dir: Download zip file from GitHub for the user/
+* **user/repo/tag#specific/dir**: Download zip file from GitHub for the user/
   repo, using the specific tag/branch name listed, then extracting only
   the specific/dir directory from that archive and installing it.
-* http://some.domain.com/path/to/archive.zip: Downloads the zip file and
+* **http://some.domain.com/path/to/archive.zip**: Downloads the zip file and
   installs it.
-* http://some.domain.com/path/to/archive.zip#specific/file.js: Download
+* **http://some.domain.com/path/to/archive.zip#specific/file.js**: Download
   the zip file and only install specific/file.js.
-* symlink:path/to/directory/or/file.js: Creates a symlink to the specific
+* **symlink:path/to/directory/or/file.js**: Creates a symlink to the specific
   location in the project. If it is a directory and the project using the
   directory is an AMD project, an adapter module will also be created.
-* local:path/to/directory: Copies the local directory. A local directory is
+* **local:path/to/directory**: Copies the local directory. A local directory is
   also checked when the "some/thing" archive name is used -- if there is no
   local file match, it is assumed to be a GitHub URL.
 
