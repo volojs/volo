@@ -29,7 +29,6 @@ var fs = require('fs'),
     volofile = require('../lib/volofile'),
     makeMainAmdAdapter = amdify.api.makeMainAmdAdapter,
     jsRegExp = /\.js$/,
-    doubleJsRegExp = /\.js\.js$/,
     isWin32 = process.platform === 'win32',
     add;
 
@@ -311,7 +310,8 @@ add = {
                         var info, sourceName, targetName, hasParseError,
                             listing, defaultName, mainFile, mainContents,
                             deps, pkgType, overrideTypeName,
-                            isSourceNameADirectory,
+                            isSourceNameADirectory, targetExt, doubleTargetExt,
+                            doubleExtRegExp,
                             dirName = file.firstDir(tempDirName),
                             completeMessage = '',
                             ext = '';
@@ -425,6 +425,11 @@ add = {
                                     targetName = path.join(baseUrl,
                                                            specificLocalName);
 
+                                    //If just a single file, then specificLocalName
+                                    //is the final local name, not the
+                                    //defaultName.
+                                    archiveInfo.finalLocalName = specificLocalName;
+
                                     //If the source is a directory, do not add
                                     //a file extension.
                                     if (!isSourceNameADirectory) {
@@ -434,13 +439,17 @@ add = {
                                     targetName = path.join(baseUrl, defaultName);
                                 }
 
-                                //If the target name ends in ".js.js"
-                                //because some projects on github name
-                                //the repositories "x.js", remove the
-                                //duplicate ".js".
-                                if (doubleJsRegExp.test(targetName)) {
-                                    targetName = targetName.replace(doubleJsRegExp, '.js');
-                                    archiveInfo.finalLocalName = archiveInfo.finalLocalName.replace(jsRegExp, '');
+                                //If the target name ends in a double extension,
+                                //like ".js.js", because some projects on github
+                                //name the repositories "x.js", remove the
+                                //duplicate extension.
+                                targetExt = ext || '.js';
+                                doubleTargetExt = targetExt + targetExt;
+                                doubleExtRegExp = new RegExp(doubleTargetExt.replace(/\./g, '\\.') + '$');
+
+                                if (doubleExtRegExp.test(targetName)) {
+                                    targetName = targetName.replace(doubleExtRegExp, targetExt);
+                                    archiveInfo.finalLocalName = archiveInfo.finalLocalName.replace(doubleExtRegExp, targetExt);
                                 }
 
                                 //Check for the existence of the

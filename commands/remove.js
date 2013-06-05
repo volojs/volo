@@ -9,6 +9,7 @@
 'use strict';
 
 var path = require('path'),
+    glob = require('glob'),
     packageJson = require('../lib/packageJson'),
     file = require('../lib/file');
 
@@ -48,13 +49,17 @@ module.exports = {
 
     run: function (deferred, v, namedArgs, depName) {
         var pkg = namedArgs._privateRemove.pkg,
-            baseDir = pkg.getBaseDir();
+            baseDir = pkg.getBaseDir(),
+            files = glob.sync(depName + '*', {
+                cwd: baseDir
+            });
 
-        //Remove any directory with that name
-        file.rm(path.join(baseDir, depName));
-
-        //Remove any .js with that name
-        file.rm(path.join(baseDir, depName + '.js'));
+        //Remove associated files
+        if (files) {
+            files.forEach(function (fileName) {
+                file.rm(path.join(baseDir, fileName));
+            });
+        }
 
         //Update the package.json to not have the value
         delete pkg.data.volo.dependencies[depName];
