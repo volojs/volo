@@ -13,7 +13,10 @@ var commands = require('./lib/commands'),
     volofile = require('./lib/volofile'),
     path = require('path'),
     exists = require('./lib/exists'),
+    colors = require('colors'),
     q = require('q');
+
+colors.mode = 'console';
 
 function main(args, callback, errback) {
     var commandName, combinedArgs, commandOverride, firstArg,
@@ -103,7 +106,7 @@ function main(args, callback, errback) {
                 //Show usage info.
                 commands.list().then(function (message) {
                     deferred.resolve(path.basename(process.argv[1]) +
-                                    ' v' + config.volo.version +
+                                    (' v' + config.volo.version).bold +
                                     ', a JavaScript tool to make ' +
                                     'JavaScript projects. Allowed commands:\n\n' +
                                     message);

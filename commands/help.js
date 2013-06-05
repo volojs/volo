@@ -46,7 +46,7 @@ function colorize(text) {
 help = {
     summary: 'Gives more detailed help on a volo command.',
 
-    doc: '##Usage\n\n    volo help commandName',
+    doc: '## Usage\n\n    volo help commandName',
 
     run: function (d, v, namedArgs, commandName) {
         commands.get(commandName).then(function (command) {
