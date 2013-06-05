@@ -14,6 +14,7 @@
 var fs = require('fs'),
     path = require('path'),
     q = require('q'),
+    glob = require('glob'),
     config = require('../lib/config').get(),
     lang = require('../lib/lang'),
     myConfig = config.command.add,
@@ -596,23 +597,18 @@ add = {
         //directory/file names, or if no arrayDiscard, the default set of
         //directory contents specified in myConfig.discard
         discard: function (dir, arrayDiscard) {
-            var obj = myConfig.discard;
-            if (arrayDiscard) {
-                obj = {};
-                arrayDiscard.forEach(function (item) {
-                    obj[item] = true;
+            var discard = arrayDiscard || myConfig.discard;
+            discard.forEach(function (item) {
+                var matches = glob.sync(item, {
+                    cwd: dir
                 });
-            }
 
-            if (obj) {
-                fs.readdirSync(dir).forEach(
-                    function (name) {
-                        if (obj[name]) {
-                            file.rm(path.join(dir, name));
-                        }
-                    }
-                );
-            }
+                if (matches) {
+                    matches.forEach(function (name) {
+                        file.rm(path.join(dir, name));
+                    });
+                }
+            });
         }
     }
 };

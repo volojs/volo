@@ -167,6 +167,8 @@ end = start.promise.then(function () {
                     t.is(false, file.exists('dirIgnore/.npmignore'), '.npmignore should not exist');
                     t.is(false, file.exists('dirIgnore/extra'), 'extra should not exist');
                     t.is(false, file.exists('dirIgnore/node_modules'), 'node_modules should not exist');
+                    t.is(false, file.exists('dirIgnore/top.pre'), 'top.pre should not exist');
+                    t.is(false, file.exists('dirIgnore/keep/sub/nested.pre'), 'keep/sub/nested.pre should not exist');
                 }
             ]
         );

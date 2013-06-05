@@ -1,6 +1,6 @@
 {
     "volo": {
         "type": "directory",
-        "ignore": ["extra", ".npmignore", "node_modules"]
+        "ignore": ["extra", ".npmignore", "node_modules", "**/*.pre"]
     }
 }
