@@ -6,7 +6,9 @@ module.exports = {
         depends: ['write'],
         run: [
             'v.copyFile text.txt final.txt',
-            'n.uppercase final.txt'
+            'n.uppercase final.txt',
+            'v.write before.txt "after.txt"',
+            'cat before.txt > after.txt'
         ]
     }
 };

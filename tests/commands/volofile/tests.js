@@ -62,6 +62,7 @@ end = start.promise.then(function () {
             [
                 function volofileShell(t) {
                     t.is('HELLO WORLD', fs.readFileSync(path.join('final.txt'), 'utf8'));
+                    t.is('after.txt', fs.readFileSync(path.join('after.txt'), 'utf8'));
                 }
             ]
         );
