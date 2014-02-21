@@ -68,7 +68,7 @@ This one fetches Underscore and converts it to have an AMD wrapper. Underscore
 still registers a global export, but AMD code can get a local reference
 through the module ID:
 
-    volo add -amd documentcloud/underscore exports=_
+    volo add -amd jashkenas/underscore exports=_
 
 When the -amd flag is used, the the **amdify** command is used to convert
 the file downloaded by the **add** command, so the named arguments supported
@@ -77,7 +77,7 @@ by **amdify** can also be used with **add**.
 Here is a command that fetches Backbone and wraps in it in an AMD define() call,
 specifying 'jquery' and 'underscore' as dependencies:
 
-    volo add -amd documentcloud/backbone depends=underscore,jquery exports=Backbone
+    volo add -amd jashkenas/backbone depends=underscore,jquery exports=Backbone
 
 To update an exising library, use the -f flag:
 
