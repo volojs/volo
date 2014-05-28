@@ -37,7 +37,7 @@
         "semver": "1.0.14",
         "colors": "0.6.0-1",
         "glob": "3.2.1",
-        "which": "*"
+        "which": "1.0.5"
     },
 
     "main": "volo"
