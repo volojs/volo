@@ -316,6 +316,12 @@ add = {
                             completeMessage = '',
                             ext = '';
 
+                        // if (fs.readdirSync(tempDirName).length === 1) {
+                        //     dirName = file.firstDir(tempDirName);
+                        // } else {
+                        //     dirName = tempDirName;
+                        // }
+
                         if (dirName) {
                             if (depPackageInfo) {
                                 //Shim in info with the depPackageInfo. Favor

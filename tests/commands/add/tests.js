@@ -310,6 +310,26 @@ end = start.promise.then(function () {
     });
 })
 
+/*
+//Tests #174, downloading a zip that does not have a nested dir for the actual
+//contents, the contents are all top level.
+.then(function () {
+    return main(['add', 'http://leaflet-cdn.s3.amazonaws.com/build/leaflet-0.6.4.zip'], function (result) {
+        console.log(result);
+        doh.register("addFlatZip",
+            [
+                function addFlatZip(t) {
+                    t.is(true, file.exists('leaflet-0.6.4'), 'leaflet-0.6.4/ exists');
+                    t.is(false, file.exists('leaflet-0.6.4/images'), 'leaflet-0.6.4/images exists');
+                    t.is(false, file.exists('leaflet-0.6.4/leaflet.js'), 'leaflet-0.6.4/leaflet.js exists');
+                }
+            ]
+        );
+        doh.run();
+    });
+})
+*/
+
 .then(function () {
     return main(['install', '-noprompt', '../support/addable'], function (result) {
         console.log(result);

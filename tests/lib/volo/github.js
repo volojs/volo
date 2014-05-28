@@ -9,12 +9,12 @@ var github = require(global.voloLib + '/github'),
     end;
 
 end = start.promise.then(function () {
-    return github.latestTag('jquery/jquery/<1.7.0').then(function (version) {
+    return github.latestTag('jquery/jquery/<1.10.0').then(function (version) {
 
         doh.register("githubSemVerLessThan",
             [
                 function githubSemVerLessThan(t) {
-                    t.is('1.6.4', version);
+                    t.is('1.9.1', version);
                 }
             ]);
         doh.run();
