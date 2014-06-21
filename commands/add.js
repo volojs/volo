@@ -32,6 +32,40 @@ var fs = require('fs'),
     isWin32 = process.platform === 'win32',
     add;
 
+function getUnzippedDirInfo(tempDirName, fullZipPath) {
+    var baseDir,
+        zipName = path.basename(fullZipPath),
+        determinedBase = false;
+
+    fs.readdirSync(tempDirName).some(function (entry) {
+        var fullPath = path.join(tempDirName, entry);
+        if (fs.statSync(fullPath).isDirectory()) {
+            if (!determinedBase) {
+                baseDir = fullPath;
+                determinedBase = true;
+            } else {
+                baseDir = undefined;
+            }
+        } else {
+            if (entry !== zipName) {
+                determinedBase = true;
+                baseDir = undefined;
+            }
+        }
+    });
+
+    if (baseDir) {
+        return {
+            baseDir: baseDir
+        };
+    } else {
+        return {
+            baseDir: tempDirName,
+            removeZip: zipName
+        };
+    }
+}
+
 add = {
     summary: 'Add code to your project.',
 
@@ -104,7 +138,7 @@ add = {
         archive.resolve(archiveName, namedArgs.volo.resolve, {
             amd: isAmdProject && !namedArgs.amdoff
         }).then(function (archiveInfo) {
-            var installedId, parentId, completeMessage, finalLinkPath;
+            var installedId, parentId, completeMessage, finalLinkPath, zipName;
 
             //Hold on to the dependency's package.json info,
             //which may have been fetched from the network.
@@ -247,7 +281,7 @@ add = {
                     tempDirName = newTempDir;
 
                     var index, lastDotIndex, urlBaseName,
-                        ext, urlDir, zipName, downloadTarget, downloadPath,
+                        ext, urlDir, downloadTarget, downloadPath,
                         url = archiveInfo.url,
                         //Create local download directory name. Convert any
                         //characters that would imply other directories underneath
@@ -312,287 +346,288 @@ add = {
                             deps, pkgType, overrideTypeName,
                             isSourceNameADirectory, targetExt, doubleTargetExt,
                             doubleExtRegExp,
-                            dirName = file.firstDir(tempDirName),
+                            expandedDirInfo = getUnzippedDirInfo(tempDirName, zipName),
+                            dirName = expandedDirInfo.baseDir,
                             completeMessage = '',
                             ext = '';
 
-                        if (dirName) {
-                            if (depPackageInfo) {
-                                //Shim in info with the depPackageInfo. Favor
-                                //it since it came from the shim repo, or from
-                                //the same tag as the distributed source bundle
-                                info = {
-                                    data: depPackageInfo
-                                };
-                            } else {
-                                info = packageJson(dirName);
-                            }
+                        if (depPackageInfo) {
+                            //Shim in info with the depPackageInfo. Favor
+                            //it since it came from the shim repo, or from
+                            //the same tag as the distributed source bundle
+                            info = {
+                                data: depPackageInfo
+                            };
+                        } else {
+                            info = packageJson(dirName);
+                        }
 
-                            if (info.data) {
-                                mainFile = info.data.main;
-                                pkgType = info.data.volo && info.data.volo.type;
-                            }
+                        if (info.data) {
+                            mainFile = info.data.main;
+                            pkgType = info.data.volo && info.data.volo.type;
+                        }
 
-                            if (!pkgType && archiveInfo.scheme === 'github') {
-                                //Check for an override, just pull off the
-                                //owner/repo from the archive ID
-                                overrideTypeName = /github:([^\/]+\/[^\/]+)/.exec(archiveInfo.id)[1];
-                                pkgType = (config.github &&
-                                           config.github.typeOverrides &&
-                                           config.github.typeOverrides[overrideTypeName]) ||
-                                          null;
-                            }
+                        if (!pkgType && archiveInfo.scheme === 'github') {
+                            //Check for an override, just pull off the
+                            //owner/repo from the archive ID
+                            overrideTypeName = /github:([^\/]+\/[^\/]+)/.exec(archiveInfo.id)[1];
+                            pkgType = (config.github &&
+                                       config.github.typeOverrides &&
+                                       config.github.typeOverrides[overrideTypeName]) ||
+                                      null;
+                        }
 
-                            if (mainFile) {
-                                //Construct full path to the main file.
-                                mainFile += jsRegExp.test(mainFile) ? '' : '.js';
-                                mainFile = path.join(dirName, mainFile);
-                            }
+                        if (mainFile) {
+                            //Construct full path to the main file.
+                            mainFile += jsRegExp.test(mainFile) ? '' : '.js';
+                            mainFile = path.join(dirName, mainFile);
+                        }
 
-                            if (pkgType === 'directory') {
-                                //The whole directory should be kept,
-                                //not an individual source file.
-                                sourceName = null;
-                            } else if (archiveInfo.fragment) {
-                                //Only one file is wanted out of the archive.
-                                sourceName = path.join(dirName, archiveInfo.fragment);
-                                defaultName = path.basename(sourceName);
-                            } else if (mainFile && v.exists(mainFile)) {
-                                //Read the main file. If it
-                                //calls define() and any of the dependencies
-                                //are relative, then keep the whole directory.
-                                mainContents = fs.readFileSync(mainFile, 'utf8');
-                                try {
-                                    deps = parse.findDependencies(mainFile,
+                        if (pkgType === 'directory') {
+                            //The whole directory should be kept,
+                            //not an individual source file.
+                            sourceName = null;
+                        } else if (archiveInfo.fragment) {
+                            //Only one file is wanted out of the archive.
+                            sourceName = path.join(dirName, archiveInfo.fragment);
+                            defaultName = path.basename(sourceName);
+                        } else if (mainFile && v.exists(mainFile)) {
+                            //Read the main file. If it
+                            //calls define() and any of the dependencies
+                            //are relative, then keep the whole directory.
+                            mainContents = fs.readFileSync(mainFile, 'utf8');
+                            try {
+                                deps = parse.findDependencies(mainFile,
+                                       mainContents);
+                                if (!deps || !deps.length) {
+                                    deps = parse.findCjsDependencies(mainFile,
                                            mainContents);
-                                    if (!deps || !deps.length) {
-                                        deps = parse.findCjsDependencies(mainFile,
-                                               mainContents);
-                                    }
-                                } catch (e) {
-                                    //A parse error, just skip it then,
-                                    //could be malformed JS, JS 1.8
-                                    hasParseError = true;
                                 }
+                            } catch (e) {
+                                //A parse error, just skip it then,
+                                //could be malformed JS, JS 1.8
+                                hasParseError = true;
+                            }
 
-                                if (hasParseError ||
-                                        (deps && deps.some(function (dep) {
-                                        return dep.indexOf('.') === 0;
-                                    }))) {
-                                    sourceName = null;
-                                } else {
-                                    sourceName = mainFile;
-                                    defaultName = path.basename(mainFile);
-                                }
+                            if (hasParseError ||
+                                    (deps && deps.some(function (dep) {
+                                    return dep.indexOf('.') === 0;
+                                }))) {
+                                sourceName = null;
                             } else {
-                                //If the directory only contains one file, then
-                                //that is the install target.
-                                listing = fs.readdirSync(dirName);
-                                if (listing.length === 1) {
-                                    sourceName = path.join(dirName, listing[0]);
-                                    defaultName = listing[0];
-                                    ext = path.extname(sourceName);
+                                sourceName = mainFile;
+                                defaultName = path.basename(mainFile);
+                            }
+                        } else {
+                            //If the directory only contains one file, then
+                            //that is the install target.
+                            listing = fs.readdirSync(dirName);
+                            if (listing.length === 1) {
+                                sourceName = path.join(dirName, listing[0]);
+                                defaultName = listing[0];
+                                ext = path.extname(sourceName);
 
-                                    //Update the finalLocalName since it will
-                                    //be different now.
-                                    archiveInfo.finalLocalName = ext ?
-                                            defaultName.substring(0, defaultName.lastIndexOf(ext)) :
-                                            defaultName;
+                                //Update the finalLocalName since it will
+                                //be different now.
+                                archiveInfo.finalLocalName = ext ?
+                                        defaultName.substring(0, defaultName.lastIndexOf(ext)) :
+                                        defaultName;
+                            } else {
+                                //packageJson will look for one top level .js
+                                //file, and if so, and has package data via
+                                //a package.json comment, only install that
+                                //file.
+                                if (info.singleFile && info.data) {
+                                    sourceName = info.singleFile;
+                                    defaultName = path.basename(info.file);
                                 } else {
-                                    //packageJson will look for one top level .js
-                                    //file, and if so, and has package data via
-                                    //a package.json comment, only install that
-                                    //file.
-                                    if (info.singleFile && info.data) {
-                                        sourceName = info.singleFile;
-                                        defaultName = path.basename(info.file);
-                                    } else {
-                                        defaultName = archiveInfo.finalLocalName + '.js';
+                                    defaultName = archiveInfo.finalLocalName + '.js';
 
-                                        sourceName = path.join(dirName, defaultName);
-                                        if (!file.exists(sourceName)) {
-                                            sourceName = null;
-                                        }
+                                    sourceName = path.join(dirName, defaultName);
+                                    if (!file.exists(sourceName)) {
+                                        sourceName = null;
                                     }
                                 }
                             }
+                        }
 
-                            if (sourceName) {
-                                isSourceNameADirectory = fs.statSync(sourceName).isDirectory();
+                        if (sourceName) {
+                            isSourceNameADirectory = fs.statSync(sourceName).isDirectory();
 
-                                //Just move the single file into position.
-                                if (specificLocalName) {
-                                    targetName = path.join(baseUrl,
-                                                           specificLocalName);
+                            //Just move the single file into position.
+                            if (specificLocalName) {
+                                targetName = path.join(baseUrl,
+                                                       specificLocalName);
 
-                                    //If just a single file, then specificLocalName
-                                    //is the final local name, not the
-                                    //defaultName.
-                                    archiveInfo.finalLocalName = specificLocalName;
+                                //If just a single file, then specificLocalName
+                                //is the final local name, not the
+                                //defaultName.
+                                archiveInfo.finalLocalName = specificLocalName;
 
-                                    //If the source is a directory, do not add
-                                    //a file extension.
-                                    if (!isSourceNameADirectory) {
-                                        targetName += (ext || '.js');
-                                    }
-                                } else {
-                                    targetName = path.join(baseUrl, defaultName);
-                                }
-
-                                //If the target name ends in a double extension,
-                                //like ".js.js", because some projects on github
-                                //name the repositories "x.js", remove the
-                                //duplicate extension.
-                                targetExt = ext || '.js';
-                                doubleTargetExt = targetExt + targetExt;
-                                doubleExtRegExp = new RegExp(doubleTargetExt.replace(/\./g, '\\.') + '$');
-
-                                if (doubleExtRegExp.test(targetName)) {
-                                    targetName = targetName.replace(doubleExtRegExp, targetExt);
-                                    archiveInfo.finalLocalName = archiveInfo.finalLocalName.replace(doubleExtRegExp, targetExt);
-                                }
-
-                                //Check for the existence of the
-                                //singleFileName, and if it already exists,
-                                //bail out.
-                                if (file.exists(targetName) &&
-                                        !namedArgs.force) {
-                                    completeMessage += 'Skipping installed of ' + targetName + ' already exists.' +
-                                        ' To install anyway, pass -f to the ' +
-                                        'command';
-                                } else {
-                                    //Doing a copy instead of a rename since
-                                    //that does not work across partitions.
-                                    if (isSourceNameADirectory) {
-                                        file.copyDir(sourceName, targetName);
-                                    } else {
-                                        file.copyFile(sourceName, targetName);
-                                    }
-
-                                    file.rm(sourceName);
+                                //If the source is a directory, do not add
+                                //a file extension.
+                                if (!isSourceNameADirectory) {
+                                    targetName += (ext || '.js');
                                 }
                             } else {
+                                targetName = path.join(baseUrl, defaultName);
+                            }
 
-                                //A complete directory install.
-                                targetName = targetDirName = path.join(baseUrl,
-                                                       archiveInfo.finalLocalName);
+                            //If the target name ends in a double extension,
+                            //like ".js.js", because some projects on github
+                            //name the repositories "x.js", remove the
+                            //duplicate extension.
+                            targetExt = ext || '.js';
+                            doubleTargetExt = targetExt + targetExt;
+                            doubleExtRegExp = new RegExp(doubleTargetExt.replace(/\./g, '\\.') + '$');
 
-                                //Found the unpacked directory, move it.
+                            if (doubleExtRegExp.test(targetName)) {
+                                targetName = targetName.replace(doubleExtRegExp, targetExt);
+                                archiveInfo.finalLocalName = archiveInfo.finalLocalName.replace(doubleExtRegExp, targetExt);
+                            }
+
+                            //Check for the existence of the
+                            //singleFileName, and if it already exists,
+                            //bail out.
+                            if (file.exists(targetName) &&
+                                    !namedArgs.force) {
+                                completeMessage += 'Skipping installed of ' + targetName + ' already exists.' +
+                                    ' To install anyway, pass -f to the ' +
+                                    'command';
+                            } else {
                                 //Doing a copy instead of a rename since
                                 //that does not work across partitions.
-                                file.copyDir(dirName, targetName);
-                                file.rm(dirName);
+                                if (isSourceNameADirectory) {
+                                    file.copyDir(sourceName, targetName);
+                                } else {
+                                    file.copyFile(sourceName, targetName);
+                                }
 
-                                //If directory, remove common directories not
-                                //needed for install.
-                                add.api.discard(targetName,
-                                            info.data &&
-                                            info.data.volo &&
-                                            info.data.volo.ignore);
+                                file.rm(sourceName);
+                            }
+                        } else {
 
-                                if (info.data && info.data.main && isAmdProject) {
-                                    makeMainAmdAdapter(info.data.main,
-                                                       archiveInfo.finalLocalName,
-                                                       targetName + '.js');
+                            //A complete directory install.
+                            targetName = targetDirName = path.join(baseUrl,
+                                                   archiveInfo.finalLocalName);
 
-                                    //Check to see if the main file already uses
-                                    //AMD, and if so, skip the AMD conversion in
-                                    //the next step.
-                                    mainPath = packageJson.resolveMainPath(targetName,
-                                                                info.data.main);
+                            //Found the unpacked directory, move it.
+                            //Doing a copy instead of a rename since
+                            //that does not work across partitions.
+                            // If a shallow zip, do not copy over the zip file.
+                            var skipZipRegExp = expandedDirInfo.removeZip ?
+                                                new RegExp(expandedDirInfo.removeZip.replace(/\./g, '\\.')) :
+                                                undefined;
+                            file.copyDir(dirName, targetName, undefined, undefined, skipZipRegExp);
+                            file.rm(dirName);
 
-                                    if (file.exists(mainPath)) {
-                                        alreadyUsesAmd = !!parse.usesAmdOrRequireJs(mainPath,
-                                                                                    file.readFile(mainPath));
-                                    }
+                            //If directory, remove common directories not
+                            //needed for install.
+                            add.api.discard(targetName,
+                                        info.data &&
+                                        info.data.volo &&
+                                        info.data.volo.ignore);
+
+                            if (info.data && info.data.main && isAmdProject) {
+                                makeMainAmdAdapter(info.data.main,
+                                                   archiveInfo.finalLocalName,
+                                                   targetName + '.js');
+
+                                //Check to see if the main file already uses
+                                //AMD, and if so, skip the AMD conversion in
+                                //the next step.
+                                mainPath = packageJson.resolveMainPath(targetName,
+                                                            info.data.main);
+
+                                if (file.exists(mainPath)) {
+                                    alreadyUsesAmd = !!parse.usesAmdOrRequireJs(mainPath,
+                                                                                file.readFile(mainPath));
                                 }
                             }
-
-                            q.fcall(function () {
-                                if (isAmdProject && !namedArgs.amdoff && !alreadyUsesAmd) {
-                                    var damd = q.defer();
-
-                                    //Add owner/repo info to the amdify call,
-                                    //to help it look up overrides for the
-                                    //depends/exports so the user is not
-                                    //prompted for them.
-                                    if (archiveInfo.ownerPlusRepo) {
-                                        namedArgs.github = archiveInfo.ownerPlusRepo;
-                                    }
-
-                                    amdify.run.apply(amdify, [damd, v, namedArgs, targetName]);
-                                    return damd.promise;
-                                }
-                            }).then(function () {
-                                //Now install any dependencies.
-                                var localNamedArgs = {},
-                                    packageDeps = info.data &&
-                                                 ((info.data.volo && info.data.volo.dependencies) ||
-                                                 (info.data.browser && info.data.browser.dependencies)),
-                                    depDeferred = q.defer();
-
-                                if (packageDeps) {
-                                    lang.mixin(localNamedArgs, namedArgs);
-                                    localNamedArgs._parentId = archiveInfo.id;
-                                    add.run(depDeferred, v, localNamedArgs, packageDeps);
-                                    return depDeferred.promise;
-                                }
-                            }).then(function (depInstallMessages) {
-                                if (depInstallMessages) {
-                                    completeMessage += depInstallMessages + '\n';
-                                }
-
-                                //If the added dependency is a directory
-                                //with a volofile and it has an onAdd
-                                //command, run it.
-                                if (targetDirName) {
-                                    return volofile.run(targetDirName, 'onAdd');
-                                }
-                            }).then(function () {
-                                //Add this dependency to the package.json
-                                //info, if available, and a package.json
-                                //file, not a single JS file.
-                                //Refresh first since it may have changed
-                                //from other dependency installs/onAdd
-                                //behavior.
-                                if (!namedArgs.nostamp &&
-                                        !namedArgs.masterPackageJson.isSingleFile &&
-                                        namedArgs.masterPackageJson.data) {
-
-                                    namedArgs.masterPackageJson.refresh();
-                                    namedArgs.masterPackageJson.addVoloDep(archiveInfo.finalLocalName,
-                                                    archiveInfo.id);
-                                    namedArgs.masterPackageJson.save();
-                                }
-                            }).then(function (amdMessage) {
-                                var amdName;
-
-                                //All done.
-                                //Clean up temp area. Even though this is async,
-                                //it is not important to track the completion.
-                                file.asyncPlatformRm(tempDirName);
-
-                                if (namedArgs.amdlog && amdMessage) {
-                                    completeMessage += amdMessage + '\n';
-                                }
-                                completeMessage += 'Installed ' +
-                                    archiveInfo.id.bold +
-                                    ' at ' + targetName.bold;
-
-                                if (isAmdProject) {
-                                    amdName = targetName.replace(baseUrl, '')
-                                              .replace(/^\//, '')
-                                              .replace(jsRegExp, '');
-                                    completeMessage += '\nAMD dependency name: ' +
-                                                        amdName;
-                                }
-
-                            }).then(function () {
-                                deferred.resolve(completeMessage);
-                            }, deferred.reject);
-                        } else {
-                            errCleanUp('Unexpected zipball configuration');
                         }
+
+                        q.fcall(function () {
+                            if (isAmdProject && !namedArgs.amdoff && !alreadyUsesAmd) {
+                                var damd = q.defer();
+
+                                //Add owner/repo info to the amdify call,
+                                //to help it look up overrides for the
+                                //depends/exports so the user is not
+                                //prompted for them.
+                                if (archiveInfo.ownerPlusRepo) {
+                                    namedArgs.github = archiveInfo.ownerPlusRepo;
+                                }
+
+                                amdify.run.apply(amdify, [damd, v, namedArgs, targetName]);
+                                return damd.promise;
+                            }
+                        }).then(function () {
+                            //Now install any dependencies.
+                            var localNamedArgs = {},
+                                packageDeps = info.data &&
+                                             ((info.data.volo && info.data.volo.dependencies) ||
+                                             (info.data.browser && info.data.browser.dependencies)),
+                                depDeferred = q.defer();
+
+                            if (packageDeps) {
+                                lang.mixin(localNamedArgs, namedArgs);
+                                localNamedArgs._parentId = archiveInfo.id;
+                                add.run(depDeferred, v, localNamedArgs, packageDeps);
+                                return depDeferred.promise;
+                            }
+                        }).then(function (depInstallMessages) {
+                            if (depInstallMessages) {
+                                completeMessage += depInstallMessages + '\n';
+                            }
+
+                            //If the added dependency is a directory
+                            //with a volofile and it has an onAdd
+                            //command, run it.
+                            if (targetDirName) {
+                                return volofile.run(targetDirName, 'onAdd');
+                            }
+                        }).then(function () {
+                            //Add this dependency to the package.json
+                            //info, if available, and a package.json
+                            //file, not a single JS file.
+                            //Refresh first since it may have changed
+                            //from other dependency installs/onAdd
+                            //behavior.
+                            if (!namedArgs.nostamp &&
+                                    !namedArgs.masterPackageJson.isSingleFile &&
+                                    namedArgs.masterPackageJson.data) {
+
+                                namedArgs.masterPackageJson.refresh();
+                                namedArgs.masterPackageJson.addVoloDep(archiveInfo.finalLocalName,
+                                                archiveInfo.id);
+                                namedArgs.masterPackageJson.save();
+                            }
+                        }).then(function (amdMessage) {
+                            var amdName;
+
+                            //All done.
+                            //Clean up temp area. Even though this is async,
+                            //it is not important to track the completion.
+                            file.asyncPlatformRm(tempDirName);
+
+                            if (namedArgs.amdlog && amdMessage) {
+                                completeMessage += amdMessage + '\n';
+                            }
+                            completeMessage += 'Installed ' +
+                                archiveInfo.id.bold +
+                                ' at ' + targetName.bold;
+
+                            if (isAmdProject) {
+                                amdName = targetName.replace(baseUrl, '')
+                                          .replace(/^\//, '')
+                                          .replace(jsRegExp, '');
+                                completeMessage += '\nAMD dependency name: ' +
+                                                    amdName;
+                            }
+
+                        }).then(function () {
+                            deferred.resolve(completeMessage);
+                        }, deferred.reject);
                     } catch (e) {
                         errCleanUp(e);
                     }

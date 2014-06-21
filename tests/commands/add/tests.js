@@ -436,6 +436,39 @@ end = start.promise.then(function () {
 })
 
 .then(function () {
+    //Work with signed AWS redirect, likely from a GitHub "releases" URL,
+    //which does not support HEAD requests. #194
+    return main(['add', 'https://github.com/gaye/dav/releases/download/v1.0.3/dav.zip#dav.js'], function (result) {
+        console.log(result);
+        doh.register("addReleaseSignedAWSFragment",
+            [
+                function addReleaseSignedAWSFragment(t) {
+                    t.is(true, file.exists('dav.js'));
+                }
+            ]
+        );
+        doh.run();
+    });
+})
+
+.then(function () {
+    //Allow zip files that do not just have all contents under a top directory. #174
+    return main(['add', 'http://leaflet-cdn.s3.amazonaws.com/build/leaflet-0.6.4.zip'], function (result) {
+        console.log(result);
+        doh.register("addFlatZip",
+            [
+                function addFlatZip(t) {
+                    t.is(true, file.exists('leaflet-0.6.4/images'));
+                    t.is(true, file.exists('leaflet-0.6.4/leaflet.js'));
+                    t.is(true, file.exists('leaflet-0.6.4/leaflet.css'));
+                }
+            ]
+        );
+        doh.run();
+    });
+})
+
+.then(function () {
     //Allow single file JS downloads to go into a directory #90
     return main(['add', 'jquery', 'dollar/main'], function (result) {
         console.log(result);
