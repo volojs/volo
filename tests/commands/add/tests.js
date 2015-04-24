@@ -176,6 +176,24 @@ end = start.promise.then(function () {
     });
 })
 
+//Tests #213 fragment add of a main module that has deps, but they are
+//locally built into the file. The single file request should take priority over
+//keeping the directory.
+.then(function () {
+    return main(['add', 'volojs/test-mainsinglebuilt#threads.js'], function (result) {
+        console.log(result);
+        doh.register("mainSingleFileBuilt",
+            [
+                function mainSingleFileBuilt(t) {
+                    t.is(true, file.exists('threads.js'), 'threads.js is there');
+                    t.is(false, file.exists('threads'), 'threads directory should not exist');
+                }
+            ]
+        );
+        doh.run();
+    });
+})
+
 //Tests #37, use of non-master master, and #41, use volo.url name, not repo name.
 .then(function () {
     return main(['add', 'volojs/test-nomaster'], function (result) {

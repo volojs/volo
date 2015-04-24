@@ -391,7 +391,7 @@ add = {
                             //Only one file is wanted out of the archive.
                             sourceName = path.join(dirName, archiveInfo.fragment);
                             defaultName = path.basename(sourceName);
-                        } else if (mainFile && v.exists(mainFile)) {
+                        } else if (!archiveInfo.isSingleFile && mainFile && v.exists(mainFile)) {
                             //Read the main file. If it
                             //calls define() and any of the dependencies
                             //are relative, then keep the whole directory.
