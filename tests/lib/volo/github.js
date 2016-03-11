@@ -9,12 +9,12 @@ var github = require(global.voloLib + '/github'),
     end;
 
 end = start.promise.then(function () {
-    return github.latestTag('jquery/jquery/<1.11.0').then(function (version) {
+    return github.latestTag('jquery/jquery/<2.2').then(function (version) {
 
         doh.register("githubSemVerLessThan",
             [
                 function githubSemVerLessThan(t) {
-                    t.is('1.10.2', version);
+                    t.is('2.1.4', version);
                 }
             ]);
         doh.run();
@@ -22,12 +22,12 @@ end = start.promise.then(function () {
 })
 
 .then(function () {
-    return github.latestTag('jrburke/requirejs/~1').then(function (version) {
+    return github.latestTag('requirejs/requirejs/~2').then(function (version) {
 
         doh.register("githubSemVerMajorMinor",
             [
                 function githubSemVerMajorMinor(t) {
-                    t.is('1.0.8', version);
+                    t.is('2.1.22', version);
                 }
             ]);
         doh.run();
@@ -35,12 +35,12 @@ end = start.promise.then(function () {
 })
 
 .then(function () {
-    return github.latestTag('jrburke/requirejs/1.x').then(function (version) {
+    return github.latestTag('requirejs/requirejs/2.x').then(function (version) {
 
         doh.register("githubDotXVersion",
             [
                 function githubDotXVersion(t) {
-                    t.is('1.0.8', version);
+                    t.is('2.1.22', version);
                 }
             ]);
         doh.run();
@@ -48,12 +48,12 @@ end = start.promise.then(function () {
 })
 
 .then(function () {
-    return github.latestTag('jrburke/requirejs/1.0.x').then(function (version) {
+    return github.latestTag('requirejs/requirejs/2.0.x').then(function (version) {
 
         doh.register("githubDotDotXVersion",
             [
                 function githubDotDotXVersion(t) {
-                    t.is('1.0.8', version);
+                    t.is('2.0.6', version);
                 }
             ]);
         doh.run();
@@ -62,12 +62,12 @@ end = start.promise.then(function () {
 
 
 .then(function () {
-    return github.latestTag('jrburke/requirejs/1.0.6').then(function (version) {
+    return github.latestTag('requirejs/requirejs/2.0.6').then(function (version) {
 
         doh.register("githubExactVersion",
             [
                 function githubExactVersion(t) {
-                    t.is('1.0.6', version);
+                    t.is('2.0.6', version);
                 }
             ]);
         doh.run();
