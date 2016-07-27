@@ -34,7 +34,7 @@ var fs = require('fs'),
 
 function getUnzippedDirInfo(tempDirName, fullZipPath) {
     var baseDir,
-        zipName = path.basename(fullZipPath),
+        zipName = fullZipPath == null ? null : path.basename(fullZipPath),
         determinedBase = false;
 
     fs.readdirSync(tempDirName).some(function (entry) {
