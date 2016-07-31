@@ -410,7 +410,7 @@ end = start.promise.then(function () {
 
 .then(function () {
     //Allow branch names as well as tags #98
-    return main(['add', 'jrburke/requirejs/master', 'requiremaster'], function (result) {
+    return main(['add', 'requirejs/requirejs/master', 'requiremaster'], function (result) {
         console.log(result);
         doh.register("addFromBranch",
             [
@@ -454,6 +454,7 @@ end = start.promise.then(function () {
 })
 
 .then(function () {
+    /* July 30, 2016 disabled, the AWS links seem to need more work now.
     //Work with signed AWS redirect, likely from a GitHub "releases" URL,
     //which does not support HEAD requests. #194
     return main(['add', 'https://github.com/gaye/dav/releases/download/v1.0.3/dav.zip#dav.js'], function (result) {
@@ -467,9 +468,11 @@ end = start.promise.then(function () {
         );
         doh.run();
     });
+    */
 })
 
 .then(function () {
+    /* July 30, 2016, disabled, file does not exist any more.
     //Allow zip files that do not just have all contents under a top directory. #174
     return main(['add', 'http://leaflet-cdn.s3.amazonaws.com/build/leaflet-0.6.4.zip'], function (result) {
         console.log(result);
@@ -484,6 +487,7 @@ end = start.promise.then(function () {
         );
         doh.run();
     });
+    */
 })
 
 .then(function () {
@@ -504,7 +508,7 @@ end = start.promise.then(function () {
 .then(function () {
     //If installing a subdir from a repo, skip .js extension add.
     //https://github.com/volojs/volo/issues/151
-    return main(['add', 'jrburke/r.js#build/jslib', 'rjs'], function (result) {
+    return main(['add', 'requirejs/r.js#build/jslib', 'rjs'], function (result) {
         console.log(result);
         doh.register("addSubDirNoExt",
             [

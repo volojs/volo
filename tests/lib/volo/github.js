@@ -27,7 +27,7 @@ end = start.promise.then(function () {
         doh.register("githubSemVerMajorMinor",
             [
                 function githubSemVerMajorMinor(t) {
-                    t.is('2.1.22', version);
+                    t.is('2.2.0', version);
                 }
             ]);
         doh.run();
@@ -40,7 +40,7 @@ end = start.promise.then(function () {
         doh.register("githubDotXVersion",
             [
                 function githubDotXVersion(t) {
-                    t.is('2.1.22', version);
+                    t.is('2.2.0', version);
                 }
             ]);
         doh.run();
