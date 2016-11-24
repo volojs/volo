@@ -7,3 +7,4 @@ tests/commands/remove/output
 tests/commands/volofile/output
 tests/full/output
 tests/lib/volo/packageJson/output
+node_modules
