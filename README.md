@@ -29,7 +29,7 @@ a package manager for node code. To install volo:
 
     npm install -g volo
 
-If you get an error when running that command, and it contains this line somwhere in it:
+If you get an error when running that command, and it contains this line somewhere in it:
 
     npm ERR! Please try running this command again as root/Administrator.
 
