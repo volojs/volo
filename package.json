@@ -33,7 +33,7 @@
         "q": "0.9.4",
         "zip": "1.2.0",
         "uglify-js": "1.2.6",
-        "shell-quote": "0.0.1",
+        "shell-quote": "1.7.2",
         "semver": "4.1.x",
         "colors": "0.6.0-1",
         "glob": "3.2.1",
