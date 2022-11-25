@@ -677,7 +677,7 @@ if(window["dojo"]){
 			loaded = true;
 			groupTemplate = byId("groupTemplate");
 			if(!groupTemplate){
-				// make sure we've got an ammenable DOM structure
+				// make sure we've got an amenable DOM structure
 				return;
 			}
 			groupTemplate.parentNode.removeChild(groupTemplate);
