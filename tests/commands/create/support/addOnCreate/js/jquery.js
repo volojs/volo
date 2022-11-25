@@ -3720,7 +3720,7 @@ var cachedruns,
 
 	rcombinators = new RegExp( "^" + combinators ),
 
-	// All simple (non-comma) selectors, excluding insignifant trailing whitespace
+	// All simple (non-comma) selectors, excluding insignificant trailing whitespace
 	rgroups = new RegExp( groups + "?(?=" + whitespace + "*,|$)", "g" ),
 
 	// A selector, or everything after leading whitespace
